@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/style.css">
+    <script type="text/javascript" src="/script.js"></script>
+    <script type="text/javascript" src="/jquery-3.7.1.min.js"></script>
+    <title>Вход | SwingFox</title>
+</head>
+<body>
+    <header>
+        <div style="padding-left: 25px;">
+            <img src="/img/logo.png" alt="logo" height="65px" width="auto">
+            
+        </div>
+
+    </header>
+    <h1>Авторизация</h1>
+    <form class="auth_main">
+        <input type="text" maxlength="36" class="auth_input" oninput="this.value = this.value.replaceAll(' ', '')" placeholder="Логин или email" id="login">
+        <input type="password" maxlength="36" class="auth_input" oninput="this.value = this.value.replaceAll(' ', '')" placeholder="Пароль" id="password"><br>
+        <a class="standart_button" onclick="logIn()">Войти</a>
+        <a id="user_more_inf" href="reg.html">Нет аккаунта? Зарегистрируйтесь!</a>
+        <a id="user_more_inf" href="pass_recovery.html">Забыли пароль?</a><br>
+    </form>
+    <div class="couple_widgets" id="error_box" style="width: 100%;justify-content: center;position: fixed;top: 0px;">
+        <div class='error_popup'><img src="/img/error.png" class="error-success_img"><p id="error_text"></p></div>
+    </div>
+    <div class="couple_widgets" id="success_box" style="width: 100%;justify-content: center;position: fixed;top: 0px;">
+        <div class='success_popup'><img src="/img/success.png" class="error-success_img"><p id="success_text">Успешно</p></div>
+    </div>
+</body>
+</html>
