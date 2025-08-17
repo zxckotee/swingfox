@@ -1,0 +1,91 @@
+{
+  "name": "swingfox-client",
+  "version": "1.0.0",
+  "description": "SwingFox React Frontend",
+  "private": true,
+  "dependencies": {
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^14.5.2",
+    "axios": "^1.6.2",
+    "core-js": "^3.28.0",
+    "date-fns": "^2.30.0",
+    "framer-motion": "^10.16.16",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-dropzone": "^14.2.3",
+    "react-hook-form": "^7.48.2",
+    "react-hot-toast": "^2.4.1",
+    "react-image-crop": "^10.1.8",
+    "react-intersection-observer": "^9.5.3",
+    "react-query": "^3.39.3",
+    "react-router-dom": "^6.8.1",
+    "react-scripts": "5.0.1",
+    "react-virtualized": "^9.22.5",
+    "socket.io-client": "^4.7.4",
+    "styled-components": "^6.1.1"
+  },
+  "scripts": {
+    "start": "webpack serve --mode development --port 443",
+    "build": "webpack --mode production",
+    "dev": "webpack serve --mode development --port 443 --open",
+    "analyze": "webpack-bundle-analyzer dist/static/js/*.js",
+    "test": "react-scripts test"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.12",
+    "@babel/plugin-proposal-class-properties": "^7.18.6",
+    "@babel/plugin-transform-runtime": "^7.19.6",
+    "@babel/preset-env": "^7.20.2",
+    "@babel/preset-react": "^7.18.6",
+    "@pmmmwh/react-refresh-webpack-plugin": "^0.5.10",
+    "assert": "^2.1.0",
+    "autoprefixer": "^10.4.13",
+    "babel-loader": "^9.1.2",
+    "browserify-zlib": "^0.2.0",
+    "buffer": "^6.0.3",
+    "clean-webpack-plugin": "^4.0.0",
+    "crypto-browserify": "^3.12.1",
+    "css-loader": "^6.7.3",
+    "html-webpack-plugin": "^5.5.0",
+    "https-browserify": "^1.0.0",
+    "mini-css-extract-plugin": "^2.7.2",
+    "os-browserify": "^0.3.0",
+    "path-browserify": "^1.0.1",
+    "postcss": "^8.4.21",
+    "postcss-loader": "^7.0.2",
+    "postcss-preset-env": "^8.0.1",
+    "process": "^0.11.10",
+    "react-refresh": "^0.14.0",
+    "sass": "^1.58.0",
+    "sass-loader": "^13.2.0",
+    "stream-browserify": "^3.0.0",
+    "stream-http": "^3.2.0",
+    "style-loader": "^3.3.1",
+    "url": "^0.11.4",
+    "util": "^0.12.5",
+    "webpack": "^5.75.0",
+    "webpack-bundle-analyzer": "^4.7.0",
+    "webpack-cli": "^5.0.1",
+    "webpack-dev-server": "^4.7.4"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "proxy": "http://localhost:3000"
+}
