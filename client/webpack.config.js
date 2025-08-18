@@ -1,4 +1,5 @@
 const path = require('path');
+const fs = require('fs');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
@@ -25,21 +26,33 @@ module.exports = {
       directory: path.join(__dirname, 'dist'),
     },
     port: 443,
-    https: false,
-    open: true,
+    host: '0.0.0.0',
+    https: isDevelopment ? {
+      key: fs.existsSync('./ssl/localhost.key')
+        ? fs.readFileSync('./ssl/localhost.key')
+        : fs.readFileSync('/app/ssl/localhost.key'),
+      cert: fs.existsSync('./ssl/localhost.crt')
+        ? fs.readFileSync('./ssl/localhost.crt')
+        : fs.readFileSync('/app/ssl/localhost.crt'),
+    } : false,
+    open: false, // Отключаем автооткрытие в браузере в Docker
     hot: true,
     historyApiFallback: true,
     compress: true,
+    allowedHosts: 'all',
+    client: {
+      webSocketURL: 'wss://localhost:443/ws',
+    },
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'https://backend:3001',
         changeOrigin: true,
-        secure: false
+        secure: false // Разрешаем самоподписанные сертификаты
       },
       '/uploads': {
-        target: 'http://localhost:3001',
+        target: 'https://backend:3001',
         changeOrigin: true,
-        secure: false
+        secure: false // Разрешаем самоподписанные сертификаты
       }
     }
   },

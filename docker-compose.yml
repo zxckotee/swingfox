@@ -1,0 +1,113 @@
+services:
+  # Backend сервис (Node.js + Express)
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile.dev
+    ports:
+      - "3001:3001"  # HTTPS API порт
+      - "9229:9229"  # Debug порт для Node.js
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ./public/uploads:/app/public/uploads
+      - ./docker/ssl:/app/ssl:ro  # SSL сертификаты
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=root
+      - DB_NAME=swingfox
+      - DB_PORT=5432
+      - EMAIL_HOST=mailhog
+      - EMAIL_PORT=1025
+      - EMAIL_USER=
+      - EMAIL_PASSWORD=
+      - EMAIL_FROM=info@swingfox.ru
+      - JWT_SECRET=swingfox_jwt_secret_key_2024_docker
+      - JWT_EXPIRES_IN=7d
+      - PORT=3001
+      - UPLOAD_PATH=public/uploads
+      - MAX_FILE_SIZE=10485760
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "--no-check-certificate", "https://localhost:3001/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend сервис (React + Webpack)
+  frontend:
+    build:
+      context: ./client
+      dockerfile: ../docker/frontend/Dockerfile.dev
+    ports:
+      - "443:443"  # HTTPS React dev server порт
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+      - ./docker/ssl:/app/ssl:ro  # SSL сертификаты
+    environment:
+      - NODE_ENV=development
+      - REACT_APP_API_URL=https://localhost:3001/api
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "--no-check-certificate", "https://localhost:443"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL база данных
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=swingfox
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d swingfox"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # MailHog для тестирования email
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "1025:1025"  # SMTP порт
+      - "8025:8025"  # Web UI порт
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8025"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+
+# Persistent volumes
+volumes:
+  postgres_data:
+    driver: local
+
+# Сети
+networks:
+  default:
+    driver: bridge

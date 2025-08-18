@@ -1,0 +1,25 @@
+# Используем официальный образ Node.js
+FROM node:18-alpine
+
+# Устанавливаем рабочую директорию
+WORKDIR /app
+
+# Копируем package.json и package-lock.json для кэширования зависимостей
+COPY package*.json ./
+
+# Устанавливаем зависимости
+RUN npm ci --only=production=false
+
+# Копируем конфигурационные файлы
+COPY babel.config.js ./
+COPY webpack.config.js ./
+COPY postcss.config.js ./
+
+# Копируем весь код приложения
+COPY . .
+
+# Открываем порт для webpack dev server
+EXPOSE 443
+
+# Команда для запуска в development режиме с hot reload
+CMD ["npm", "run", "dev"]

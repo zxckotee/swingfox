@@ -194,3 +194,5 @@ const profile = await response.json();
 **Версия:** 1.0.0
 
 docker run -d -p 1025:1025 -p 8025:8025 --name mailhog mailhog/mailhog - запуска почтового сервера
+docker stop mailhog - его остановка
+docker rm mailhog - его удаление

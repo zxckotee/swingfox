@@ -1,5 +1,7 @@
 require('dotenv').config();
 const express = require('express');
+const https = require('https');
+const fs = require('fs');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -96,13 +98,65 @@ const startServer = async () => {
       console.log('✅ Модели синхронизированы');
     }
     
-    // Запускаем сервер
-    app.listen(PORT, () => {
-      console.log('🚀 SwingFox сервер запущен на порту', PORT);
-      console.log('📍 URL:', `http://localhost:${PORT}`);
-      console.log('🔧 Режим:', process.env.NODE_ENV || 'development');
-      console.log('📡 API доступно по адресу:', `http://localhost:${PORT}/api`);
-    });
+    // Настройка HTTPS для разработки
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        // Пути к SSL сертификатам
+        const sslKeyPath = fs.existsSync('./ssl/localhost.key')
+          ? './ssl/localhost.key'
+          : '/app/ssl/localhost.key';
+        const sslCertPath = fs.existsSync('./ssl/localhost.crt')
+          ? './ssl/localhost.crt'
+          : '/app/ssl/localhost.crt';
+
+        // Проверяем наличие SSL файлов
+        if (fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath)) {
+          const httpsOptions = {
+            key: fs.readFileSync(sslKeyPath),
+            cert: fs.readFileSync(sslCertPath)
+          };
+          
+          // Запускаем HTTPS сервер
+          https.createServer(httpsOptions, app).listen(PORT, '0.0.0.0', () => {
+            console.log('🚀 SwingFox HTTPS сервер запущен на порту', PORT);
+            console.log('📍 URL:', `https://localhost:${PORT}`);
+            console.log('🔧 Режим:', process.env.NODE_ENV || 'development');
+            console.log('📡 API доступно по адресу:', `https://localhost:${PORT}/api`);
+            console.log('🔒 SSL сертификаты загружены успешно');
+          });
+        } else {
+          console.warn('⚠️  SSL сертификаты не найдены, запускаем HTTP сервер');
+          console.warn('💡 Для HTTPS выполните: cd docker/ssl && ./generate-certs.sh');
+          
+          // Fallback на HTTP
+          app.listen(PORT, '0.0.0.0', () => {
+            console.log('🚀 SwingFox HTTP сервер запущен на порту', PORT);
+            console.log('📍 URL:', `http://localhost:${PORT}`);
+            console.log('🔧 Режим:', process.env.NODE_ENV || 'development');
+            console.log('📡 API доступно по адресу:', `http://localhost:${PORT}/api`);
+          });
+        }
+      } catch (sslError) {
+        console.error('❌ Ошибка настройки SSL:', sslError.message);
+        console.log('🔄 Запускаем HTTP сервер в качестве fallback...');
+        
+        // Fallback на HTTP
+        app.listen(PORT, '0.0.0.0', () => {
+          console.log('🚀 SwingFox HTTP сервер запущен на порту', PORT);
+          console.log('📍 URL:', `http://localhost:${PORT}`);
+          console.log('🔧 Режим:', process.env.NODE_ENV || 'development');
+          console.log('📡 API доступно по адресу:', `http://localhost:${PORT}/api`);
+        });
+      }
+    } else {
+      // Production режим - используем HTTP (HTTPS должен настраиваться через reverse proxy)
+      app.listen(PORT, () => {
+        console.log('🚀 SwingFox сервер запущен на порту', PORT);
+        console.log('📍 URL:', `http://localhost:${PORT}`);
+        console.log('🔧 Режим:', process.env.NODE_ENV || 'development');
+        console.log('📡 API доступно по адресу:', `http://localhost:${PORT}/api`);
+      });
+    }
     
   } catch (error) {
     console.error('❌ Ошибка запуска сервера:', error);

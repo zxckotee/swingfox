@@ -1,0 +1,28 @@
+# Используем официальный образ Node.js
+FROM node:18-alpine
+
+# Устанавливаем рабочую директорию
+WORKDIR /app
+
+# Устанавливаем nodemon глобально для hot reload
+RUN npm install -g nodemon
+
+# Копируем package.json и package-lock.json для кэширования зависимостей
+COPY package*.json ./
+
+# Устанавливаем зависимости
+RUN npm ci --only=production=false
+
+# Создаем директории для uploads и static файлов
+RUN mkdir -p public/uploads
+RUN mkdir -p public_html/img
+
+# Копируем весь код приложения
+COPY . .
+
+# Открываем порты
+EXPOSE 3001
+EXPOSE 9229
+
+# Команда для запуска в development режиме с отладкой
+CMD ["nodemon", "--inspect=0.0.0.0:9229", "server.js"]
