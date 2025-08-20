@@ -4,6 +4,9 @@ FROM node:18-alpine
 # Устанавливаем рабочую директорию
 WORKDIR /app
 
+# Устанавливаем необходимые пакеты
+RUN apk add --no-cache wget curl
+
 # Копируем package.json и package-lock.json для кэширования зависимостей
 COPY package*.json ./
 

@@ -34,10 +34,8 @@ app.use('/api/', limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Статические файлы
+// Статические файлы (только для API)
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
-app.use('/img', express.static(path.join(__dirname, 'public_html/img')));
-app.use(express.static(path.join(__dirname, 'public_html')));
 
 // Импорт роутов
 const authRoutes = require('./src/routes/auth');
@@ -80,9 +78,11 @@ app.use('/api/*', (req, res) => {
   res.status(404).json({ error: 'API endpoint не найден' });
 });
 
-// Отдача фронтенда для всех остальных запросов
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public_html', 'index.php'));
+// 404 для всех остальных запросов (это API-only сервер)
+app.use('*', (req, res) => {
+  res.status(404).json({
+    error: 'Endpoint не найден. Это API сервер, фронтенд доступен на порту 443.'
+  });
 });
 
 // Инициализация сервера

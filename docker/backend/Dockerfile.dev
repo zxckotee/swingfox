@@ -4,7 +4,8 @@ FROM node:18-alpine
 # Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Устанавливаем nodemon глобально для hot reload
+# Устанавливаем необходимые пакеты
+RUN apk add --no-cache wget curl
 RUN npm install -g nodemon
 
 # Копируем package.json и package-lock.json для кэширования зависимостей
