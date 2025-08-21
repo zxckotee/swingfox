@@ -228,7 +228,12 @@ function App() {
       <ThemeProvider theme={theme}>
         <GlobalStyle />
         <AppContainer>
-          <Router>
+          <Router
+            future={{
+              v7_startTransition: true,
+              v7_relativeSplatPath: true
+            }}
+          >
             <Routes>
               {/* Публичные роуты */}
               <Route path="/login" element={<Login />} />

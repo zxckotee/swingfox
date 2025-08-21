@@ -1,85 +1,32 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import styled from 'styled-components';
 import toast from 'react-hot-toast';
 import { authAPI, apiUtils } from '../services/api';
-
-const LoginContainer = styled.div`
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #dc3522 0%, #b8291e 100%);
-  padding: ${props => props.theme.spacing.md};
-`;
-
-const LoginForm = styled.form`
-  background: white;
-  padding: ${props => props.theme.spacing.xl};
-  border-radius: ${props => props.theme.borderRadius};
-  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-  width: 100%;
-  max-width: 400px;
-`;
-
-const Logo = styled.div`
-  text-align: center;
-  margin-bottom: ${props => props.theme.spacing.xl};
-  
-  h1 {
-    color: ${props => props.theme.colors.primary};
-    font-size: ${props => props.theme.fonts.sizes.xxlarge};
-    margin-bottom: ${props => props.theme.spacing.sm};
-  }
-  
-  p {
-    color: ${props => props.theme.colors.textLight};
-    margin: 0;
-  }
-`;
-
-const ErrorMessage = styled.div`
-  color: ${props => props.theme.colors.error};
-  font-size: ${props => props.theme.fonts.sizes.small};
-  margin-top: ${props => props.theme.spacing.xs};
-`;
-
-const SubmitButton = styled.button`
-  width: 100%;
-  padding: ${props => props.theme.spacing.md};
-  background: ${props => props.theme.colors.primary};
-  color: white;
-  border: none;
-  border-radius: ${props => props.theme.borderRadius};
-  font-size: ${props => props.theme.fonts.sizes.large};
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  
-  &:hover:not(:disabled) {
-    background: #b8291e;
-  }
-  
-  &:disabled {
-    background: ${props => props.theme.colors.textLight};
-    cursor: not-allowed;
-  }
-`;
-
-const FooterLinks = styled.div`
-  text-align: center;
-  margin-top: ${props => props.theme.spacing.lg};
-  
-  a {
-    color: ${props => props.theme.colors.primary};
-    margin: 0 ${props => props.theme.spacing.sm};
-  }
-`;
+import {
+  PageContainer,
+  ContentCard,
+  LogoSection,
+  Logo,
+  Title,
+  Subtitle,
+  Form,
+  FormGroup,
+  Label,
+  InputWrapper,
+  Input,
+  Button,
+  ErrorText,
+  FlexContainer,
+  EyeIcon,
+  EyeOffIcon,
+  IconButton
+} from '../components/UI';
 
 const Login = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   
   const {
     register,
@@ -116,61 +63,100 @@ const Login = () => {
   };
 
   return (
-    <LoginContainer>
-      <LoginForm onSubmit={handleSubmit(onSubmit)}>
-        <Logo>
-          <h1>SwingFox</h1>
-          <p>Добро пожаловать!</p>
-        </Logo>
+    <PageContainer $gradient>
+      <ContentCard $maxWidth="450px">
+        <LogoSection>
+          <Logo>SF</Logo>
+          <Title>SwingFox</Title>
+          <Subtitle>Добро пожаловать! Войдите в свой аккаунт</Subtitle>
+        </LogoSection>
 
-        <div className="form-group">
-          <label htmlFor="login">Логин или Email</label>
-          <input
-            type="text"
-            id="login"
-            placeholder="Введите логин или email"
-            {...register('login', {
-              required: 'Логин или email обязателен',
-              minLength: {
-                value: 3,
-                message: 'Минимум 3 символа'
-              }
-            })}
-          />
-          {errors.login && (
-            <ErrorMessage>{errors.login.message}</ErrorMessage>
-          )}
-        </div>
+        <Form onSubmit={handleSubmit(onSubmit)}>
+          <FormGroup>
+            <Label htmlFor="login">Логин или Email</Label>
+            <Input
+              type="text"
+              id="login"
+              placeholder="Введите логин или email"
+              autoComplete="username"
+              {...register('login', {
+                required: 'Логин или email обязателен',
+                minLength: {
+                  value: 3,
+                  message: 'Минимум 3 символа'
+                }
+              })}
+              className={errors.login ? 'error' : ''}
+            />
+            {errors.login && <ErrorText>{errors.login.message}</ErrorText>}
+          </FormGroup>
 
-        <div className="form-group">
-          <label htmlFor="password">Пароль</label>
-          <input
-            type="password"
-            id="password"
-            placeholder="Введите пароль"
-            {...register('password', {
-              required: 'Пароль обязателен',
-              minLength: {
-                value: 6,
-                message: 'Минимум 6 символов'
-              }
-            })}
-          />
-          {errors.password && (
-            <ErrorMessage>{errors.password.message}</ErrorMessage>
-          )}
-        </div>
+          <FormGroup>
+            <Label htmlFor="password">Пароль</Label>
+            <InputWrapper>
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                id="password"
+                placeholder="Введите пароль"
+                autoComplete="current-password"
+                {...register('password', {
+                  required: 'Пароль обязателен',
+                  minLength: {
+                    value: 6,
+                    message: 'Минимум 6 символов'
+                  }
+                })}
+                className={errors.password ? 'error' : ''}
+              />
+              <IconButton
+                type="button"
+                $variant="secondary"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  background: 'none',
+                  color: '#718096'
+                }}
+              >
+                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+              </IconButton>
+            </InputWrapper>
+            {errors.password && <ErrorText>{errors.password.message}</ErrorText>}
+          </FormGroup>
 
-        <SubmitButton type="submit" disabled={isLoading}>
-          {isLoading ? 'Вход...' : 'Войти'}
-        </SubmitButton>
+          <Button type="submit" disabled={isLoading} style={{ width: '100%' }}>
+            {isLoading ? 'Вход...' : 'Войти'}
+          </Button>
+        </Form>
 
-        <FooterLinks>
-          <Link to="/register">Регистрация</Link>
-          <Link to="/forgot-password">Забыли пароль?</Link>
-        </FooterLinks>
-      </LoginForm>
-    </LoginContainer>
+        <FlexContainer $justify="center" $gap="20px" style={{ marginTop: '25px' }}>
+          <Link 
+            to="/register" 
+            style={{ 
+              color: '#dc3522', 
+              textDecoration: 'none', 
+              fontWeight: '600',
+              fontSize: '14px'
+            }}
+          >
+            Регистрация
+          </Link>
+          <span style={{ color: '#cbd5e0' }}>|</span>
+          <Link 
+            to="/forgot-password" 
+            style={{ 
+              color: '#dc3522', 
+              textDecoration: 'none', 
+              fontWeight: '600',
+              fontSize: '14px'
+            }}
+          >
+            Забыли пароль?
+          </Link>
+        </FlexContainer>
+      </ContentCard>
+    </PageContainer>
   );
 };
 

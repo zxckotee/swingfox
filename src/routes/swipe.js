@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { Op } = require('sequelize');
 const { User, Likes } = require('../models');
 const { authenticateToken, requireVip } = require('../middleware/auth');
 const { generateId, calculateDistance, formatAge, parseGeo, formatOnlineTime } = require('../utils/helpers');
@@ -48,8 +49,8 @@ router.get('/profiles', authenticateToken, async (req, res) => {
       // Получение нового случайного профиля
       targetUser = await User.findOne({
         where: {
-          login: { [User.sequelize.Op.ne]: userId },
-          viptype: { [User.sequelize.Op.ne]: 'FREE' } // Показываем только VIP пользователей
+          login: { [Op.ne]: userId },
+          viptype: { [Op.ne]: 'FREE' } // Показываем только VIP пользователей
         },
         order: User.sequelize.random()
       });

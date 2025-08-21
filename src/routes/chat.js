@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
+const { Op } = require('sequelize');
 const { Chat, User } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { generateId } = require('../utils/helpers');
@@ -58,7 +59,7 @@ router.get('/:username', authenticateToken, async (req, res) => {
     // Получаем сообщения
     const messages = await Chat.findAll({
       where: {
-        [Chat.sequelize.Op.or]: [
+        [Op.or]: [
           { by_user: currentUser, to_user: username },
           { by_user: username, to_user: currentUser }
         ]
@@ -343,7 +344,7 @@ router.get('/conversations', authenticateToken, async (req, res) => {
     // Получаем список уникальных собеседников с последними сообщениями
     const conversations = await Chat.findAll({
       where: {
-        [Chat.sequelize.Op.or]: [
+        [Op.or]: [
           { by_user: currentUser },
           { to_user: currentUser }
         ]
@@ -427,7 +428,7 @@ router.delete('/:username', authenticateToken, async (req, res) => {
     // Удаляем все сообщения между пользователями
     const deletedCount = await Chat.destroy({
       where: {
-        [Chat.sequelize.Op.or]: [
+        [Op.or]: [
           { by_user: currentUser, to_user: username },
           { by_user: username, to_user: currentUser }
         ]

@@ -4,288 +4,351 @@ import { useForm } from 'react-hook-form';
 import styled from 'styled-components';
 import toast from 'react-hot-toast';
 import { adsAPI, apiUtils } from '../services/api';
+import {
+  PageContainer,
+  ContentCard,
+  Button,
+  Input,
+  Select,
+  TextArea,
+  Form,
+  FormGroup,
+  Label,
+  ErrorText,
+  Grid,
+  Card,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  Avatar,
+  FlexContainer,
+  LoadingSpinner,
+  SearchIcon,
+  PlusIcon,
+  CloseIcon,
+  EditIcon,
+  MessageIcon
+} from '../components/UI';
 
-const AdsContainer = styled.div`
-  min-height: 100vh;
-  background: ${props => props.theme.colors.background};
-  padding: ${props => props.theme.spacing.lg};
+// Дополнительные иконки
+const FilterIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46 22,3"/>
+  </svg>
+);
+
+const TrashIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="3,6 5,6 21,6"/>
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+    <line x1="10" y1="11" x2="10" y2="17"/>
+    <line x1="14" y1="11" x2="14" y2="17"/>
+  </svg>
+);
+
+const CalendarIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+    <line x1="16" y1="2" x2="16" y2="6"/>
+    <line x1="8" y1="2" x2="8" y2="6"/>
+    <line x1="3" y1="10" x2="21" y2="10"/>
+  </svg>
+);
+
+const AdsContainer = styled(PageContainer)`
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
 `;
 
 const Header = styled.div`
-  max-width: 1200px;
-  margin: 0 auto;
+  margin-bottom: 30px;
+`;
+
+const HeaderContent = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: ${props => props.theme.spacing.lg};
+  margin-bottom: 20px;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+  }
 `;
 
 const Title = styled.h1`
-  color: ${props => props.theme.colors.primary};
   margin: 0;
-`;
-
-const Button = styled.button`
-  padding: ${props => props.theme.spacing.sm} ${props => props.theme.spacing.md};
-  background: ${props => props.theme.colors.primary};
-  color: white;
-  border: none;
-  border-radius: ${props => props.theme.borderRadius};
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  font-size: 32px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   
-  &:hover:not(:disabled) {
-    background: ${props => props.theme.colors.primaryDark};
-    transform: translateY(-1px);
-  }
-  
-  &:disabled {
-    background: ${props => props.theme.colors.border};
-    cursor: not-allowed;
-  }
-  
-  &.secondary {
-    background: transparent;
-    color: ${props => props.theme.colors.primary};
-    border: 1px solid ${props => props.theme.colors.primary};
-    
-    &:hover {
-      background: ${props => props.theme.colors.primary};
-      color: white;
-    }
-  }
-  
-  &.danger {
-    background: ${props => props.theme.colors.error};
-    
-    &:hover {
-      background: #d32f2f;
-    }
+  @media (max-width: 768px) {
+    font-size: 28px;
+    text-align: center;
   }
 `;
 
-const AdsGrid = styled.div`
-  max-width: 1200px;
-  margin: 0 auto;
-  display: grid;
+const Filters = styled(ContentCard)`
+  margin-bottom: 30px;
+  padding: 25px;
+  
+  @media (max-width: 768px) {
+    padding: 20px;
+  }
+`;
+
+const FiltersTitle = styled.h3`
+  margin: 0 0 20px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #2d3748;
+  font-size: 18px;
+  font-weight: 600;
+  
+  @media (max-width: 768px) {
+    font-size: 16px;
+  }
+`;
+
+const FiltersGrid = styled(Grid)`
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  
+  @media (max-width: 576px) {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+`;
+
+const SearchInputWrapper = styled.div`
+  position: relative;
+  
+  input {
+    padding-left: 45px;
+  }
+  
+  .search-icon {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #a0aec0;
+    z-index: 1;
+  }
+`;
+
+const AdsGrid = styled(Grid)`
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: ${props => props.theme.spacing.lg};
+  gap: 25px;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+  }
+  
+  @media (max-width: 576px) {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
 `;
 
-const AdCard = styled.div`
-  background: white;
-  border-radius: ${props => props.theme.borderRadius};
+const AdCard = styled(Card)`
   overflow: hidden;
-  box-shadow: ${props => props.theme.shadow};
-  transition: transform 0.2s ease;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
   
   &:hover {
-    transform: translateY(-2px);
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+    border-color: #dc3522;
   }
 `;
 
 const AdImage = styled.div`
   width: 100%;
   height: 200px;
-  background-image: url(${props => props.src});
+  background-image: url(${props => props.$src});
   background-size: cover;
   background-position: center;
-  background-color: ${props => props.theme.colors.border};
+  background-color: #f7fafc;
   position: relative;
   
-  .ad-type {
-    position: absolute;
-    top: ${props => props.theme.spacing.sm};
-    left: ${props => props.theme.spacing.sm};
-    background: ${props => props.theme.colors.primary};
-    color: white;
-    padding: ${props => props.theme.spacing.xs} ${props => props.theme.spacing.sm};
-    border-radius: 12px;
-    font-size: ${props => props.theme.fonts.sizes.small};
-    font-weight: bold;
-  }
+  ${props => !props.$src && `
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e0 100%);
+    color: #a0aec0;
+    font-size: 48px;
+  `}
+`;
+
+const AdTypeBadge = styled.div`
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 15px rgba(220, 53, 34, 0.3);
 `;
 
 const AdContent = styled.div`
-  padding: ${props => props.theme.spacing.md};
-`;
-
-const AdTitle = styled.h3`
-  margin: 0 0 ${props => props.theme.spacing.sm} 0;
-  color: ${props => props.theme.colors.text};
-  font-size: ${props => props.theme.fonts.sizes.large};
-`;
-
-const AdDescription = styled.p`
-  color: ${props => props.theme.colors.textLight};
-  margin: 0 0 ${props => props.theme.spacing.md} 0;
-  font-size: ${props => props.theme.fonts.sizes.medium};
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  padding: 25px;
+  
+  @media (max-width: 768px) {
+    padding: 20px;
+  }
 `;
 
 const AdMeta = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: ${props => props.theme.fonts.sizes.small};
-  color: ${props => props.theme.colors.textLight};
-  margin-bottom: ${props => props.theme.spacing.sm};
+  margin-bottom: 15px;
   
   .author {
-    font-weight: bold;
-    color: ${props => props.theme.colors.primary};
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    color: #dc3522;
+    font-size: 14px;
   }
   
   .date {
-    font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #718096;
   }
 `;
 
-const AdActions = styled.div`
-  display: flex;
-  gap: ${props => props.theme.spacing.sm};
+const AdTitle = styled.h3`
+  margin: 0 0 12px 0;
+  color: #2d3748;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+  
+  @media (max-width: 768px) {
+    font-size: 18px;
+  }
+`;
+
+const AdDescription = styled.p`
+  color: #4a5568;
+  margin: 0 0 20px 0;
+  font-size: 15px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  
+  @media (max-width: 768px) {
+    font-size: 14px;
+    -webkit-line-clamp: 2;
+  }
+`;
+
+const AdActions = styled(FlexContainer)`
+  gap: 10px;
   
   .contact-btn {
     flex: 1;
   }
-`;
-
-const Modal = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: ${props => props.theme.spacing.md};
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: ${props => props.theme.borderRadius};
-  padding: ${props => props.theme.spacing.xl};
-  max-width: 500px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: ${props => props.theme.spacing.lg};
   
-  h2 {
-    margin: 0;
-    color: ${props => props.theme.colors.primary};
+  @media (max-width: 576px) {
+    flex-direction: column;
+    
+    .contact-btn {
+      width: 100%;
+    }
   }
-  
-  .close-btn {
-    background: none;
-    border: none;
-    font-size: 24px;
-    cursor: pointer;
-    color: ${props => props.theme.colors.textLight};
-  }
-`;
-
-const Form = styled.form`
-  display: flex;
-  flex-direction: column;
-  gap: ${props => props.theme.spacing.md};
-`;
-
-const FormGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${props => props.theme.spacing.xs};
-`;
-
-const Label = styled.label`
-  font-weight: bold;
-  color: ${props => props.theme.colors.text};
-  font-size: ${props => props.theme.fonts.sizes.small};
-`;
-
-const Input = styled.input`
-  padding: ${props => props.theme.spacing.sm};
-  border: 1px solid ${props => props.theme.colors.border};
-  border-radius: ${props => props.theme.borderRadius};
-  font-size: ${props => props.theme.fonts.sizes.medium};
-  
-  &:focus {
-    outline: none;
-    border-color: ${props => props.theme.colors.primary};
-  }
-  
-  &.error {
-    border-color: ${props => props.theme.colors.error};
-  }
-`;
-
-const Select = styled.select`
-  padding: ${props => props.theme.spacing.sm};
-  border: 1px solid ${props => props.theme.colors.border};
-  border-radius: ${props => props.theme.borderRadius};
-  font-size: ${props => props.theme.fonts.sizes.medium};
-  background: white;
-  
-  &:focus {
-    outline: none;
-    border-color: ${props => props.theme.colors.primary};
-  }
-`;
-
-const TextArea = styled.textarea`
-  padding: ${props => props.theme.spacing.sm};
-  border: 1px solid ${props => props.theme.colors.border};
-  border-radius: ${props => props.theme.borderRadius};
-  font-size: ${props => props.theme.fonts.sizes.medium};
-  min-height: 100px;
-  resize: vertical;
-  font-family: inherit;
-  
-  &:focus {
-    outline: none;
-    border-color: ${props => props.theme.colors.primary};
-  }
-`;
-
-const ErrorText = styled.span`
-  color: ${props => props.theme.colors.error};
-  font-size: ${props => props.theme.fonts.sizes.small};
-`;
-
-const Filters = styled.div`
-  max-width: 1200px;
-  margin: 0 auto ${props => props.theme.spacing.lg} auto;
-  background: white;
-  padding: ${props => props.theme.spacing.md};
-  border-radius: ${props => props.theme.borderRadius};
-  box-shadow: ${props => props.theme.shadow};
-  display: flex;
-  gap: ${props => props.theme.spacing.md};
-  align-items: center;
-  flex-wrap: wrap;
 `;
 
 const NoAds = styled.div`
   text-align: center;
-  color: ${props => props.theme.colors.textLight};
-  padding: ${props => props.theme.spacing.xl};
+  color: #718096;
+  padding: 80px 20px;
+  
+  .icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+  }
   
   h3 {
-    margin-bottom: ${props => props.theme.spacing.md};
+    margin: 0 0 15px 0;
+    font-size: 24px;
+    color: #2d3748;
+  }
+  
+  p {
+    margin: 0 0 30px 0;
+    font-size: 16px;
+    line-height: 1.5;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 60px 20px;
+    
+    .icon {
+      font-size: 48px;
+    }
+    
+    h3 {
+      font-size: 20px;
+    }
+    
+    p {
+      font-size: 14px;
+    }
+  }
+`;
+
+const StatsCard = styled(Card)`
+  text-align: center;
+  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+  padding: 20px;
+  
+  .number {
+    font-size: 28px;
+    font-weight: 700;
+    color: #dc3522;
+    margin-bottom: 5px;
+  }
+  
+  .label {
+    font-size: 14px;
+    color: #718096;
+    font-weight: 500;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 15px;
+    
+    .number {
+      font-size: 24px;
+    }
+    
+    .label {
+      font-size: 13px;
+    }
   }
 `;
 
@@ -377,16 +440,21 @@ const Ads = () => {
   };
 
   const handleContact = (authorLogin) => {
-    // Переход к чату с автором объявления
     window.open(`/chat/${authorLogin}`, '_blank');
   };
 
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingAd(null);
+    reset();
+  };
+
   const adTypes = [
-    { value: 'party', label: 'Вечеринка' },
-    { value: 'meeting', label: 'Встреча' },
-    { value: 'event', label: 'Мероприятие' },
-    { value: 'service', label: 'Услуга' },
-    { value: 'other', label: 'Другое' }
+    { value: 'party', label: 'Вечеринка', icon: '🎉' },
+    { value: 'meeting', label: 'Встреча', icon: '👥' },
+    { value: 'event', label: 'Мероприятие', icon: '🎪' },
+    { value: 'service', label: 'Услуга', icon: '🛠️' },
+    { value: 'other', label: 'Другое', icon: '📋' }
   ];
 
   const formatDate = (dateString) => {
@@ -398,119 +466,199 @@ const Ads = () => {
     });
   };
 
+  const getTypeIcon = (type) => {
+    return adTypes.find(t => t.value === type)?.icon || '📋';
+  };
+
+  const getTypeLabel = (type) => {
+    return adTypes.find(t => t.value === type)?.label || 'Другое';
+  };
+
+  // Статистика
+  const stats = {
+    total: ads.length,
+    myAds: ads.filter(ad => ad.author === currentUser?.login).length,
+    parties: ads.filter(ad => ad.type === 'party').length,
+    meetings: ads.filter(ad => ad.type === 'meeting').length
+  };
+
+  if (isLoading) {
+    return (
+      <AdsContainer>
+        <LoadingSpinner />
+      </AdsContainer>
+    );
+  }
+
   return (
     <AdsContainer>
-      <Header>
-        <Title>Объявления</Title>
-        <Button onClick={() => setShowModal(true)}>
-          Создать объявление
-        </Button>
-      </Header>
+      <ContentCard $maxWidth="1200px">
+        <Header>
+          <HeaderContent>
+            <Title>Объявления</Title>
+            <Button onClick={() => setShowModal(true)}>
+              <PlusIcon />
+              Создать объявление
+            </Button>
+          </HeaderContent>
 
-      <Filters>
-        <Select
-          value={filters.type}
-          onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
-        >
-          <option value="">Все типы</option>
-          {adTypes.map(type => (
-            <option key={type.value} value={type.value}>
-              {type.label}
-            </option>
-          ))}
-        </Select>
+          {/* Статистика */}
+          <Grid $columns="repeat(auto-fit, minmax(120px, 1fr))" $gap="15px" style={{ marginBottom: '20px' }}>
+            <StatsCard>
+              <div className="number">{stats.total}</div>
+              <div className="label">Всего</div>
+            </StatsCard>
+            <StatsCard>
+              <div className="number">{stats.myAds}</div>
+              <div className="label">Мои</div>
+            </StatsCard>
+            <StatsCard>
+              <div className="number">{stats.parties}</div>
+              <div className="label">Вечеринки</div>
+            </StatsCard>
+            <StatsCard>
+              <div className="number">{stats.meetings}</div>
+              <div className="label">Встречи</div>
+            </StatsCard>
+          </Grid>
+        </Header>
 
-        <Input
-          type="text"
-          placeholder="Поиск по городу..."
-          value={filters.city}
-          onChange={(e) => setFilters(prev => ({ ...prev, city: e.target.value }))}
-        />
-      </Filters>
+        <Filters>
+          <FiltersTitle>
+            <FilterIcon />
+            Фильтры
+          </FiltersTitle>
+          <FiltersGrid>
+            <FormGroup>
+              <Label>Тип объявления</Label>
+              <Select
+                value={filters.type}
+                onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
+              >
+                <option value="">Все типы</option>
+                {adTypes.map(type => (
+                  <option key={type.value} value={type.value}>
+                    {type.icon} {type.label}
+                  </option>
+                ))}
+              </Select>
+            </FormGroup>
 
-      {isLoading ? (
-        <div className="loading">Загрузка объявлений...</div>
-      ) : ads.length > 0 ? (
-        <AdsGrid>
-          {ads.map(ad => (
-            <AdCard key={ad.id}>
-              <AdImage src={ad.image ? `/uploads/${ad.image}` : ''}>
-                <div className="ad-type">
-                  {adTypes.find(t => t.value === ad.type)?.label}
-                </div>
-              </AdImage>
-              
-              <AdContent>
-                <AdMeta>
-                  <span className="author">@{ad.author}</span>
-                  <span className="date">{formatDate(ad.created_at)}</span>
-                </AdMeta>
+            <FormGroup>
+              <Label>Поиск по городу</Label>
+              <SearchInputWrapper>
+                <SearchIcon className="search-icon" />
+                <Input
+                  type="text"
+                  placeholder="Введите название города..."
+                  value={filters.city}
+                  onChange={(e) => setFilters(prev => ({ ...prev, city: e.target.value }))}
+                />
+              </SearchInputWrapper>
+            </FormGroup>
+          </FiltersGrid>
+        </Filters>
+
+        {ads.length > 0 ? (
+          <AdsGrid>
+            {ads.map(ad => (
+              <AdCard key={ad.id}>
+                <AdImage $src={ad.image ? `/uploads/${ad.image}` : ''}>
+                  {!ad.image && '📸'}
+                  <AdTypeBadge>
+                    {getTypeIcon(ad.type)} {getTypeLabel(ad.type)}
+                  </AdTypeBadge>
+                </AdImage>
                 
-                <AdTitle>{ad.title}</AdTitle>
-                <AdDescription>{ad.description}</AdDescription>
-                
-                <AdActions>
-                  {ad.author !== currentUser?.login ? (
-                    <Button 
-                      className="contact-btn"
-                      onClick={() => handleContact(ad.author)}
-                    >
-                      Написать
-                    </Button>
-                  ) : (
-                    <>
-                      <Button 
-                        className="secondary"
-                        onClick={() => handleEdit(ad)}
+                <AdContent>
+                  <AdMeta>
+                    <div className="author">
+                      <Avatar 
+                        $size="24px" 
+                        $fontSize="12px"
+                        $src={ad.author_avatar ? `/uploads/${ad.author_avatar}` : ''}
                       >
-                        Редактировать
-                      </Button>
+                        {!ad.author_avatar && ad.author.charAt(0).toUpperCase()}
+                      </Avatar>
+                      @{ad.author}
+                    </div>
+                    <div className="date">
+                      <CalendarIcon />
+                      {formatDate(ad.created_at)}
+                    </div>
+                  </AdMeta>
+                  
+                  <AdTitle>{ad.title}</AdTitle>
+                  <AdDescription>{ad.description}</AdDescription>
+                  
+                  <AdActions>
+                    {ad.author !== currentUser?.login ? (
                       <Button 
-                        className="danger"
-                        onClick={() => handleDelete(ad.id)}
+                        className="contact-btn"
+                        onClick={() => handleContact(ad.author)}
                       >
-                        Удалить
+                        <MessageIcon />
+                        Написать
                       </Button>
-                    </>
-                  )}
-                </AdActions>
-              </AdContent>
-            </AdCard>
-          ))}
-        </AdsGrid>
-      ) : (
-        <NoAds>
-          <h3>Объявлений пока нет</h3>
-          <p>Станьте первым, кто разместит объявление!</p>
-        </NoAds>
-      )}
+                    ) : (
+                      <>
+                        <Button 
+                          $variant="secondary"
+                          onClick={() => handleEdit(ad)}
+                          style={{ flex: 1 }}
+                        >
+                          <EditIcon />
+                          Изменить
+                        </Button>
+                        <Button 
+                          $variant="danger"
+                          onClick={() => handleDelete(ad.id)}
+                          style={{ flex: 1 }}
+                        >
+                          <TrashIcon />
+                          Удалить
+                        </Button>
+                      </>
+                    )}
+                  </AdActions>
+                </AdContent>
+              </AdCard>
+            ))}
+          </AdsGrid>
+        ) : (
+          <NoAds>
+            <div className="icon">📢</div>
+            <h3>Объявлений пока нет</h3>
+            <p>
+              {filters.type || filters.city 
+                ? 'По вашим фильтрам ничего не найдено. Попробуйте изменить параметры поиска.'
+                : 'Станьте первым, кто разместит объявление и найдет интересных людей!'
+              }
+            </p>
+            {!filters.type && !filters.city && (
+              <Button onClick={() => setShowModal(true)}>
+                <PlusIcon />
+                Создать первое объявление
+              </Button>
+            )}
+          </NoAds>
+        )}
+      </ContentCard>
 
+      {/* Модальное окно создания/редактирования */}
       {showModal && (
-        <Modal onClick={(e) => {
-          if (e.target === e.currentTarget) {
-            setShowModal(false);
-            setEditingAd(null);
-            reset();
-          }
-        }}>
-          <ModalContent>
+        <Modal onClick={handleCloseModal}>
+          <ModalContent $maxWidth="600px" onClick={(e) => e.stopPropagation()}>
             <ModalHeader>
               <h2>{editingAd ? 'Редактировать объявление' : 'Новое объявление'}</h2>
-              <button 
-                className="close-btn"
-                onClick={() => {
-                  setShowModal(false);
-                  setEditingAd(null);
-                  reset();
-                }}
-              >
-                ×
-              </button>
+              <Button $variant="secondary" $size="small" onClick={handleCloseModal}>
+                <CloseIcon />
+              </Button>
             </ModalHeader>
 
             <Form onSubmit={handleSubmit(onSubmit)}>
               <FormGroup>
-                <Label>Заголовок</Label>
+                <Label>Заголовок <span className="required">*</span></Label>
                 <Input
                   {...register('title', { required: 'Заголовок обязателен' })}
                   className={errors.title ? 'error' : ''}
@@ -520,7 +668,7 @@ const Ads = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Тип объявления</Label>
+                <Label>Тип объявления <span className="required">*</span></Label>
                 <Select
                   {...register('type', { required: 'Выберите тип' })}
                   className={errors.type ? 'error' : ''}
@@ -528,7 +676,7 @@ const Ads = () => {
                   <option value="">Выберите тип</option>
                   {adTypes.map(type => (
                     <option key={type.value} value={type.value}>
-                      {type.label}
+                      {type.icon} {type.label}
                     </option>
                   ))}
                 </Select>
@@ -536,17 +684,18 @@ const Ads = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Описание</Label>
+                <Label>Описание <span className="required">*</span></Label>
                 <TextArea
                   {...register('description', { required: 'Описание обязательно' })}
                   className={errors.description ? 'error' : ''}
                   placeholder="Подробно опишите ваше объявление..."
+                  $minHeight="120px"
                 />
                 {errors.description && <ErrorText>{errors.description.message}</ErrorText>}
               </FormGroup>
 
               <FormGroup>
-                <Label>Город</Label>
+                <Label>Город <span className="required">*</span></Label>
                 <Input
                   {...register('city', { required: 'Город обязателен' })}
                   className={errors.city ? 'error' : ''}
@@ -555,15 +704,21 @@ const Ads = () => {
                 {errors.city && <ErrorText>{errors.city.message}</ErrorText>}
               </FormGroup>
 
-              <Button
-                type="submit"
-                disabled={createAdMutation.isLoading || updateAdMutation.isLoading}
-              >
-                {editingAd 
-                  ? (updateAdMutation.isLoading ? 'Сохранение...' : 'Сохранить') 
-                  : (createAdMutation.isLoading ? 'Создание...' : 'Создать объявление')
-                }
-              </Button>
+              <FlexContainer $gap="15px" style={{ marginTop: '30px' }}>
+                <Button
+                  type="submit"
+                  disabled={createAdMutation.isLoading || updateAdMutation.isLoading}
+                  style={{ flex: 1 }}
+                >
+                  {editingAd 
+                    ? (updateAdMutation.isLoading ? 'Сохранение...' : 'Сохранить изменения') 
+                    : (createAdMutation.isLoading ? 'Создание...' : 'Создать объявление')
+                  }
+                </Button>
+                <Button $variant="secondary" type="button" onClick={handleCloseModal}>
+                  Отмена
+                </Button>
+              </FlexContainer>
             </Form>
           </ModalContent>
         </Modal>
