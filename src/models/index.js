@@ -5,6 +5,7 @@ const Likes = require('./Likes');
 const Ads = require('./Ads');
 const Reports = require('./Reports');
 const Events = require('./Events');
+const Geo = require('./Geo');
 
 // Определение ассоциаций между моделями
 
@@ -151,5 +152,6 @@ module.exports = {
   Likes,
   Ads,
   Reports,
-  Events
+  Events,
+  Geo
 };

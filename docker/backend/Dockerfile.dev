@@ -5,7 +5,7 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Устанавливаем необходимые пакеты
-RUN apk add --no-cache wget curl
+RUN apk add --no-cache wget curl postgresql-client
 RUN npm install -g nodemon
 
 # Копируем package.json и package-lock.json для кэширования зависимостей
@@ -21,9 +21,12 @@ RUN mkdir -p public_html/img
 # Копируем весь код приложения
 COPY . .
 
+# Делаем startup скрипт исполняемым
+RUN chmod +x scripts/startup.js
+
 # Открываем порты
 EXPOSE 3001
 EXPOSE 9229
 
-# Команда для запуска в development режиме с отладкой
-CMD ["nodemon", "--inspect=0.0.0.0:9229", "server.js"]
+# Команда для запуска с автоматическими миграциями и seeders
+CMD ["node", "scripts/startup.js"]

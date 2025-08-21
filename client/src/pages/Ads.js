@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { useForm } from 'react-hook-form';
 import styled from 'styled-components';
 import toast from 'react-hot-toast';
 import { adsAPI, apiUtils } from '../services/api';
+import { LocationSelector, CitySelector } from '../components/Geography';
 import {
   PageContainer,
   ContentCard,
@@ -357,6 +358,7 @@ const Ads = () => {
   const [editingAd, setEditingAd] = useState(null);
   const [filters, setFilters] = useState({
     type: '',
+    country: '',
     city: ''
   });
   
@@ -366,18 +368,35 @@ const Ads = () => {
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
+    clearErrors,
     formState: { errors },
     reset
   } = useForm();
 
   // Получение объявлений
-  const { data: ads = [], isLoading } = useQuery(
+  const { data: adsResponse, isLoading } = useQuery(
     ['ads', filters],
     () => adsAPI.getAds(filters),
     {
       keepPreviousData: true
     }
   );
+
+  // Извлекаем массив объявлений и трансформируем данные
+  const ads = useMemo(() => {
+    if (!adsResponse?.ads) return [];
+    
+    return adsResponse.ads.map(ad => ({
+      ...ad,
+      // Трансформируем поля для соответствия ожиданиям компонента
+      author: ad.author?.login || ad.login,
+      author_avatar: ad.author?.ava || null,
+      title: ad.description || ad.type, // Используем description как title
+      created_at: ad.created_at
+    }));
+  }, [adsResponse]);
 
   // Мутации
   const createAdMutation = useMutation(adsAPI.createAd, {
@@ -545,16 +564,26 @@ const Ads = () => {
             </FormGroup>
 
             <FormGroup>
-              <Label>Поиск по городу</Label>
-              <SearchInputWrapper>
-                <SearchIcon className="search-icon" />
-                <Input
-                  type="text"
-                  placeholder="Введите название города..."
-                  value={filters.city}
-                  onChange={(e) => setFilters(prev => ({ ...prev, city: e.target.value }))}
-                />
-              </SearchInputWrapper>
+              <Label>Поиск по локации</Label>
+              <LocationSelector
+                countryValue={filters.country}
+                cityValue={filters.city}
+                onCountryChange={(value) => {
+                  setFilters(prev => ({ ...prev, country: value }));
+                  // Сброс города при смене страны
+                  if (filters.city) {
+                    setFilters(prev => ({ ...prev, city: '' }));
+                  }
+                }}
+                onCityChange={(value) => {
+                  setFilters(prev => ({ ...prev, city: value }));
+                }}
+                required={false}
+                showValidation={false}
+                layout="side-by-side"
+                countryPlaceholder="Все страны"
+                cityPlaceholder="Все города"
+              />
             </FormGroup>
           </FiltersGrid>
         </Filters>
@@ -694,15 +723,38 @@ const Ads = () => {
                 {errors.description && <ErrorText>{errors.description.message}</ErrorText>}
               </FormGroup>
 
-              <FormGroup>
-                <Label>Город <span className="required">*</span></Label>
-                <Input
-                  {...register('city', { required: 'Город обязателен' })}
-                  className={errors.city ? 'error' : ''}
-                  placeholder="В каком городе?"
-                />
-                {errors.city && <ErrorText>{errors.city.message}</ErrorText>}
-              </FormGroup>
+              <LocationSelector
+                countryValue={watch('country') || ''}
+                cityValue={watch('city') || ''}
+                onCountryChange={(value) => {
+                  setValue('country', value);
+                  clearErrors('country');
+                  // Сброс города при смене страны
+                  if (watch('city')) {
+                    setValue('city', '');
+                    clearErrors('city');
+                  }
+                }}
+                onCityChange={(value) => {
+                  setValue('city', value);
+                  clearErrors('city');
+                }}
+                countryError={errors.country?.message}
+                cityError={errors.city?.message}
+                required={true}
+                showValidation={true}
+                layout="side-by-side"
+              />
+              
+              {/* Скрытые поля для react-hook-form валидации */}
+              <input
+                type="hidden"
+                {...register('country', { required: 'Страна обязательна' })}
+              />
+              <input
+                type="hidden"
+                {...register('city', { required: 'Город обязателен' })}
+              />
 
               <FlexContainer $gap="15px" style={{ marginTop: '30px' }}>
                 <Button

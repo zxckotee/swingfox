@@ -44,6 +44,7 @@ const swipeRoutes = require('./src/routes/swipe');
 const chatRoutes = require('./src/routes/chat');
 const adsRoutes = require('./src/routes/ads');
 const adminRoutes = require('./src/routes/admin');
+const geoRoutes = require('./src/routes/geo');
 
 // Подключение роутов
 app.use('/api/auth', authRoutes);
@@ -52,6 +53,7 @@ app.use('/api/swipe', swipeRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/ads', adsRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/geo', geoRoutes);
 
 // Проверка статуса API
 app.get('/api/status', (req, res) => {

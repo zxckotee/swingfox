@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import toast from 'react-hot-toast';
 import { authAPI, apiUtils } from '../services/api';
+import { LocationSelector } from '../components/Geography';
 
 // Иконки для глаза (показать/скрыть пароль)
 const EyeIcon = () => (
@@ -601,6 +602,8 @@ const Register = () => {
     handleSubmit,
     watch,
     getValues,
+    setValue,
+    clearErrors,
     formState: { errors }
   } = useForm();
 
@@ -1007,28 +1010,41 @@ const Register = () => {
                 {errors.birthday && <ErrorText>{errors.birthday.message}</ErrorText>}
               </FormGroup>
 
-              <FormGroup>
-                <Label>Страна</Label>
-                <Input
-                  {...register('country')}
-                  placeholder="Россия"
-                  defaultValue="Россия"
-                />
-              </FormGroup>
+              <LocationSelector
+                countryValue={watch('country') || 'Россия'}
+                cityValue={watch('city') || ''}
+                onCountryChange={(value) => {
+                  setValue('country', value);
+                  clearErrors('country');
+                  // Сброс города при смене страны
+                  if (watch('city')) {
+                    setValue('city', '');
+                    clearErrors('city');
+                  }
+                }}
+                onCityChange={(value) => {
+                  setValue('city', value);
+                  clearErrors('city');
+                }}
+                countryError={errors.country?.message}
+                cityError={errors.city?.message}
+                required={true}
+                showValidation={true}
+                layout="stacked"
+              />
+              
+              {/* Скрытые поля для react-hook-form валидации */}
+              <input
+                type="hidden"
+                {...register('country', { required: 'Страна обязательна' })}
+              />
+              <input
+                type="hidden"
+                {...register('city', { required: 'Город обязателен' })}
+              />
             </FormRow>
 
             <FormRow>
-              <FormGroup>
-                <Label>Город <span className="required">*</span></Label>
-                <Input
-                  {...register('city', {
-                    required: 'Город обязателен'
-                  })}
-                  className={errors.city ? 'error' : ''}
-                  placeholder="Ваш город"
-                />
-                {errors.city && <ErrorText>{errors.city.message}</ErrorText>}
-              </FormGroup>
 
               <FormGroup>
                 <Label>Мобильный телефон</Label>

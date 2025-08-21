@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from 'react-query';
 import styled from 'styled-components';
 import toast from 'react-hot-toast';
 import { usersAPI, apiUtils } from '../services/api';
+import { LocationSelector } from '../components/Geography';
 import {
   PageContainer,
   ContentCard,
@@ -411,6 +412,9 @@ const Profile = () => {
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
+    clearErrors,
     formState: { errors },
     reset
   } = useForm({
@@ -562,25 +566,46 @@ const Profile = () => {
         <TabContent>
           {activeTab === 'profile' && (
             <Form onSubmit={handleSubmit(onSubmit)}>
-              <FormRow>
-                <FormGroup>
-                  <Label>Имя</Label>
-                  <Input
-                    {...register('name')}
-                    placeholder="Ваше имя"
-                  />
-                </FormGroup>
+              <FormGroup>
+                <Label>Имя</Label>
+                <Input
+                  {...register('name')}
+                  placeholder="Ваше имя"
+                />
+              </FormGroup>
 
-                <FormGroup>
-                  <Label>Город</Label>
-                  <Input
-                    {...register('city', { required: 'Город обязателен' })}
-                    className={errors.city ? 'error' : ''}
-                    placeholder="Ваш город"
-                  />
-                  {errors.city && <ErrorText>{errors.city.message}</ErrorText>}
-                </FormGroup>
-              </FormRow>
+              <LocationSelector
+                countryValue={watch('country') || ''}
+                cityValue={watch('city') || ''}
+                onCountryChange={(value) => {
+                  setValue('country', value);
+                  clearErrors('country');
+                  // Сброс города при смене страны
+                  if (watch('city')) {
+                    setValue('city', '');
+                    clearErrors('city');
+                  }
+                }}
+                onCityChange={(value) => {
+                  setValue('city', value);
+                  clearErrors('city');
+                }}
+                countryError={errors.country?.message}
+                cityError={errors.city?.message}
+                required={true}
+                showValidation={true}
+                layout="side-by-side"
+              />
+              
+              {/* Скрытые поля для react-hook-form валидации */}
+              <input
+                type="hidden"
+                {...register('country')}
+              />
+              <input
+                type="hidden"
+                {...register('city', { required: 'Город обязателен' })}
+              />
 
               <FormGroup>
                 <Label>О себе</Label>
