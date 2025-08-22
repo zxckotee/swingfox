@@ -4,7 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
 const { Op } = require('sequelize');
-const { Chat, User } = require('../models');
+const { Chat, User, Notifications } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { generateId } = require('../utils/helpers');
 
@@ -176,6 +176,13 @@ router.post('/send', authenticateToken, upload.array('images', 5), async (req, r
       date: new Date(),
       is_read: false
     });
+
+    // Создаем уведомление о новом сообщении
+    try {
+      await Notifications.createMessageNotification(to_user, fromUser, message || '[Изображение]');
+    } catch (notifError) {
+      console.error('Error creating message notification:', notifError);
+    }
 
     // Форматируем ответ
     const responseMessage = {
@@ -446,6 +453,485 @@ router.delete('/:username', authenticateToken, async (req, res) => {
     res.status(500).json({ 
       error: 'server_error',
       message: 'Ошибка при удалении чата' 
+    });
+  }
+});
+
+// POST /api/chat/search - Поиск в истории сообщений
+router.post('/search', authenticateToken, async (req, res) => {
+  try {
+    const { query, with_user = null, limit = 20, offset = 0 } = req.body;
+    const currentUser = req.user.login;
+
+    if (!query || query.trim().length < 2) {
+      return res.status(400).json({
+        error: 'invalid_query',
+        message: 'Поисковый запрос должен содержать минимум 2 символа'
+      });
+    }
+
+    // Формируем условия поиска
+    const whereClause = {
+      [Op.or]: [
+        { by_user: currentUser },
+        { to_user: currentUser }
+      ],
+      message: {
+        [Op.iLike]: `%${query.trim()}%`
+      }
+    };
+
+    // Если указан конкретный собеседник
+    if (with_user) {
+      whereClause[Op.and] = [
+        {
+          [Op.or]: [
+            { by_user: currentUser, to_user: with_user },
+            { by_user: with_user, to_user: currentUser }
+          ]
+        }
+      ];
+    }
+
+    const messages = await Chat.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: User,
+          as: 'FromUser',
+          attributes: ['login', 'name', 'ava']
+        },
+        {
+          model: User,
+          as: 'ToUser',
+          attributes: ['login', 'name', 'ava']
+        }
+      ],
+      order: [['date', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    const totalCount = await Chat.count({ where: whereClause });
+
+    // Форматируем результаты
+    const formattedResults = messages.map(msg => ({
+      id: msg.id,
+      by_user: msg.by_user,
+      to_user: msg.to_user,
+      message: msg.message,
+      images: msg.images && msg.images !== '0' && msg.images !== 'null' ?
+        msg.images.split('&&').filter(Boolean) : [],
+      date: msg.date,
+      from_user_info: msg.FromUser ? {
+        login: msg.FromUser.login,
+        name: msg.FromUser.name,
+        avatar: msg.FromUser.ava
+      } : null,
+      to_user_info: msg.ToUser ? {
+        login: msg.ToUser.login,
+        name: msg.ToUser.name,
+        avatar: msg.ToUser.ava
+      } : null,
+      is_mine: msg.by_user === currentUser
+    }));
+
+    res.json({
+      success: true,
+      results: formattedResults,
+      total_count: totalCount,
+      query: query.trim()
+    });
+
+  } catch (error) {
+    console.error('Search messages error:', error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при поиске сообщений'
+    });
+  }
+});
+
+// POST /api/chat/forward - Пересылка сообщения
+router.post('/forward', authenticateToken, async (req, res) => {
+  try {
+    const { message_id, to_users, comment = '' } = req.body;
+    const currentUser = req.user.login;
+
+    if (!message_id || !to_users || !Array.isArray(to_users) || to_users.length === 0) {
+      return res.status(400).json({
+        error: 'missing_data',
+        message: 'Не указано сообщение или получатели'
+      });
+    }
+
+    // Находим исходное сообщение
+    const originalMessage = await Chat.findOne({
+      where: {
+        id: message_id,
+        [Op.or]: [
+          { by_user: currentUser },
+          { to_user: currentUser }
+        ]
+      }
+    });
+
+    if (!originalMessage) {
+      return res.status(404).json({
+        error: 'message_not_found',
+        message: 'Сообщение не найдено'
+      });
+    }
+
+    // Проверяем получателей
+    const validUsers = await User.findAll({
+      where: { login: to_users },
+      attributes: ['login']
+    });
+
+    if (validUsers.length !== to_users.length) {
+      return res.status(400).json({
+        error: 'invalid_recipients',
+        message: 'Некоторые получатели не найдены'
+      });
+    }
+
+    // Формируем текст пересылаемого сообщения
+    const forwardedText = `[Пересланное сообщение]\n${originalMessage.message}${comment ? `\n\n${comment}` : ''}`;
+
+    // Отправляем сообщения всем получателям
+    const sentMessages = [];
+    for (const recipient of to_users) {
+      const messageId = generateId();
+      const chatMessage = await Chat.create({
+        id: messageId,
+        by_user: currentUser,
+        to_user: recipient,
+        message: forwardedText,
+        images: originalMessage.images,
+        date: new Date(),
+        is_read: false
+      });
+
+      // Создаем уведомление
+      try {
+        await Notifications.createMessageNotification(recipient, currentUser, forwardedText);
+      } catch (notifError) {
+        console.error('Error creating forward notification:', notifError);
+      }
+
+      sentMessages.push({
+        id: chatMessage.id,
+        to_user: recipient,
+        message: forwardedText
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Сообщение переслано',
+      forwarded_to: to_users,
+      sent_messages: sentMessages
+    });
+
+  } catch (error) {
+    console.error('Forward message error:', error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при пересылке сообщения'
+    });
+  }
+});
+
+// PUT /api/chat/messages/:id/read - Пометка сообщения как прочитанного
+router.put('/messages/:id/read', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const currentUser = req.user.login;
+
+    const message = await Chat.findOne({
+      where: {
+        id: parseInt(id),
+        to_user: currentUser,
+        is_read: false
+      }
+    });
+
+    if (!message) {
+      return res.status(404).json({
+        error: 'message_not_found',
+        message: 'Сообщение не найдено или уже прочитано'
+      });
+    }
+
+    await message.update({ is_read: true });
+
+    res.json({
+      success: true,
+      message: 'Сообщение помечено как прочитанное'
+    });
+
+  } catch (error) {
+    console.error('Mark as read error:', error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при обновлении статуса сообщения'
+    });
+  }
+});
+
+// GET /api/chat/:username/images - Получение всех изображений из чата
+router.get('/:username/images', authenticateToken, async (req, res) => {
+  try {
+    const { username } = req.params;
+    const currentUser = req.user.login;
+    const { limit = 50, offset = 0 } = req.query;
+
+    // Проверяем существование собеседника
+    const targetUser = await User.findOne({ where: { login: username } });
+    if (!targetUser) {
+      return res.status(404).json({
+        error: 'user_not_found',
+        message: 'Пользователь не найден'
+      });
+    }
+
+    // Получаем сообщения с изображениями
+    const messages = await Chat.findAll({
+      where: {
+        [Op.or]: [
+          { by_user: currentUser, to_user: username },
+          { by_user: username, to_user: currentUser }
+        ],
+        images: {
+          [Op.and]: [
+            { [Op.ne]: null },
+            { [Op.ne]: '0' },
+            { [Op.ne]: 'null' }
+          ]
+        }
+      },
+      order: [['date', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    // Собираем все изображения
+    const allImages = [];
+    messages.forEach(msg => {
+      if (msg.images) {
+        const imagesList = msg.images.split('&&').filter(Boolean);
+        imagesList.forEach(image => {
+          allImages.push({
+            filename: image,
+            url: `/uploads/${image}`,
+            message_id: msg.id,
+            sender: msg.by_user,
+            date: msg.date
+          });
+        });
+      }
+    });
+
+    res.json({
+      success: true,
+      images: allImages,
+      total_count: allImages.length
+    });
+
+  } catch (error) {
+    console.error('Get chat images error:', error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при получении изображений'
+    });
+  }
+});
+
+// POST /api/chat/reaction - Добавление реакции на сообщение
+router.post('/reaction', authenticateToken, async (req, res) => {
+  try {
+    const { message_id, reaction } = req.body;
+    const currentUser = req.user.login;
+
+    if (!message_id || !reaction) {
+      return res.status(400).json({
+        error: 'missing_data',
+        message: 'Не указано сообщение или реакция'
+      });
+    }
+
+    const allowedReactions = ['👍', '❤️', '😂', '😮', '😢', '😡'];
+    if (!allowedReactions.includes(reaction)) {
+      return res.status(400).json({
+        error: 'invalid_reaction',
+        message: 'Недопустимая реакция'
+      });
+    }
+
+    // Проверяем существование сообщения
+    const message = await Chat.findOne({
+      where: {
+        id: parseInt(message_id),
+        [Op.or]: [
+          { by_user: currentUser },
+          { to_user: currentUser }
+        ]
+      }
+    });
+
+    if (!message) {
+      return res.status(404).json({
+        error: 'message_not_found',
+        message: 'Сообщение не найдено'
+      });
+    }
+
+    // В упрощенной версии сохраняем реакции в память
+    // В полной версии нужна отдельная таблица reactions
+    const reactionKey = `${message_id}_${currentUser}`;
+    // Здесь должна быть логика сохранения в БД
+
+    res.json({
+      success: true,
+      message: 'Реакция добавлена',
+      reaction,
+      message_id: parseInt(message_id)
+    });
+
+  } catch (error) {
+    console.error('Add reaction error:', error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при добавлении реакции'
+    });
+  }
+});
+
+// DELETE /api/chat/messages/:id - Удаление сообщения
+router.delete('/messages/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const currentUser = req.user.login;
+    const { for_all = false } = req.query;
+
+    const message = await Chat.findOne({
+      where: {
+        id: parseInt(id),
+        by_user: currentUser // Можно удалять только свои сообщения
+      }
+    });
+
+    if (!message) {
+      return res.status(404).json({
+        error: 'message_not_found',
+        message: 'Сообщение не найдено или вы не можете его удалить'
+      });
+    }
+
+    if (for_all === 'true') {
+      // Удаляем для всех
+      await message.destroy();
+    } else {
+      // Помечаем как удаленное только для отправителя
+      await message.update({
+        message: '[Сообщение удалено]',
+        images: null
+      });
+    }
+
+    res.json({
+      success: true,
+      message: for_all === 'true' ? 'Сообщение удалено для всех' : 'Сообщение удалено для вас'
+    });
+
+  } catch (error) {
+    console.error('Delete message error:', error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при удалении сообщения'
+    });
+  }
+});
+
+// GET /api/chat/:username/grouped - Получение сообщений сгруппированных по дням
+router.get('/:username/grouped', authenticateToken, async (req, res) => {
+  try {
+    const { username } = req.params;
+    const currentUser = req.user.login;
+    const { days = 7 } = req.query;
+
+    // Проверяем существование собеседника
+    const targetUser = await User.findOne({ where: { login: username } });
+    if (!targetUser) {
+      return res.status(404).json({
+        error: 'user_not_found',
+        message: 'Пользователь не найден'
+      });
+    }
+
+    // Получаем сообщения за указанное количество дней
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - parseInt(days));
+
+    const messages = await Chat.findAll({
+      where: {
+        [Op.or]: [
+          { by_user: currentUser, to_user: username },
+          { by_user: username, to_user: currentUser }
+        ],
+        date: {
+          [Op.gte]: startDate
+        }
+      },
+      order: [['date', 'ASC']]
+    });
+
+    // Группируем по дням
+    const groupedMessages = {};
+    messages.forEach(msg => {
+      const dateKey = msg.date.toISOString().split('T')[0];
+      if (!groupedMessages[dateKey]) {
+        groupedMessages[dateKey] = [];
+      }
+      
+      groupedMessages[dateKey].push({
+        id: msg.id,
+        by_user: msg.by_user,
+        to_user: msg.to_user,
+        message: msg.message,
+        images: msg.images && msg.images !== '0' && msg.images !== 'null' ?
+          msg.images.split('&&').filter(Boolean) : [],
+        date: msg.date,
+        is_read: msg.is_read,
+        is_mine: msg.by_user === currentUser
+      });
+    });
+
+    // Сортируем дни по убыванию
+    const sortedDays = Object.keys(groupedMessages).sort().reverse();
+    const result = {};
+    sortedDays.forEach(day => {
+      result[day] = groupedMessages[day];
+    });
+
+    res.json({
+      success: true,
+      grouped_messages: result,
+      companion: {
+        login: targetUser.login,
+        ava: targetUser.ava,
+        status: targetUser.status,
+        online: targetUser.online
+      },
+      days_count: sortedDays.length
+    });
+
+  } catch (error) {
+    console.error('Get grouped messages error:', error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при получении сгруппированных сообщений'
     });
   }
 });

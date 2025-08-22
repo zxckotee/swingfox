@@ -14,6 +14,11 @@ import Profile from './pages/Profile';
 import Chat from './pages/Chat';
 import Ads from './pages/Ads';
 import Admin from './pages/Admin';
+import Notifications from './pages/Notifications';
+import Gifts from './pages/Gifts';
+import Clubs from './pages/Clubs';
+import Subscriptions from './pages/Subscriptions';
+import Ratings from './pages/Ratings';
 
 // Стили и тема
 const theme = {
@@ -257,6 +262,41 @@ function App() {
               <Route path="/chat/:username?" element={
                 <AuthGuard>
                   <Chat />
+                </AuthGuard>
+              } />
+              
+              <Route path="/notifications" element={
+                <AuthGuard>
+                  <Navigation />
+                  <Notifications />
+                </AuthGuard>
+              } />
+              
+              <Route path="/gifts" element={
+                <AuthGuard>
+                  <Navigation />
+                  <Gifts />
+                </AuthGuard>
+              } />
+              
+              <Route path="/clubs" element={
+                <AuthGuard>
+                  <Navigation />
+                  <Clubs />
+                </AuthGuard>
+              } />
+              
+              <Route path="/subscriptions" element={
+                <AuthGuard>
+                  <Navigation />
+                  <Subscriptions />
+                </AuthGuard>
+              } />
+              
+              <Route path="/ratings" element={
+                <AuthGuard>
+                  <Navigation />
+                  <Ratings />
                 </AuthGuard>
               } />
               

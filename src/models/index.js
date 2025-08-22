@@ -6,6 +6,14 @@ const Ads = require('./Ads');
 const Reports = require('./Reports');
 const Events = require('./Events');
 const Geo = require('./Geo');
+const Gifts = require('./Gifts');
+const ImageLikes = require('./ImageLikes');
+const Rating = require('./Rating');
+const Status = require('./Status');
+const Notifications = require('./Notifications');
+const Clubs = require('./Clubs');
+const ClubApplications = require('./ClubApplications');
+const Subscriptions = require('./Subscriptions');
 
 // Определение ассоциаций между моделями
 
@@ -145,6 +153,27 @@ Events.belongsTo(User, {
   as: 'ApproverUser'
 });
 
+// Инициализация новых моделей
+const GiftsModel = Gifts(sequelize);
+const ImageLikesModel = ImageLikes(sequelize);
+const RatingModel = Rating(sequelize);
+const StatusModel = Status(sequelize);
+const NotificationsModel = Notifications(sequelize);
+const ClubsModel = Clubs(sequelize);
+const ClubApplicationsModel = ClubApplications(sequelize);
+const SubscriptionsModel = Subscriptions(sequelize);
+
+// Ассоциации для новых моделей
+if (GiftsModel.associate) GiftsModel.associate({ User });
+if (ImageLikesModel.associate) ImageLikesModel.associate({ User });
+if (RatingModel.associate) RatingModel.associate({ User });
+if (StatusModel.associate) StatusModel.associate({ User });
+if (NotificationsModel.associate) NotificationsModel.associate({ User });
+if (ClubsModel.associate) ClubsModel.associate({ User, ClubApplications: ClubApplicationsModel, Events });
+if (ClubApplicationsModel.associate) ClubApplicationsModel.associate({ User, Clubs: ClubsModel });
+if (Events.associate) Events.associate({ User, Clubs: ClubsModel });
+if (SubscriptionsModel.associate) SubscriptionsModel.associate({ User });
+
 module.exports = {
   sequelize,
   User,
@@ -153,5 +182,13 @@ module.exports = {
   Ads,
   Reports,
   Events,
-  Geo
+  Geo,
+  Gifts: GiftsModel,
+  ImageLikes: ImageLikesModel,
+  Rating: RatingModel,
+  Status: StatusModel,
+  Notifications: NotificationsModel,
+  Clubs: ClubsModel,
+  ClubApplications: ClubApplicationsModel,
+  Subscriptions: SubscriptionsModel
 };

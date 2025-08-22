@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { useQueryClient } from 'react-query';
+import { useQueryClient, useQuery } from 'react-query';
 import toast from 'react-hot-toast';
-import { apiUtils } from '../services/api';
+import { apiUtils, notificationsAPI } from '../services/api';
 import { Avatar, FlexContainer, IconButton } from './UI';
 
 // Иконки
@@ -31,6 +31,51 @@ const AdsIcon = () => (
 const AdminIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M12 1l3 6 6 3-6 3-3 6-3-6-6-3 6-3z"/>
+  </svg>
+);
+
+const BellIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+  </svg>
+);
+
+const GiftIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="20,12 20,22 4,22 4,12"/>
+    <rect x="2" y="7" width="20" height="5"/>
+    <line x1="12" y1="22" x2="12" y2="7"/>
+    <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+    <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+  </svg>
+);
+
+const UsersIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+    <circle cx="9" cy="7" r="4"/>
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  </svg>
+);
+
+const CrownIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M6 3h12l4 6-10 13L2 9z"/>
+    <path d="M11 3L8 9l4 13 4-13-3-6"/>
+    <path d="M2 9l4.5 13L11 9"/>
+    <path d="M13 9l4.5 13L22 9"/>
+  </svg>
+);
+
+const TrophyIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="8" y1="21" x2="16" y2="21"/>
+    <line x1="12" y1="17" x2="12" y2="21"/>
+    <path d="M5.7 8H2a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h3.7"/>
+    <path d="M18.3 8H22a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2h-3.7"/>
+    <path d="M5.7 8v5.7C5.7 17 8.3 19 12 19s6.3-2 6.3-5.3V8"/>
   </svg>
 );
 
@@ -176,9 +221,33 @@ const UserMenuButton = styled.button`
   padding: 4px;
   border-radius: 50%;
   transition: all 0.2s ease;
+  position: relative;
   
   &:hover {
     transform: scale(1.05);
+  }
+`;
+
+const VipIndicator = styled.div`
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: ${props => props.$color};
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  
+  @media (max-width: 768px) {
+    width: 18px;
+    height: 18px;
+    font-size: 9px;
   }
 `;
 
@@ -305,6 +374,29 @@ const NotificationBadge = styled.span`
   font-size: 12px;
   font-weight: bold;
 `;
+
+// Компонент счетчика уведомлений
+const NotificationCounter = () => {
+  const { data: unreadCount } = useQuery(
+    'unread-notifications-count',
+    () => notificationsAPI.getUnreadCount(),
+    {
+      refetchInterval: 30000, // Обновляем каждые 30 секунд
+      retry: 1,
+      onError: () => {
+        // Тихо игнорируем ошибки для счетчика
+      }
+    }
+  );
+
+  if (!unreadCount || unreadCount === 0) return null;
+
+  return (
+    <NotificationBadge>
+      {unreadCount > 99 ? '99+' : unreadCount}
+    </NotificationBadge>
+  );
+};
 
 const Navigation = () => {
   const location = useLocation();
@@ -434,8 +526,50 @@ const Navigation = () => {
             {/* Здесь можно добавить бейдж с количеством непрочитанных сообщений */}
           </NavLink>
           
-          <NavLink 
-            to="/ads" 
+          <NavLink
+            to="/notifications"
+            className={isActiveRoute('/notifications') ? 'active' : ''}
+            style={{ position: 'relative' }}
+          >
+            <BellIcon />
+            Уведомления
+            <NotificationCounter />
+          </NavLink>
+          
+          <NavLink
+            to="/gifts"
+            className={isActiveRoute('/gifts') ? 'active' : ''}
+          >
+            <GiftIcon />
+            Подарки
+          </NavLink>
+          
+          <NavLink
+            to="/clubs"
+            className={isActiveRoute('/clubs') ? 'active' : ''}
+          >
+            <UsersIcon />
+            Клубы
+          </NavLink>
+          
+          <NavLink
+            to="/subscriptions"
+            className={isActiveRoute('/subscriptions') ? 'active' : ''}
+          >
+            <CrownIcon />
+            VIP
+          </NavLink>
+          
+          <NavLink
+            to="/ratings"
+            className={isActiveRoute('/ratings') ? 'active' : ''}
+          >
+            <TrophyIcon />
+            Рейтинг
+          </NavLink>
+          
+          <NavLink
+            to="/ads"
             className={isActiveRoute('/ads') ? 'active' : ''}
           >
             <AdsIcon />
@@ -464,6 +598,11 @@ const Navigation = () => {
               >
                 {!currentUser.ava && currentUser.login.charAt(0).toUpperCase()}
               </Avatar>
+              {apiUtils.isVip(currentUser) && (
+                <VipIndicator $color={apiUtils.getVipBadgeColor(currentUser.vipType)}>
+                  {apiUtils.getVipBadgeIcon(currentUser.vipType)}
+                </VipIndicator>
+              )}
             </UserMenuButton>
             
             <DropdownMenu $show={showUserMenu}>
@@ -510,8 +649,55 @@ const Navigation = () => {
           Чат
         </MobileNavLink>
         
-        <MobileNavLink 
-          to="/ads" 
+        <MobileNavLink
+          to="/notifications"
+          className={isActiveRoute('/notifications') ? 'active' : ''}
+          onClick={() => setShowMobileMenu(false)}
+          style={{ position: 'relative' }}
+        >
+          <BellIcon />
+          Уведомления
+          <NotificationCounter />
+        </MobileNavLink>
+        
+        <MobileNavLink
+          to="/gifts"
+          className={isActiveRoute('/gifts') ? 'active' : ''}
+          onClick={() => setShowMobileMenu(false)}
+        >
+          <GiftIcon />
+          Подарки
+        </MobileNavLink>
+        
+        <MobileNavLink
+          to="/clubs"
+          className={isActiveRoute('/clubs') ? 'active' : ''}
+          onClick={() => setShowMobileMenu(false)}
+        >
+          <UsersIcon />
+          Клубы
+        </MobileNavLink>
+        
+        <MobileNavLink
+          to="/subscriptions"
+          className={isActiveRoute('/subscriptions') ? 'active' : ''}
+          onClick={() => setShowMobileMenu(false)}
+        >
+          <CrownIcon />
+          VIP
+        </MobileNavLink>
+        
+        <MobileNavLink
+          to="/ratings"
+          className={isActiveRoute('/ratings') ? 'active' : ''}
+          onClick={() => setShowMobileMenu(false)}
+        >
+          <TrophyIcon />
+          Рейтинг
+        </MobileNavLink>
+        
+        <MobileNavLink
+          to="/ads"
           className={isActiveRoute('/ads') ? 'active' : ''}
           onClick={() => setShowMobileMenu(false)}
         >

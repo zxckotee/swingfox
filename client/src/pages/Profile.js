@@ -488,11 +488,13 @@ const Profile = () => {
 
   const handleImageUpload = (event) => {
     const files = Array.from(event.target.files);
-    files.forEach(file => {
+    if (files.length > 0) {
       const formData = new FormData();
-      formData.append('image', file);
+      files.forEach(file => {
+        formData.append('images', file);
+      });
       uploadImageMutation.mutate(formData);
-    });
+    }
   };
 
   const handleDeleteImage = (imageId) => {

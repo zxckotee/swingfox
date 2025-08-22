@@ -109,6 +109,31 @@ const Events = sequelize.define('Events', {
   approved_by: {
     type: DataTypes.STRING(50),
     allowNull: true
+  },
+  club_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'ID клуба (если событие клубное)'
+  },
+  age_restriction: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    comment: 'Ограничения по возрасту'
+  },
+  tags: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+    comment: 'Теги события (разделенные запятыми)'
+  },
+  registration_required: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: 'Требуется ли регистрация'
+  },
+  current_participants: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    comment: 'Текущее количество участников'
   }
 }, {
   tableName: 'events',
@@ -215,5 +240,152 @@ Events.beforeUpdate(async (event) => {
     event.status = 'completed';
   }
 });
+
+// Дополнительные методы
+Events.prototype.addParticipant = async function() {
+  this.current_participants = parseInt(this.current_participants) + 1;
+  return await this.save();
+};
+
+Events.prototype.removeParticipant = async function() {
+  if (this.current_participants > 0) {
+    this.current_participants = parseInt(this.current_participants) - 1;
+    return await this.save();
+  }
+  return this;
+};
+
+Events.prototype.isFull = function() {
+  return this.max_participants && parseInt(this.current_participants) >= parseInt(this.max_participants);
+};
+
+Events.prototype.isClubEvent = function() {
+  return this.club_id !== null;
+};
+
+// Статические методы для работы с клубными событиями
+Events.getClubEvents = async function(clubId, options = {}) {
+  const {
+    limit = 20,
+    offset = 0,
+    status = null,
+    upcoming = null
+  } = options;
+
+  const whereClause = { club_id: clubId };
+  
+  if (status) {
+    whereClause.status = status;
+  }
+  
+  if (upcoming === true) {
+    whereClause.event_date = {
+      [sequelize.Sequelize.Op.gt]: new Date()
+    };
+  } else if (upcoming === false) {
+    whereClause.event_date = {
+      [sequelize.Sequelize.Op.lt]: new Date()
+    };
+  }
+
+  try {
+    const events = await this.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: sequelize.models.User,
+          as: 'OrganizerUser',
+          attributes: ['login', 'name', 'ava']
+        }
+      ],
+      order: [['event_date', 'ASC']],
+      limit,
+      offset
+    });
+
+    return events;
+  } catch (error) {
+    console.error('Error getting club events:', error);
+    throw error;
+  }
+};
+
+Events.getUpcomingEvents = async function(options = {}) {
+  const {
+    limit = 20,
+    offset = 0,
+    city = null,
+    type = null
+  } = options;
+
+  const whereClause = {
+    approved: true,
+    status: 'planned',
+    event_date: {
+      [sequelize.Sequelize.Op.gt]: new Date()
+    }
+  };
+  
+  if (city) {
+    whereClause.city = {
+      [sequelize.Sequelize.Op.iLike]: `%${city}%`
+    };
+  }
+  
+  if (type && type !== 'all') {
+    whereClause.type = type;
+  }
+
+  try {
+    const events = await this.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: sequelize.models.User,
+          as: 'OrganizerUser',
+          attributes: ['login', 'name', 'ava']
+        },
+        {
+          model: sequelize.models.Clubs,
+          as: 'Club',
+          attributes: ['id', 'name', 'type', 'avatar'],
+          required: false
+        }
+      ],
+      order: [['event_date', 'ASC']],
+      limit,
+      offset
+    });
+
+    return events;
+  } catch (error) {
+    console.error('Error getting upcoming events:', error);
+    throw error;
+  }
+};
+
+// Ассоциации
+Events.associate = function(models) {
+  // Событие принадлежит организатору
+  Events.belongsTo(models.User, {
+    foreignKey: 'organizer',
+    targetKey: 'login',
+    as: 'OrganizerUser'
+  });
+
+  // Событие утверждается администратором
+  Events.belongsTo(models.User, {
+    foreignKey: 'approved_by',
+    targetKey: 'login',
+    as: 'ApproverUser'
+  });
+
+  // Событие может принадлежать клубу
+  Events.belongsTo(models.Clubs, {
+    foreignKey: 'club_id',
+    targetKey: 'id',
+    as: 'Club'
+  });
+};
 
 module.exports = Events;

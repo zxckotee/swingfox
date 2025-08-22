@@ -2,7 +2,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 
 // Базовая конфигурация API
-const api = axios.create({
+const apiClient = axios.create({
   baseURL: process.env.REACT_APP_API_URL || '/api',
   timeout: 10000,
   headers: {
@@ -65,7 +65,7 @@ const isCacheValid = (cachedData) => {
 };
 
 // Интерцептор для добавления токена к запросам
-api.interceptors.request.use(
+apiClient.interceptors.request.use(
   (config) => {
     const token = getToken();
     if (token) {
@@ -77,7 +77,7 @@ api.interceptors.request.use(
 );
 
 // Интерцептор для обработки ответов
-api.interceptors.response.use(
+apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
@@ -94,7 +94,7 @@ api.interceptors.response.use(
 // API методы для авторизации
 export const authAPI = {
   login: async (credentials) => {
-    const response = await api.post('/auth/login', credentials);
+    const response = await apiClient.post('/auth/login', credentials);
     if (response.data.token) {
       setToken(response.data.token);
       // Кэшируем данные пользователя при логине
@@ -106,7 +106,7 @@ export const authAPI = {
   },
 
   register: async (userData) => {
-    const response = await api.post('/auth/register', userData);
+    const response = await apiClient.post('/auth/register', userData);
     if (response.data.token) {
       setToken(response.data.token);
       // Кэшируем данные пользователя при регистрации
@@ -118,18 +118,18 @@ export const authAPI = {
   },
 
   sendCode: async (email) => {
-    const response = await api.post('/auth/send-code', { email });
+    const response = await apiClient.post('/auth/send-code', { email });
     return response.data;
   },
 
   resetPassword: async (data) => {
-    const response = await api.post('/auth/reset-password', data);
+    const response = await apiClient.post('/auth/reset-password', data);
     return response.data;
   },
 
   logout: async () => {
     try {
-      await api.post('/auth/logout');
+      await apiClient.post('/auth/logout');
     } finally {
       setToken(null);
     }
@@ -175,7 +175,7 @@ export const authAPI = {
     if (!baseUser || !baseUser.login) return null;
 
     try {
-      const response = await api.get(`/users/profile/${baseUser.login}`);
+      const response = await apiClient.get(`/users/profile/${baseUser.login}`);
       const userData = response.data;
       
       // Обновляем кэш с актуальными данными
@@ -213,7 +213,7 @@ export const authAPI = {
 // API методы для пользователей
 export const usersAPI = {
   getProfile: async (login) => {
-    const response = await api.get(`/users/profile/${login}`);
+    const response = await apiClient.get(`/users/profile/${login}`);
     
     // Обновляем кэш, если это профиль текущего пользователя
     const currentUser = authAPI.getCurrentUser();
@@ -231,7 +231,7 @@ export const usersAPI = {
   },
 
   updateProfile: async (profileData) => {
-    const response = await api.put('/users/profile', profileData);
+    const response = await apiClient.put('/users/profile', profileData);
     
     // Обновляем кэш после успешного обновления профиля
     if (response.data.success && response.data.user) {
@@ -246,7 +246,7 @@ export const usersAPI = {
   },
 
   uploadAvatar: async (formData) => {
-    const response = await api.post('/users/upload-avatar', formData, {
+    const response = await apiClient.post('/users/upload-avatar', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     
@@ -261,24 +261,24 @@ export const usersAPI = {
   },
 
   uploadImages: async (formData) => {
-    const response = await api.post('/users/upload-images', formData, {
+    const response = await apiClient.post('/users/upload-images', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return response.data;
   },
 
   deleteImage: async (filename, type = 'images') => {
-    const response = await api.delete(`/users/images/${filename}?type=${type}`);
+    const response = await apiClient.delete(`/users/images/${filename}?type=${type}`);
     return response.data;
   },
 
   setLockedPassword: async (password) => {
-    const response = await api.post('/users/set-locked-password', { password });
+    const response = await apiClient.post('/users/set-locked-password', { password });
     return response.data;
   },
 
   unlockImages: async (targetUser, password) => {
-    const response = await api.post('/users/unlock-images', {
+    const response = await apiClient.post('/users/unlock-images', {
       target_user: targetUser,
       password
     });
@@ -289,22 +289,22 @@ export const usersAPI = {
 // API методы для свайпинга
 export const swipeAPI = {
   getProfiles: async (direction = 'forward') => {
-    const response = await api.get(`/swipe/profiles?direction=${direction}`);
+    const response = await apiClient.get(`/swipe/profiles?direction=${direction}`);
     return response.data;
   },
 
   like: async (targetUser) => {
-    const response = await api.post('/swipe/like', { target_user: targetUser });
+    const response = await apiClient.post('/swipe/like', { target_user: targetUser });
     return response.data;
   },
 
   dislike: async (targetUser) => {
-    const response = await api.post('/swipe/dislike', { target_user: targetUser });
+    const response = await apiClient.post('/swipe/dislike', { target_user: targetUser });
     return response.data;
   },
 
   superlike: async (targetUser, message) => {
-    const response = await api.post('/swipe/superlike', { 
+    const response = await apiClient.post('/swipe/superlike', {
       target_user: targetUser, 
       message 
     });
@@ -312,7 +312,7 @@ export const swipeAPI = {
   },
 
   getSuperlikes: async () => {
-    const response = await api.get('/swipe/superlike-count');
+    const response = await apiClient.get('/swipe/superlike-count');
     return response.data;
   }
 };
@@ -320,42 +320,42 @@ export const swipeAPI = {
 // API методы для чатов
 export const chatAPI = {
   getConversations: async (limit = 20, offset = 0) => {
-    const response = await api.get(`/chat/conversations?limit=${limit}&offset=${offset}`);
+    const response = await apiClient.get(`/chat/conversations?limit=${limit}&offset=${offset}`);
     return response.data;
   },
 
   getMessages: async (username, limit = 50, offset = 0) => {
-    const response = await api.get(`/chat/${username}?limit=${limit}&offset=${offset}`);
+    const response = await apiClient.get(`/chat/${username}?limit=${limit}&offset=${offset}`);
     return response.data;
   },
 
   sendMessage: async (formData) => {
-    const response = await api.post('/chat/send', formData, {
+    const response = await apiClient.post('/chat/send', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return response.data;
   },
 
   getUserStatus: async (username) => {
-    const response = await api.get(`/chat/status/${username}`);
+    const response = await apiClient.get(`/chat/status/${username}`);
     return response.data;
   },
 
   setTyping: async (toUser, isTyping) => {
-    const response = await api.post('/chat/typing', { 
-      to_user: toUser, 
-      is_typing: isTyping 
+    const response = await apiClient.post('/chat/typing', {
+      to_user: toUser,
+      is_typing: isTyping
     });
     return response.data;
   },
 
   getUnreadCount: async () => {
-    const response = await api.get('/chat/unread-count');
+    const response = await apiClient.get('/chat/unread-count');
     return response.data;
   },
 
   deleteConversation: async (username) => {
-    const response = await api.delete(`/chat/${username}`);
+    const response = await apiClient.delete(`/chat/${username}`);
     return response.data;
   }
 };
@@ -364,37 +364,37 @@ export const chatAPI = {
 export const adsAPI = {
   getAds: async (filters = {}) => {
     const params = new URLSearchParams(filters).toString();
-    const response = await api.get(`/ads?${params}`);
+    const response = await apiClient.get(`/ads?${params}`);
     return response.data;
   },
 
   getMyAds: async (limit = 10, offset = 0) => {
-    const response = await api.get(`/ads/my?limit=${limit}&offset=${offset}`);
+    const response = await apiClient.get(`/ads/my?limit=${limit}&offset=${offset}`);
     return response.data;
   },
 
   createAd: async (adData) => {
-    const response = await api.post('/ads/create', adData);
+    const response = await apiClient.post('/ads/create', adData);
     return response.data;
   },
 
   updateAd: async (id, adData) => {
-    const response = await api.put(`/ads/${id}`, adData);
+    const response = await apiClient.put(`/ads/${id}`, adData);
     return response.data;
   },
 
   deleteAd: async (id) => {
-    const response = await api.delete(`/ads/${id}`);
+    const response = await apiClient.delete(`/ads/${id}`);
     return response.data;
   },
 
   respondToAd: async (id, message) => {
-    const response = await api.post(`/ads/${id}/respond`, { message });
+    const response = await apiClient.post(`/ads/${id}/respond`, { message });
     return response.data;
   },
 
   getAdTypes: async () => {
-    const response = await api.get('/ads/types');
+    const response = await apiClient.get('/ads/types');
     return response.data;
   }
 };
@@ -402,48 +402,341 @@ export const adsAPI = {
 // API методы для администрирования
 export const adminAPI = {
   getDashboard: async () => {
-    const response = await api.get('/admin/dashboard');
+    const response = await apiClient.get('/admin/dashboard');
     return response.data;
   },
 
   getUsers: async (filters = {}) => {
     const params = new URLSearchParams(filters).toString();
-    const response = await api.get(`/admin/users?${params}`);
+    const response = await apiClient.get(`/admin/users?${params}`);
     return response.data;
   },
 
   updateUser: async (login, userData) => {
-    const response = await api.put(`/admin/users/${login}`, userData);
+    const response = await apiClient.put(`/admin/users/${login}`, userData);
     return response.data;
   },
 
   deleteUser: async (login) => {
-    const response = await api.delete(`/admin/users/${login}`);
+    const response = await apiClient.delete(`/admin/users/${login}`);
     return response.data;
   },
 
   getMessages: async (filters = {}) => {
     const params = new URLSearchParams(filters).toString();
-    const response = await api.get(`/admin/messages?${params}`);
+    const response = await apiClient.get(`/admin/messages?${params}`);
     return response.data;
   },
 
   deleteMessage: async (id) => {
-    const response = await api.delete(`/admin/messages/${id}`);
+    const response = await apiClient.delete(`/admin/messages/${id}`);
     return response.data;
   },
 
   broadcast: async (message, targetVipType = 'ALL') => {
-    const response = await api.post('/admin/broadcast', { 
-      message, 
-      target_viptype: targetVipType 
+    const response = await apiClient.post('/admin/broadcast', {
+      message,
+      target_viptype: targetVipType
     });
     return response.data;
   },
 
   getAnalytics: async (period = '30') => {
-    const response = await api.get(`/admin/analytics?period=${period}`);
+    const response = await apiClient.get(`/admin/analytics?period=${period}`);
     return response.data;
+  }
+};
+
+// API методы для уведомлений
+export const notificationsAPI = {
+  getNotifications: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.type) params.append('type', filters.type);
+    if (filters.priority) params.append('priority', filters.priority);
+    if (filters.unread !== undefined) params.append('unread', filters.unread);
+    if (filters.limit) params.append('limit', filters.limit);
+    if (filters.offset) params.append('offset', filters.offset);
+    
+    const response = await apiClient.get(`/notifications?${params.toString()}`);
+    return response.data;
+  },
+
+  markAsRead: async (id) => {
+    const response = await apiClient.put(`/notifications/${id}/read`);
+    return response.data;
+  },
+
+  markAllAsRead: async () => {
+    const response = await apiClient.post('/notifications/mark-read');
+    return response.data;
+  },
+
+  deleteNotification: async (id) => {
+    const response = await apiClient.delete(`/notifications/${id}`);
+    return response.data;
+  },
+
+  deleteReadNotifications: async () => {
+    const response = await apiClient.post('/notifications/delete-read');
+    return response.data;
+  },
+
+  getNotificationTypes: async () => {
+    const response = await apiClient.get('/notifications/types');
+    return response.data;
+  },
+
+  getUnreadCount: async () => {
+    const response = await apiClient.get('/notifications/unread-count');
+    return response.data;
+  }
+};
+
+// API методы для подарков
+export const giftsAPI = {
+  getGiftTypes: async () => {
+    const response = await apiClient.get('/gifts/types');
+    return response.data;
+  },
+
+  sendGift: async (giftData) => {
+    const response = await apiClient.post('/gifts/send', giftData);
+    return response.data;
+  },
+
+  getGiftHistory: async (type = 'all', limit = 20, offset = 0) => {
+    const params = new URLSearchParams({
+      type,
+      limit: limit.toString(),
+      offset: offset.toString()
+    });
+    const response = await apiClient.get(`/gifts/history?${params.toString()}`);
+    return response.data;
+  },
+
+  getGiftStats: async (period = '30') => {
+    const response = await apiClient.get(`/gifts/stats?period=${period}`);
+    return response.data;
+  },
+
+  getReceivedGifts: async (limit = 20, offset = 0) => {
+    const params = new URLSearchParams({
+      limit: limit.toString(),
+      offset: offset.toString()
+    });
+    const response = await apiClient.get(`/gifts/received?${params.toString()}`);
+    return response.data;
+  },
+
+  getSentGifts: async (limit = 20, offset = 0) => {
+    const params = new URLSearchParams({
+      limit: limit.toString(),
+      offset: offset.toString()
+    });
+    const response = await apiClient.get(`/gifts/sent?${params.toString()}`);
+    return response.data;
+  }
+};
+
+// API методы для клубов
+export const clubsAPI = {
+  getClubs: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.type) params.append('type', filters.type);
+    if (filters.city) params.append('city', filters.city);
+    if (filters.search) params.append('search', filters.search);
+    if (filters.limit) params.append('limit', filters.limit);
+    if (filters.offset) params.append('offset', filters.offset);
+    
+    const response = await apiClient.get(`/clubs?${params.toString()}`);
+    return response.data;
+  },
+
+  createClub: async (clubData) => {
+    const response = await apiClient.post('/clubs', clubData);
+    return response.data;
+  },
+
+  getClub: async (clubId) => {
+    const response = await apiClient.get(`/clubs/${clubId}`);
+    return response.data;
+  },
+
+  updateClub: async (clubId, clubData) => {
+    const response = await apiClient.put(`/clubs/${clubId}`, clubData);
+    return response.data;
+  },
+
+  deleteClub: async (clubId) => {
+    const response = await apiClient.delete(`/clubs/${clubId}`);
+    return response.data;
+  },
+
+  joinClub: async (clubId, message = '') => {
+    const response = await apiClient.post(`/clubs/${clubId}/apply`, { message });
+    return response.data;
+  },
+
+  leaveClub: async (clubId) => {
+    const response = await apiClient.delete(`/clubs/${clubId}/leave`);
+    return response.data;
+  },
+
+  getMyClubs: async () => {
+    const response = await apiClient.get('/clubs/my');
+    return response.data;
+  },
+
+  getClubMembers: async (clubId) => {
+    const response = await apiClient.get(`/clubs/${clubId}/members`);
+    return response.data;
+  },
+
+  getClubApplications: async (clubId) => {
+    const response = await apiClient.get(`/clubs/${clubId}/applications`);
+    return response.data;
+  },
+
+  manageApplication: async (clubId, applicationId, action, reason = '') => {
+    const response = await apiClient.put(`/clubs/${clubId}/applications/${applicationId}`, {
+      action,
+      reason
+    });
+    return response.data;
+  }
+};
+
+// API методы для подписок
+export const subscriptionsAPI = {
+  getPlans: async () => {
+    const response = await apiClient.get('/subscriptions/plans');
+    return response.data;
+  },
+
+  subscribe: async (planData) => {
+    const response = await apiClient.post('/subscriptions/subscribe', planData);
+    return response.data;
+  },
+
+  getStatus: async () => {
+    const response = await apiClient.get('/subscriptions/status');
+    return response.data;
+  },
+
+  getHistory: async (limit = 20, offset = 0) => {
+    const params = new URLSearchParams({
+      limit: limit.toString(),
+      offset: offset.toString()
+    });
+    const response = await apiClient.get(`/subscriptions/history?${params.toString()}`);
+    return response.data;
+  },
+
+  cancel: async (reason = '') => {
+    const response = await apiClient.post('/subscriptions/cancel', { reason });
+    return response.data;
+  },
+
+  usePromoCode: async (code) => {
+    const response = await apiClient.post('/subscriptions/promo', { code });
+    return response.data;
+  },
+
+  getFeatures: async () => {
+    const response = await apiClient.get('/subscriptions/features');
+    return response.data;
+  }
+};
+
+// API методы для рейтинга
+export const ratingAPI = {
+  getUserRating: async (username) => {
+    const response = await apiClient.get(`/rating/${username}`);
+    return response.data;
+  },
+
+  rateUser: async (username, value) => {
+    const response = await apiClient.post(`/rating/${username}`, { value });
+    return response.data;
+  },
+
+  deleteRating: async (username) => {
+    const response = await apiClient.delete(`/rating/${username}`);
+    return response.data;
+  },
+
+  getTopUsers: async (period = 'all', limit = 20) => {
+    const params = new URLSearchParams({
+      period,
+      limit: limit.toString()
+    });
+    const response = await apiClient.get(`/rating/top/users?${params.toString()}`);
+    return response.data;
+  },
+
+  getMyGivenRatings: async (page = 1, limit = 20) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString()
+    });
+    const response = await apiClient.get(`/rating/my/given?${params.toString()}`);
+    return response.data;
+  },
+
+  getMyReceivedRatings: async (page = 1, limit = 20) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString()
+    });
+    const response = await apiClient.get(`/rating/my/received?${params.toString()}`);
+    return response.data;
+  }
+};
+
+// Расширенные API методы для загрузок
+export const uploadsAPI = {
+  uploadAvatar: async (formData) => {
+    const response = await apiClient.post('/uploads/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    
+    // Обновляем кэш после успешной загрузки аватарки
+    if (response.data.success && response.data.filename) {
+      authAPI.updateUserCache({
+        ava: response.data.filename
+      });
+    }
+    
+    return response.data;
+  },
+
+  uploadPhotos: async (formData) => {
+    const response = await apiClient.post('/uploads/photos', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+
+  uploadPrivatePhotos: async (formData) => {
+    const response = await apiClient.post('/uploads/private-photos', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+
+  deletePhoto: async (filename, type = 'photos') => {
+    const response = await apiClient.delete(`/uploads/${type}/${filename}`);
+    return response.data;
+  },
+
+  getUploadProgress: (onProgress) => {
+    // Для отслеживания прогресса загрузки
+    return {
+      onUploadProgress: (progressEvent) => {
+        const progress = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+        if (onProgress) onProgress(progress);
+      }
+    };
   }
 };
 
@@ -490,7 +783,78 @@ export const apiUtils = {
       return error.message;
     }
     return 'Произошла неизвестная ошибка';
+  },
+
+  // Форматирование даты
+  formatDate: (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ru-RU', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  },
+
+  // Форматирование времени "назад"
+  formatTimeAgo: (dateString) => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffInSeconds = Math.floor((now - date) / 1000);
+
+    if (diffInSeconds < 60) return 'только что';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} мин назад`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} ч назад`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} дн назад`;
+    
+    return apiUtils.formatDate(dateString);
+  },
+
+  // Проверка VIP статуса
+  isVip: (user) => {
+    return user?.vipType && user.vipType !== 'BASE';
+  },
+
+  // Проверка PREMIUM статуса
+  isPremium: (user) => {
+    return user?.vipType === 'PREMIUM';
+  },
+
+  // Получение цвета VIP бейджа
+  getVipBadgeColor: (vipType) => {
+    switch (vipType) {
+      case 'VIP': return '#ffd700';
+      case 'PREMIUM': return '#9b59b6';
+      default: return null;
+    }
+  },
+
+  // Получение иконки VIP бейджа
+  getVipBadgeIcon: (vipType) => {
+    switch (vipType) {
+      case 'VIP': return '👑';
+      case 'PREMIUM': return '💎';
+      default: return null;
+    }
   }
 };
 
-export default api;
+// Экспорт всех API групп для удобства
+export const api = {
+  auth: authAPI,
+  users: usersAPI,
+  swipe: swipeAPI,
+  chat: chatAPI,
+  ads: adsAPI,
+  admin: adminAPI,
+  notifications: notificationsAPI,
+  gifts: giftsAPI,
+  clubs: clubsAPI,
+  subscriptions: subscriptionsAPI,
+  rating: ratingAPI,
+  uploads: uploadsAPI,
+  utils: apiUtils
+};
+
+export default apiClient;

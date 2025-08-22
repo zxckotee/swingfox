@@ -45,6 +45,12 @@ const chatRoutes = require('./src/routes/chat');
 const adsRoutes = require('./src/routes/ads');
 const adminRoutes = require('./src/routes/admin');
 const geoRoutes = require('./src/routes/geo');
+const uploadsRoutes = require('./src/routes/uploads');
+const notificationsRoutes = require('./src/routes/notifications');
+const giftsRoutes = require('./src/routes/gifts');
+const clubsRoutes = require('./src/routes/clubs');
+const subscriptionsRoutes = require('./src/routes/subscriptions');
+const ratingRoutes = require('./src/routes/rating');
 
 // Подключение роутов
 app.use('/api/auth', authRoutes);
@@ -54,6 +60,12 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/ads', adsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/geo', geoRoutes);
+app.use('/api/uploads', uploadsRoutes);
+app.use('/api/notifications', notificationsRoutes);
+app.use('/api/gifts', giftsRoutes);
+app.use('/api/clubs', clubsRoutes);
+app.use('/api/subscriptions', subscriptionsRoutes);
+app.use('/api/rating', ratingRoutes);
 
 // Проверка статуса API
 app.get('/api/status', (req, res) => {

@@ -545,8 +545,8 @@ const Chat = () => {
 
   // Получение списка чатов
   const { data: chats = [] } = useQuery(
-    'chats',
-    chatAPI.getChats,
+    'conversations',
+    chatAPI.getConversations,
     {
       refetchInterval: 5000 // Обновляем каждые 5 секунд
     }
@@ -567,17 +567,17 @@ const Chat = () => {
     onSuccess: () => {
       setMessageText('');
       queryClient.invalidateQueries(['messages', selectedChat]);
-      queryClient.invalidateQueries('chats');
+      queryClient.invalidateQueries('conversations');
     },
     onError: (error) => {
       toast.error(apiUtils.handleError(error));
     }
   });
 
-  const sendFileMutation = useMutation(chatAPI.sendFile, {
+  const sendFileMutation = useMutation(chatAPI.sendMessage, {
     onSuccess: () => {
       queryClient.invalidateQueries(['messages', selectedChat]);
-      queryClient.invalidateQueries('chats');
+      queryClient.invalidateQueries('conversations');
     },
     onError: (error) => {
       toast.error(apiUtils.handleError(error));
@@ -596,8 +596,8 @@ const Chat = () => {
   }, [messages]);
 
   // Фильтрация чатов по поиску
-  const filteredChats = chats.filter(chat =>
-    chat.user.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredChats = (chats?.conversations || []).filter(chat =>
+    chat.companion.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Обработчики
@@ -608,10 +608,10 @@ const Chat = () => {
 
   const handleSendMessage = () => {
     if (messageText.trim() && selectedChat) {
-      sendMessageMutation.mutate({
-        to: selectedChat,
-        message: messageText.trim()
-      });
+      const formData = new FormData();
+      formData.append('to_user', selectedChat);
+      formData.append('message', messageText.trim());
+      sendMessageMutation.mutate(formData);
     }
   };
 
@@ -626,8 +626,8 @@ const Chat = () => {
     const file = event.target.files[0];
     if (file && selectedChat) {
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('to', selectedChat);
+      formData.append('images', file);
+      formData.append('to_user', selectedChat);
       sendFileMutation.mutate(formData);
     }
   };
@@ -640,7 +640,7 @@ const Chat = () => {
     });
   };
 
-  const selectedChatData = chats.find(chat => chat.user === selectedChat);
+  const selectedChatData = (chats?.conversations || []).find(chat => chat.companion === selectedChat);
 
   return (
     <ChatContainer>
@@ -665,31 +665,31 @@ const Chat = () => {
         <ChatsContainer>
           {filteredChats.map(chat => (
             <ChatItem
-              key={chat.user}
-              className={selectedChat === chat.user ? 'active' : ''}
-              onClick={() => handleChatSelect(chat.user)}
+              key={chat.companion}
+              className={selectedChat === chat.companion ? 'active' : ''}
+              onClick={() => handleChatSelect(chat.companion)}
             >
               <Avatar
-                $src={chat.avatar ? `/uploads/${chat.avatar}` : ''}
+                $src={chat.companion_info?.ava ? `/uploads/${chat.companion_info.ava}` : ''}
                 $size="50px"
                 $fontSize="20px"
-                $online={chat.online}
+                $online={chat.companion_info?.online}
               >
-                {!chat.avatar && chat.user.charAt(0).toUpperCase()}
+                {!chat.companion_info?.ava && chat.companion.charAt(0).toUpperCase()}
               </Avatar>
               
               <div className="chat-info">
-                <div className="name">@{chat.user}</div>
+                <div className="name">@{chat.companion}</div>
                 <div className="last-message">
-                  {chat.lastMessage || 'Начните общение'}
+                  {chat.last_message || 'Начните общение'}
                 </div>
                 <div className="time">
-                  {chat.lastMessageTime && formatTime(chat.lastMessageTime)}
+                  {chat.last_message_date && formatTime(chat.last_message_date)}
                 </div>
               </div>
               
-              {chat.unreadCount > 0 && (
-                <div className="unread-badge">{chat.unreadCount}</div>
+              {chat.unread_count > 0 && (
+                <div className="unread-badge">{chat.unread_count}</div>
               )}
             </ChatItem>
           ))}
@@ -718,18 +718,18 @@ const Chat = () => {
               </IconButton>
               
               <Avatar
-                $src={selectedChatData?.avatar ? `/uploads/${selectedChatData.avatar}` : ''}
+                $src={selectedChatData?.companion_info?.ava ? `/uploads/${selectedChatData.companion_info.ava}` : ''}
                 $size="45px"
                 $fontSize="18px"
               >
-                {!selectedChatData?.avatar && selectedChat.charAt(0).toUpperCase()}
+                {!selectedChatData?.companion_info?.ava && selectedChat.charAt(0).toUpperCase()}
               </Avatar>
               
               <div className="user-info">
                 <div className="name">@{selectedChat}</div>
                 <div className="status">
-                  {selectedChatData?.online && <div className="online-dot" />}
-                  {selectedChatData?.online ? 'онлайн' : 'не в сети'}
+                  {selectedChatData?.companion_info?.online && <div className="online-dot" />}
+                  {selectedChatData?.companion_info?.online ? 'онлайн' : 'не в сети'}
                 </div>
               </div>
               
@@ -739,12 +739,12 @@ const Chat = () => {
             </ChatWindowHeader>
 
             <MessagesContainer>
-              {messages.map((message, index) => {
-                const isOwn = message.from_user === currentUser.login;
-                const prevMessage = messages[index - 1];
-                const isNewGroup = !prevMessage || 
-                  prevMessage.from_user !== message.from_user ||
-                  (new Date(message.timestamp) - new Date(prevMessage.timestamp)) > 300000;
+              {(messages?.messages || []).map((message, index) => {
+                const isOwn = message.by_user === currentUser.login;
+                const prevMessage = messages.messages[index - 1];
+                const isNewGroup = !prevMessage ||
+                  prevMessage.by_user !== message.by_user ||
+                  (new Date(message.date) - new Date(prevMessage.date)) > 300000;
 
                 return (
                   <MessageGroup key={message.id} $isOwn={isOwn}>
@@ -752,25 +752,20 @@ const Chat = () => {
                       {message.message && (
                         <div className="message-text">{message.message}</div>
                       )}
-                      {message.file && (
+                      {message.images && message.images.length > 0 && (
                         <div className="message-file">
-                          {message.file.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                            <img src={`/uploads/${message.file}`} alt="Вложение" />
-                          ) : (
-                            <a 
-                              href={`/uploads/${message.file}`} 
-                              className="file-link"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <AttachIcon />
-                              {message.file}
-                            </a>
-                          )}
+                          {message.images.map((image, idx) => (
+                            <img
+                              key={idx}
+                              src={`/uploads/${image}`}
+                              alt="Вложение"
+                              style={{ margin: '2px', maxWidth: '250px' }}
+                            />
+                          ))}
                         </div>
                       )}
                       <div className="message-time">
-                        {formatTime(message.timestamp)}
+                        {formatTime(message.date)}
                       </div>
                     </Message>
                   </MessageGroup>

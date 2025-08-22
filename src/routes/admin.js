@@ -2,14 +2,24 @@ const express = require('express');
 const { Op } = require('sequelize');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
-const { User, Chat, Likes, Ads, Reports } = require('../models');
+const {
+  User, Chat, Likes, Ads, Reports, Events, Notifications,
+  Gifts, Clubs, ClubApplications, Subscriptions
+} = require('../models');
+const { APILogger } = require('../utils/logger');
 
 // Middleware для проверки прав администратора
-const adminMiddleware = (req, res, next) => {
-  if (!req.user.is_admin) {
-    return res.status(403).json({ error: 'Доступ запрещен' });
+const adminMiddleware = async (req, res, next) => {
+  try {
+    const user = await User.findOne({ where: { login: req.user.login } });
+    if (!user || user.status !== 'ADMIN') {
+      return res.status(403).json({ error: 'Доступ запрещен' });
+    }
+    req.user.isAdmin = true;
+    next();
+  } catch (error) {
+    return res.status(500).json({ error: 'Ошибка проверки прав доступа' });
   }
-  next();
 };
 
 // Применяем middleware ко всем роутам
@@ -18,59 +28,139 @@ router.use(adminMiddleware);
 
 // Получение статистики
 router.get('/stats', async (req, res) => {
+  const logger = new APILogger('ADMIN');
+  
   try {
+    logger.logRequest(req, 'GET /admin/stats');
+    
+    const todayStart = new Date(new Date().setHours(0, 0, 0, 0));
+    
     const [
       totalUsers,
       activeUsers,
+      vipUsers,
+      premiumUsers,
       totalAds,
       pendingReports,
+      totalEvents,
+      totalClubs,
+      totalSubscriptions,
+      activeSubscriptions,
+      totalGifts,
+      unreadNotifications,
       todayRegistrations,
-      todayMessages
+      todayMessages,
+      todaySubscriptions,
+      todayGifts
     ] = await Promise.all([
       User.count(),
-      User.count({ where: { banned: false } }),
+      User.count({ where: { status: { [Op.ne]: 'BANNED' } } }),
+      User.count({ where: { viptype: 'VIP' } }),
+      User.count({ where: { viptype: 'PREMIUM' } }),
       Ads.count(),
       Reports.count({ where: { status: 'pending' } }),
+      Events.count(),
+      Clubs.count({ where: { is_active: true } }),
+      Subscriptions.count(),
+      Subscriptions.count({ where: { status: 'active' } }),
+      Gifts.count({ where: { is_valid: true } }),
+      Notifications.count({ where: { is_read: false } }),
       User.count({
         where: {
-          created_at: {
-            [Op.gte]: new Date(new Date().setHours(0, 0, 0, 0))
-          }
+          created_at: { [Op.gte]: todayStart }
         }
       }),
       Chat.count({
         where: {
-          timestamp: {
-            [Op.gte]: new Date(new Date().setHours(0, 0, 0, 0))
-          }
+          date: { [Op.gte]: todayStart }
+        }
+      }),
+      Subscriptions.count({
+        where: {
+          created_at: { [Op.gte]: todayStart }
+        }
+      }),
+      Gifts.count({
+        where: {
+          created_at: { [Op.gte]: todayStart }
         }
       })
     ]);
 
+    // Статистика по подпискам
+    const subscriptionStats = await Subscriptions.getSubscriptionStats();
+    
     // Последняя активность
     const recentActivity = await User.findAll({
-      attributes: ['login', 'last_seen', 'created_at'],
-      order: [['last_seen', 'DESC']],
+      attributes: ['login', 'online', 'created_at', 'viptype'],
+      order: [['online', 'DESC NULLS LAST'], ['created_at', 'DESC']],
       limit: 10
     });
 
     const activityFormatted = recentActivity.map(user => ({
       user: user.login,
-      timestamp: user.last_seen || user.created_at,
-      action: user.last_seen ? 'Вход в систему' : 'Регистрация'
+      timestamp: user.online || user.created_at,
+      action: user.online ? 'Последняя активность' : 'Регистрация',
+      vip_type: user.viptype
     }));
 
-    res.json({
-      total_users: totalUsers,
-      active_users: activeUsers,
-      total_ads: totalAds,
-      pending_reports: pendingReports,
-      today_registrations: todayRegistrations,
-      today_messages: todayMessages,
-      recent_activity: activityFormatted
+    // Популярные клубы
+    const popularClubs = await Clubs.getPopularClubs(5);
+    
+    // Последние события
+    const recentEvents = await Events.findAll({
+      limit: 5,
+      order: [['created_at', 'DESC']],
+      attributes: ['id', 'title', 'event_date', 'organizer', 'approved', 'current_participants']
     });
+
+    const responseData = {
+      overview: {
+        total_users: totalUsers,
+        active_users: activeUsers,
+        vip_users: vipUsers,
+        premium_users: premiumUsers,
+        total_ads: totalAds,
+        pending_reports: pendingReports,
+        total_events: totalEvents,
+        total_clubs: totalClubs,
+        total_subscriptions: totalSubscriptions,
+        active_subscriptions: activeSubscriptions,
+        total_gifts: totalGifts,
+        unread_notifications: unreadNotifications
+      },
+      today_stats: {
+        registrations: todayRegistrations,
+        messages: todayMessages,
+        subscriptions: todaySubscriptions,
+        gifts: todayGifts
+      },
+      subscription_stats: subscriptionStats,
+      recent_activity: activityFormatted,
+      popular_clubs: popularClubs.map(club => ({
+        id: club.id,
+        name: club.name,
+        members: club.current_members,
+        type: club.type
+      })),
+      recent_events: recentEvents.map(event => ({
+        id: event.id,
+        title: event.title,
+        date: event.event_date,
+        organizer: event.organizer,
+        approved: event.approved,
+        participants: event.current_participants
+      }))
+    };
+
+    logger.logSuccess(req, 200, {
+      total_users: totalUsers,
+      active_subscriptions: activeSubscriptions
+    });
+    
+    res.json(responseData);
   } catch (error) {
-    console.error('Ошибка получения статистики:', error);
+    logger.logError(req, error);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
@@ -101,15 +191,25 @@ router.get('/users', async (req, res) => {
     const users = await User.findAll({
       where: whereClause,
       attributes: [
-        'id', 'login', 'email', 'created_at', 'last_seen', 
-        'banned', 'verified', 'is_admin', 'city', 'status'
+        'id', 'login', 'email', 'name', 'created_at', 'online',
+        'status', 'viptype', 'city', 'balance', 'vip_expires_at'
       ],
       order: [['created_at', 'DESC']],
       limit: parseInt(limit),
       offset: parseInt(offset)
     });
 
-    res.json(users);
+    const totalCount = await User.count({ where: whereClause });
+
+    res.json({
+      users,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: totalCount,
+        pages: Math.ceil(totalCount / parseInt(limit))
+      }
+    });
   } catch (error) {
     console.error('Ошибка получения пользователей:', error);
     res.status(500).json({ error: 'Ошибка сервера' });
@@ -118,48 +218,147 @@ router.get('/users', async (req, res) => {
 
 // Действия с пользователями
 router.post('/users/:userId/action', async (req, res) => {
+  const logger = new APILogger('ADMIN');
+  
   try {
+    logger.logRequest(req, 'POST /admin/users/:userId/action');
+    
     const { userId } = req.params;
-    const { action } = req.body;
+    const { action, reason } = req.body;
 
-    const user = await User.findByPk(userId);
+    const user = await User.findOne({ where: { login: userId } });
     if (!user) {
       return res.status(404).json({ error: 'Пользователь не найден' });
     }
 
     // Нельзя действовать с другими администраторами
-    if (user.is_admin && user.id !== req.user.id) {
+    if (user.status === 'ADMIN' && user.login !== req.user.login) {
       return res.status(403).json({ error: 'Нельзя выполнить действие с администратором' });
     }
 
+    logger.logBusinessLogic(1, 'Административное действие с пользователем', {
+      admin: req.user.login,
+      target_user: userId,
+      action,
+      reason
+    }, req);
+
     switch (action) {
       case 'ban':
-        await user.update({ banned: true });
+        await user.update({ status: 'BANNED' });
+        
+        // Создаем уведомление
+        await Notifications.createNotification({
+          user_id: userId,
+          type: 'ban',
+          title: 'Аккаунт заблокирован',
+          message: reason ? `Ваш аккаунт заблокирован. Причина: ${reason}` : 'Ваш аккаунт заблокирован',
+          from_user: req.user.login,
+          priority: 'urgent'
+        });
         break;
       
       case 'unban':
-        await user.update({ banned: false });
+        await user.update({ status: 'ACTIVE' });
+        
+        await Notifications.createNotification({
+          user_id: userId,
+          type: 'unban',
+          title: 'Аккаунт разблокирован',
+          message: 'Ваш аккаунт был разблокирован',
+          from_user: req.user.login,
+          priority: 'high'
+        });
         break;
       
-      case 'verify':
-        await user.update({ verified: true });
+      case 'set_vip':
+        await user.update({
+          viptype: 'VIP',
+          vip_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 дней
+        });
+        
+        await Notifications.createNotification({
+          user_id: userId,
+          type: 'premium',
+          title: 'VIP статус присвоен',
+          message: 'Вам присвоен VIP статус на 30 дней',
+          from_user: req.user.login,
+          priority: 'high'
+        });
+        break;
+      
+      case 'set_premium':
+        await user.update({
+          viptype: 'PREMIUM',
+          vip_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 дней
+        });
+        
+        await Notifications.createNotification({
+          user_id: userId,
+          type: 'premium',
+          title: 'Premium статус присвоен',
+          message: 'Вам присвоен Premium статус на 30 дней',
+          from_user: req.user.login,
+          priority: 'high'
+        });
+        break;
+      
+      case 'remove_vip':
+        await user.update({
+          viptype: 'FREE',
+          vip_expires_at: null
+        });
+        break;
+      
+      case 'add_balance':
+        const amount = parseFloat(req.body.amount) || 0;
+        if (amount > 0) {
+          await user.update({
+            balance: parseFloat(user.balance) + amount
+          });
+          
+          await Notifications.createNotification({
+            user_id: userId,
+            type: 'system',
+            title: 'Баланс пополнен',
+            message: `Ваш баланс пополнен на ${amount} руб.`,
+            from_user: req.user.login,
+            priority: 'normal'
+          });
+        }
         break;
       
       case 'delete':
         // Удаляем связанные данные
-        await Chat.destroy({ where: { 
-          [Op.or]: [
-            { from_user: user.login },
-            { to_user: user.login }
-          ]
-        }});
-        await Likes.destroy({ where: {
-          [Op.or]: [
-            { from_user: user.login },
-            { target_user: user.login }
-          ]
-        }});
-        await Ads.destroy({ where: { author: user.login } });
+        await Promise.all([
+          Chat.destroy({ where: {
+            [Op.or]: [
+              { by_user: user.login },
+              { to_user: user.login }
+            ]
+          }}),
+          Likes.destroy({ where: {
+            [Op.or]: [
+              { like_from: user.login },
+              { like_to: user.login }
+            ]
+          }}),
+          Ads.destroy({ where: { author: user.login } }),
+          Gifts.destroy({ where: {
+            [Op.or]: [
+              { owner: user.login },
+              { from_user: user.login }
+            ]
+          }}),
+          Notifications.destroy({ where: {
+            [Op.or]: [
+              { user_id: user.login },
+              { from_user: user.login }
+            ]
+          }}),
+          Subscriptions.destroy({ where: { user_id: user.login } })
+        ]);
+        
         await user.destroy();
         break;
       
@@ -167,9 +366,14 @@ router.post('/users/:userId/action', async (req, res) => {
         return res.status(400).json({ error: 'Неизвестное действие' });
     }
 
+    logger.logResult('Административное действие', true, {
+      action,
+      target_user: userId
+    }, req);
+
     res.json({ message: 'Действие выполнено успешно' });
   } catch (error) {
-    console.error('Ошибка выполнения действия:', error);
+    logger.logError(req, error);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
@@ -433,6 +637,208 @@ router.post('/bulk-action', async (req, res) => {
     });
   } catch (error) {
     console.error('Ошибка массового действия:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Управление событиями
+router.get('/events', async (req, res) => {
+  const logger = new APILogger('ADMIN');
+  
+  try {
+    logger.logRequest(req, 'GET /admin/events');
+    
+    const { search = '', status = '', approved = '', page = 1, limit = 50 } = req.query;
+    const offset = (page - 1) * limit;
+
+    const whereClause = {};
+    
+    if (search) {
+      whereClause[Op.or] = [
+        { title: { [Op.iLike]: `%${search}%` } },
+        { organizer: { [Op.iLike]: `%${search}%` } }
+      ];
+    }
+
+    if (status) {
+      whereClause.status = status;
+    }
+    
+    if (approved === 'true') {
+      whereClause.approved = true;
+    } else if (approved === 'false') {
+      whereClause.approved = false;
+    }
+
+    const events = await Events.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: User,
+          as: 'OrganizerUser',
+          attributes: ['login', 'name', 'viptype']
+        }
+      ],
+      order: [['created_at', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    const totalCount = await Events.count({ where: whereClause });
+
+    logger.logSuccess(req, 200, {
+      events_count: events.length,
+      total_count: totalCount
+    });
+
+    res.json({
+      events,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: totalCount,
+        pages: Math.ceil(totalCount / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    logger.logError(req, error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Отправка системных уведомлений
+router.post('/notifications/broadcast', async (req, res) => {
+  const logger = new APILogger('ADMIN');
+  
+  try {
+    logger.logRequest(req, 'POST /admin/notifications/broadcast');
+    
+    const {
+      target_users = 'all',
+      title,
+      message,
+      type = 'system',
+      priority = 'normal'
+    } = req.body;
+
+    if (!title || !message) {
+      return res.status(400).json({
+        error: 'missing_data',
+        message: 'Укажите заголовок и текст уведомления'
+      });
+    }
+
+    logger.logBusinessLogic(1, 'Массовая рассылка уведомлений', {
+      admin: req.user.login,
+      target_users,
+      type,
+      priority
+    }, req);
+
+    // Отправляем всем или выбранным пользователям
+    let targetUserIds = [];
+    
+    if (target_users === 'all') {
+      const allUsers = await User.findAll({
+        attributes: ['login'],
+        where: { status: ['ACTIVE', 'VIP', 'PREMIUM'] }
+      });
+      targetUserIds = allUsers.map(u => u.login);
+    } else if (Array.isArray(target_users)) {
+      targetUserIds = target_users;
+    }
+
+    // Создаем уведомления для каждого пользователя
+    const notifications = [];
+    for (const userId of targetUserIds) {
+      try {
+        const notification = await Notifications.createNotification({
+          user_id: userId,
+          type,
+          title,
+          message,
+          from_user: req.user.login,
+          priority
+        });
+        notifications.push(notification);
+      } catch (error) {
+        console.error(`Ошибка создания уведомления для ${userId}:`, error);
+      }
+    }
+
+    logger.logResult('Массовая рассылка', true, {
+      sent_count: notifications.length,
+      target_count: targetUserIds.length
+    }, req);
+
+    res.json({
+      success: true,
+      sent_count: notifications.length,
+      target_count: targetUserIds.length,
+      message: `Отправлено ${notifications.length} уведомлений`
+    });
+  } catch (error) {
+    logger.logError(req, error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Управление подписками
+router.get('/subscriptions', async (req, res) => {
+  const logger = new APILogger('ADMIN');
+  
+  try {
+    logger.logRequest(req, 'GET /admin/subscriptions');
+    
+    const { search = '', status = '', type = '', page = 1, limit = 50 } = req.query;
+    const offset = (page - 1) * limit;
+
+    const whereClause = {};
+    
+    if (search) {
+      whereClause.user_id = { [Op.iLike]: `%${search}%` };
+    }
+
+    if (status) {
+      whereClause.status = status;
+    }
+    
+    if (type) {
+      whereClause.subscription_type = type;
+    }
+
+    const subscriptions = await Subscriptions.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: User,
+          as: 'User',
+          attributes: ['login', 'name', 'email', 'viptype']
+        }
+      ],
+      order: [['created_at', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    const totalCount = await Subscriptions.count({ where: whereClause });
+
+    logger.logSuccess(req, 200, {
+      subscriptions_count: subscriptions.length,
+      total_count: totalCount
+    });
+
+    res.json({
+      subscriptions,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: totalCount,
+        pages: Math.ceil(totalCount / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    logger.logError(req, error);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
