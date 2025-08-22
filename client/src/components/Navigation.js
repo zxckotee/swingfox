@@ -312,9 +312,66 @@ const Navigation = () => {
   const queryClient = useQueryClient();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const userMenuRef = useRef(null);
   
-  const currentUser = apiUtils.getCurrentUser();
+  // Получаем актуальные данные пользователя при монтировании
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const user = apiUtils.getCurrentUser();
+        if (user) {
+          setCurrentUser(user);
+          
+          // Если нет аватарки в кэше, пытаемся обновить данные
+          if (!user.ava) {
+            const updatedUser = await apiUtils.refreshCurrentUser();
+            if (updatedUser) {
+              setCurrentUser(updatedUser);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Ошибка получения данных пользователя:', error);
+        setCurrentUser(apiUtils.getCurrentUser());
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  // Подписываемся на изменения в localStorage для синхронизации между табами
+  useEffect(() => {
+    const handleStorageChange = (event) => {
+      if (event.key === 'swingfox_user_cache' || event.key === 'swingfox_token') {
+        const user = apiUtils.getCurrentUser();
+        setCurrentUser(user);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Функция для принудительного обновления данных пользователя
+  const refreshUserData = async () => {
+    try {
+      const updatedUser = await apiUtils.refreshCurrentUser();
+      if (updatedUser) {
+        setCurrentUser(updatedUser);
+      }
+    } catch (error) {
+      console.warn('Ошибка обновления данных пользователя:', error);
+    }
+  };
+
+  // Добавляем глобальный обработчик для обновления навигации
+  useEffect(() => {
+    window.refreshNavigation = refreshUserData;
+    return () => {
+      delete window.refreshNavigation;
+    };
+  }, []);
 
   const handleLogout = () => {
     if (window.confirm('Выйти из аккаунта?')) {

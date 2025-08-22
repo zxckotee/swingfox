@@ -13,16 +13,55 @@ const api = axios.create({
 // URL для загрузок
 const UPLOADS_URL = process.env.REACT_APP_UPLOADS_URL || '/uploads';
 
+// Ключи для localStorage
+const TOKEN_KEY = 'swingfox_token';
+const USER_CACHE_KEY = 'swingfox_user_cache';
+
 // Получение токена из localStorage
-const getToken = () => localStorage.getItem('swingfox_token');
+const getToken = () => localStorage.getItem(TOKEN_KEY);
 
 // Сохранение токена
 const setToken = (token) => {
   if (token) {
-    localStorage.setItem('swingfox_token', token);
+    localStorage.setItem(TOKEN_KEY, token);
   } else {
-    localStorage.removeItem('swingfox_token');
+    localStorage.removeItem(TOKEN_KEY);
+    // При удалении токена также очищаем кэш пользователя
+    clearUserCache();
   }
+};
+
+// Работа с кэшем данных пользователя
+const getUserCache = () => {
+  try {
+    const cached = localStorage.getItem(USER_CACHE_KEY);
+    return cached ? JSON.parse(cached) : null;
+  } catch (error) {
+    console.warn('Ошибка парсинга кэша пользователя:', error);
+    return null;
+  }
+};
+
+const setUserCache = (userData) => {
+  try {
+    localStorage.setItem(USER_CACHE_KEY, JSON.stringify({
+      ...userData,
+      cachedAt: Date.now()
+    }));
+  } catch (error) {
+    console.warn('Ошибка сохранения кэша пользователя:', error);
+  }
+};
+
+const clearUserCache = () => {
+  localStorage.removeItem(USER_CACHE_KEY);
+};
+
+// Проверка актуальности кэша (15 минут)
+const isCacheValid = (cachedData) => {
+  if (!cachedData || !cachedData.cachedAt) return false;
+  const CACHE_LIFETIME = 15 * 60 * 1000; // 15 минут
+  return (Date.now() - cachedData.cachedAt) < CACHE_LIFETIME;
 };
 
 // Интерцептор для добавления токена к запросам
@@ -58,6 +97,10 @@ export const authAPI = {
     const response = await api.post('/auth/login', credentials);
     if (response.data.token) {
       setToken(response.data.token);
+      // Кэшируем данные пользователя при логине
+      if (response.data.user) {
+        setUserCache(response.data.user);
+      }
     }
     return response.data;
   },
@@ -66,6 +109,10 @@ export const authAPI = {
     const response = await api.post('/auth/register', userData);
     if (response.data.token) {
       setToken(response.data.token);
+      // Кэшируем данные пользователя при регистрации
+      if (response.data.user) {
+        setUserCache(response.data.user);
+      }
     }
     return response.data;
   },
@@ -93,14 +140,72 @@ export const authAPI = {
     if (!token) return null;
     
     try {
+      // Сначала получаем базовые данные из токена
       const payload = JSON.parse(atob(token.split('.')[1]));
-      return {
+      const baseUser = {
         userId: payload.userId,
         login: payload.login,
         vipType: payload.vipType
       };
+
+      // Пытаемся дополнить данные из кэша
+      const cachedUser = getUserCache();
+      if (cachedUser && isCacheValid(cachedUser) && cachedUser.login === baseUser.login) {
+        return {
+          ...baseUser,
+          ava: cachedUser.ava,
+          email: cachedUser.email,
+          status: cachedUser.status,
+          city: cachedUser.city,
+          country: cachedUser.country,
+          is_admin: cachedUser.is_admin || false
+        };
+      }
+
+      // Если кэш недоступен или устарел, возвращаем базовые данные
+      return baseUser;
     } catch {
       return null;
+    }
+  },
+
+  // Новый метод для получения актуальных данных пользователя
+  fetchCurrentUserData: async () => {
+    const baseUser = authAPI.getCurrentUser();
+    if (!baseUser || !baseUser.login) return null;
+
+    try {
+      const response = await api.get(`/users/profile/${baseUser.login}`);
+      const userData = response.data;
+      
+      // Обновляем кэш с актуальными данными
+      setUserCache({
+        id: userData.id,
+        login: userData.login,
+        ava: userData.ava,
+        email: baseUser.email, // email не возвращается в профиле
+        status: userData.status,
+        city: userData.city,
+        country: userData.country,
+        viptype: userData.viptype,
+        is_admin: baseUser.is_admin
+      });
+
+      return authAPI.getCurrentUser(); // Возвращаем обновленные данные
+    } catch (error) {
+      console.warn('Ошибка получения актуальных данных пользователя:', error);
+      return baseUser; // Возвращаем данные из токена при ошибке
+    }
+  },
+
+  // Метод для обновления данных пользователя в кэше
+  updateUserCache: (updates) => {
+    const currentUser = getUserCache();
+    if (currentUser) {
+      setUserCache({
+        ...currentUser,
+        ...updates
+      });
     }
   }
 };
@@ -109,11 +214,34 @@ export const authAPI = {
 export const usersAPI = {
   getProfile: async (login) => {
     const response = await api.get(`/users/profile/${login}`);
+    
+    // Обновляем кэш, если это профиль текущего пользователя
+    const currentUser = authAPI.getCurrentUser();
+    if (currentUser && currentUser.login === login) {
+      authAPI.updateUserCache({
+        ava: response.data.ava,
+        status: response.data.status,
+        city: response.data.city,
+        country: response.data.country,
+        viptype: response.data.viptype
+      });
+    }
+    
     return response.data;
   },
 
   updateProfile: async (profileData) => {
     const response = await api.put('/users/profile', profileData);
+    
+    // Обновляем кэш после успешного обновления профиля
+    if (response.data.success && response.data.user) {
+      authAPI.updateUserCache({
+        status: response.data.user.status,
+        city: response.data.user.city,
+        country: response.data.user.country
+      });
+    }
+    
     return response.data;
   },
 
@@ -121,6 +249,14 @@ export const usersAPI = {
     const response = await api.post('/users/upload-avatar', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
+    
+    // Обновляем кэш после успешной загрузки аватарки
+    if (response.data.success && response.data.filename) {
+      authAPI.updateUserCache({
+        ava: response.data.filename
+      });
+    }
+    
     return response.data;
   },
 
@@ -142,9 +278,9 @@ export const usersAPI = {
   },
 
   unlockImages: async (targetUser, password) => {
-    const response = await api.post('/users/unlock-images', { 
-      target_user: targetUser, 
-      password 
+    const response = await api.post('/users/unlock-images', {
+      target_user: targetUser,
+      password
     });
     return response.data;
   }
@@ -318,6 +454,17 @@ export const apiUtils = {
   getCurrentUser: authAPI.getCurrentUser,
   
   logout: authAPI.logout,
+
+  // Принудительное обновление данных пользователя
+  refreshCurrentUser: async () => {
+    return await authAPI.fetchCurrentUserData();
+  },
+
+  // Обновление кэша пользователя
+  updateUserCache: authAPI.updateUserCache,
+
+  // Очистка кэша пользователя
+  clearUserCache,
 
   // Создание FormData для загрузки файлов
   createFormData: (data) => {

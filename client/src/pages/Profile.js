@@ -426,6 +426,11 @@ const Profile = () => {
     onSuccess: () => {
       toast.success('Профиль обновлен!');
       queryClient.invalidateQueries(['profile']);
+      
+      // Обновляем навигацию при изменении профиля
+      if (window.refreshNavigation) {
+        window.refreshNavigation();
+      }
     },
     onError: (error) => {
       toast.error(apiUtils.handleError(error));
@@ -436,6 +441,11 @@ const Profile = () => {
     onSuccess: () => {
       toast.success('Аватар обновлен!');
       queryClient.invalidateQueries(['profile']);
+      
+      // Обновляем навигацию
+      if (window.refreshNavigation) {
+        window.refreshNavigation();
+      }
     },
     onError: (error) => {
       toast.error(apiUtils.handleError(error));
