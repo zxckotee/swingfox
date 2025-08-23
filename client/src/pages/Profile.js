@@ -8,6 +8,9 @@ import toast from 'react-hot-toast';
 import { usersAPI, swipeAPI, chatAPI, giftsAPI, ratingAPI, apiUtils } from '../services/api';
 import { LocationSelector } from '../components/Geography';
 import RatingDisplay from '../components/RatingDisplay';
+import PhotoComments from '../components/PhotoComments';
+import ProfileComments from '../components/ProfileComments';
+import Reactions from '../components/Reactions';
 import {
   PageContainer,
   ContentCard,
@@ -908,6 +911,24 @@ const Profile = () => {
                       <InfoItem>{profile.looking_for}</InfoItem>
                     </InfoSection>
                   )}
+                  
+                  {/* Комментарии к профилю */}
+                  <div style={{ marginTop: '30px' }}>
+                    <ProfileComments 
+                      username={login} 
+                      currentUser={currentUser?.login}
+                      isOwnProfile={isOwnProfile}
+                    />
+                  </div>
+                  
+                  {/* Реакции на профиль */}
+                  <div style={{ marginTop: '20px' }}>
+                    <Reactions 
+                      objectType="profile" 
+                      objectId={login} 
+                      currentUser={currentUser?.login}
+                    />
+                  </div>
                 </div>
               )}
             </div>
@@ -955,6 +976,62 @@ const Profile = () => {
                   </ImageCard>
                 ))}
               </ImageGallery>
+              
+              {/* Комментарии к фотографиям */}
+              {profile?.images?.length > 0 && (
+                <div style={{ marginTop: '30px' }}>
+                  <h3 style={{ marginBottom: '20px', color: '#2d3748' }}>
+                    Комментарии к фотографиям
+                  </h3>
+                  {profile.images.map((image, index) => (
+                    <div key={index} style={{ marginBottom: '30px' }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '15px', 
+                        marginBottom: '15px',
+                        padding: '15px',
+                        background: '#f7fafc',
+                        borderRadius: '12px'
+                      }}>
+                        <img 
+                          src={`/uploads/${image}`} 
+                          alt={`Фото ${index + 1}`}
+                          style={{
+                            width: '80px',
+                            height: '80px',
+                            objectFit: 'cover',
+                            borderRadius: '8px',
+                            border: '2px solid #e2e8f0'
+                          }}
+                        />
+                        <div>
+                          <h4 style={{ margin: '0 0 5px 0', color: '#2d3748' }}>
+                            Фото {index + 1}
+                          </h4>
+                          <p style={{ margin: 0, color: '#718096', fontSize: '14px' }}>
+                            Нажмите на фото для просмотра
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <PhotoComments 
+                        filename={image} 
+                        currentUser={currentUser?.login}
+                      />
+                      
+                      {/* Реакции на фотографию */}
+                      <div style={{ marginTop: '20px' }}>
+                        <Reactions 
+                          objectType="image" 
+                          objectId={image} 
+                          currentUser={currentUser?.login}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

@@ -16,6 +16,9 @@ const ClubApplications = require('./ClubApplications');
 const Subscriptions = require('./Subscriptions');
 const PhotoLike = require('./PhotoLike');
 const ProfileVisit = require('./ProfileVisit');
+const PhotoComments = require('./PhotoComments');
+const ProfileComments = require('./ProfileComments');
+const Reactions = require('./Reactions');
 
 // Определение ассоциаций между моделями
 
@@ -153,6 +156,9 @@ const ClubApplicationsModel = ClubApplications(sequelize);
 const SubscriptionsModel = Subscriptions(sequelize);
 const PhotoLikeModel = PhotoLike(sequelize);
 const ProfileVisitModel = ProfileVisit(sequelize);
+const PhotoCommentsModel = PhotoComments(sequelize);
+const ProfileCommentsModel = ProfileComments(sequelize);
+const ReactionsModel = Reactions(sequelize);
 
 // Ассоциации для новых моделей
 if (GiftsModel.associate) GiftsModel.associate({ User });
@@ -166,6 +172,9 @@ if (Events.associate) Events.associate({ User, Clubs: ClubsModel });
 if (SubscriptionsModel.associate) SubscriptionsModel.associate({ User });
 if (PhotoLikeModel.associate) PhotoLikeModel.associate({ User });
 if (ProfileVisitModel.associate) ProfileVisitModel.associate({ User });
+if (PhotoCommentsModel.associate) PhotoCommentsModel.associate({ User });
+if (ProfileCommentsModel.associate) ProfileCommentsModel.associate({ User });
+if (ReactionsModel.associate) ReactionsModel.associate({ User });
 
 module.exports = {
   sequelize,
@@ -185,5 +194,8 @@ module.exports = {
   ClubApplications: ClubApplicationsModel,
   Subscriptions: SubscriptionsModel,
   PhotoLike: PhotoLikeModel,
-  ProfileVisit: ProfileVisitModel
+  ProfileVisit: ProfileVisitModel,
+  PhotoComments: PhotoCommentsModel,
+  ProfileComments: ProfileCommentsModel,
+  Reactions: ReactionsModel
 };

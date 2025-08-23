@@ -53,6 +53,9 @@ const clubsRoutes = require('./src/routes/clubs');
 const subscriptionsRoutes = require('./src/routes/subscriptions');
 const ratingRoutes = require('./src/routes/rating');
 const profilesRoutes = require('./src/routes/profiles');
+const photoCommentsRoutes = require('./src/routes/photo-comments');
+const profileCommentsRoutes = require('./src/routes/profile-comments');
+const reactionsRoutes = require('./src/routes/reactions');
 
 // Подключение роутов
 app.use('/api/auth', authRoutes);
@@ -70,6 +73,9 @@ app.use('/api/clubs', clubsRoutes);
 app.use('/api/subscriptions', subscriptionsRoutes);
 app.use('/api/rating', ratingRoutes);
 app.use('/api/profiles', profilesRoutes);
+app.use('/api/photo-comments', photoCommentsRoutes);
+app.use('/api/profile-comments', profileCommentsRoutes);
+app.use('/api/reactions', reactionsRoutes);
 
 // Проверка статуса API
 app.get('/api/status', (req, res) => {

@@ -309,6 +309,84 @@ export const usersAPI = {
     return response.data;
   },
 
+  // Комментарии к фотографиям
+  getPhotoComments: async (filename, page = 1, limit = 20) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString()
+    });
+    const response = await apiClient.get(`/photo-comments/${filename}?${params.toString()}`);
+    return response.data;
+  },
+
+  createPhotoComment: async (filename, commentText) => {
+    console.log('API createPhotoComment called with:', { filename, commentText });
+    console.log('Filename type:', typeof filename, 'Value:', filename);
+    
+    if (typeof filename !== 'string') {
+      console.error('Filename is not a string:', filename);
+      throw new Error('Filename must be a string');
+    }
+    
+    const response = await apiClient.post(`/photo-comments/${filename}`, {
+      comment_text: commentText
+    });
+    return response.data;
+  },
+
+  updatePhotoComment: async (commentId, commentText) => {
+    const response = await apiClient.put(`/photo-comments/${commentId}`, {
+      comment_text: commentText
+    });
+    return response.data;
+  },
+
+  deletePhotoComment: async (commentId) => {
+    const response = await apiClient.delete(`/photo-comments/${commentId}`);
+    return response.data;
+  },
+
+  // Комментарии к профилям
+  getProfileComments: async (username, page = 1, limit = 20, includePrivate = false) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString()
+    });
+    if (includePrivate) {
+      params.append('include_private', 'true');
+    }
+    const response = await apiClient.get(`/profile-comments/${username}?${params.toString()}`);
+    return response.data;
+  },
+
+  createProfileComment: async (username, commentText, isPublic = true) => {
+    console.log('API createProfileComment called with:', { username, commentText, isPublic });
+    console.log('Username type:', typeof username, 'Value:', username);
+    
+    if (typeof username !== 'string') {
+      console.error('Username is not a string:', username);
+      throw new Error('Username must be a string');
+    }
+    
+    const response = await apiClient.post(`/profile-comments/${username}`, {
+      comment_text: commentText,
+      is_public: isPublic
+    });
+    return response.data;
+  },
+
+  updateProfileComment: async (commentId, commentText) => {
+    const response = await apiClient.put(`/profile-comments/${commentId}`, {
+      comment_text: commentText
+    });
+    return response.data;
+  },
+
+  deleteProfileComment: async (commentId) => {
+    const response = await apiClient.delete(`/profile-comments/${commentId}`);
+    return response.data;
+  },
+
   // Отправка подарков
   sendGift: async (targetUser, giftType, message = '') => {
     const response = await apiClient.post(`/profiles/${targetUser}/send-gift`, {
@@ -817,6 +895,44 @@ export const ratingAPI = {
   }
 };
 
+// API методы для реакций
+export const reactionsAPI = {
+  getObjectReactions: async (objectType, objectId) => {
+    const response = await apiClient.get(`/reactions/${objectType}/${objectId}`);
+    return response.data;
+  },
+
+  setReaction: async (objectType, objectId, reactionType, value = 1) => {
+    const response = await apiClient.post(`/reactions/${objectType}/${objectId}`, {
+      reaction_type: reactionType,
+      value
+    });
+    return response.data;
+  },
+
+  removeReaction: async (objectType, objectId) => {
+    const response = await apiClient.delete(`/reactions/${objectType}/${objectId}`);
+    return response.data;
+  },
+
+  getUserReactions: async (username, page = 1, limit = 20, objectType = null) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString()
+    });
+    if (objectType) {
+      params.append('object_type', objectType);
+    }
+    const response = await apiClient.get(`/reactions/user/${username}?${params.toString()}`);
+    return response.data;
+  },
+
+  getReactionStats: async (objectType, objectId) => {
+    const response = await apiClient.get(`/reactions/stats/${objectType}/${objectId}`);
+    return response.data;
+  }
+};
+
 // Расширенные API методы для загрузок
 export const uploadsAPI = {
   uploadAvatar: async (formData) => {
@@ -989,6 +1105,7 @@ export const api = {
   clubs: clubsAPI,
   subscriptions: subscriptionsAPI,
   rating: ratingAPI,
+  reactions: reactionsAPI,
   uploads: uploadsAPI,
   utils: apiUtils
 };
