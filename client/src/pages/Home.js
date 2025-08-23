@@ -506,7 +506,7 @@ const Home = () => {
   );
 
   const superlikeMutation = useMutation(
-    ({ targetUser, message }) => swipeAPI.superlike(targetUser, message),
+    ({ targetUser, message }) => swipeAPI.superlike({ targetUser, message }),
     {
       onSuccess: (data) => {
         setShowSuperlikeModal(false);

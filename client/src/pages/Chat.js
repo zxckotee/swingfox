@@ -14,7 +14,7 @@ import {
   PlusIcon
 } from '../components/UI';
 
-// Дополнительные иконки
+// Иконки
 const BackIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M19 12H6m6-7l-7 7 7 7"/>
@@ -35,20 +35,23 @@ const MoreIcon = () => (
   </svg>
 );
 
+// Стили
 const ChatContainer = styled(PageContainer)`
   display: flex;
   height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
   padding: 0;
+  overflow: hidden;
 `;
 
 const ChatSidebar = styled.div`
-  width: 380px;
-  background: white;
-  border-right: 1px solid #e2e8f0;
+  width: 400px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
   display: flex;
   flex-direction: column;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   
   @media (max-width: 768px) {
     width: ${props => props.$selectedChat ? '0' : '100%'};
@@ -60,55 +63,57 @@ const ChatSidebar = styled.div`
 `;
 
 const ChatHeader = styled.div`
-  padding: 25px 20px;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 30px 25px;
   background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
   color: white;
+  text-align: center;
   
   h3 {
-    margin: 0 0 5px 0;
-    font-size: 24px;
+    margin: 0 0 8px 0;
+    font-size: 28px;
     font-weight: 700;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
   
   p {
     margin: 0;
     opacity: 0.9;
-    font-size: 14px;
+    font-size: 16px;
+    font-weight: 300;
   }
   
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 25px 20px;
     
     h3 {
-      font-size: 20px;
+      font-size: 24px;
     }
   }
 `;
 
 const SearchContainer = styled.div`
-  padding: 20px;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 20px 25px;
+  background: rgba(255, 255, 255, 0.8);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 `;
 
 const SearchInput = styled.div`
   position: relative;
   
-  input {
-    width: 100%;
-    padding: 12px 16px 12px 45px;
-    border: 2px solid #e2e8f0;
-    border-radius: 25px;
-    font-size: 14px;
-    background: #f7fafc;
-    transition: all 0.3s ease;
-    
-    &:focus {
-      outline: none;
-      border-color: #dc3522;
+      input {
+      width: 100%;
+      padding: 15px 20px 15px 50px;
+      border: 2px solid rgba(220, 53, 34, 0.2);
+      border-radius: 25px;
+      font-size: 16px;
       background: white;
-      box-shadow: 0 0 0 3px rgba(220, 53, 34, 0.1);
-    }
+      transition: all 0.3s ease;
+      
+      &:focus {
+        outline: none;
+        border-color: #dc3522;
+        box-shadow: 0 0 0 3px rgba(220, 53, 34, 0.1);
+      }
     
     &::placeholder {
       color: #a0aec0;
@@ -117,7 +122,7 @@ const SearchInput = styled.div`
   
   .search-icon {
     position: absolute;
-    left: 15px;
+    left: 18px;
     top: 50%;
     transform: translateY(-50%);
     color: #a0aec0;
@@ -127,6 +132,7 @@ const SearchInput = styled.div`
 const ChatsContainer = styled.div`
   flex: 1;
   overflow-y: auto;
+  background: white;
   
   &::-webkit-scrollbar {
     width: 6px;
@@ -137,17 +143,17 @@ const ChatsContainer = styled.div`
   }
   
   &::-webkit-scrollbar-thumb {
-    background: #cbd5e0;
+    background: #c1c1c1;
     border-radius: 3px;
   }
   
   &::-webkit-scrollbar-thumb:hover {
-    background: #a0aec0;
+    background: #a8a8a8;
   }
 `;
 
 const ChatItem = styled.div`
-  padding: 16px 20px;
+  padding: 20px 25px;
   border-bottom: 1px solid #f7fafc;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -171,29 +177,34 @@ const ChatItem = styled.div`
     
     .name {
       font-weight: 600;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
       color: #2d3748;
-      font-size: 15px;
+      font-size: 16px;
     }
     
     .last-message {
       color: #718096;
-      font-size: 13px;
+      font-size: 14px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      line-height: 1.3;
+      line-height: 1.4;
+      
+              .new-match-indicator {
+          color: #dc3522;
+          font-weight: 600;
+        }
     }
     
     .time {
       font-size: 12px;
       color: #a0aec0;
-      margin-top: 2px;
+      margin-top: 4px;
     }
   }
   
   .unread-badge {
-    background: #dc3522;
+    background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
     color: white;
     border-radius: 12px;
     width: 24px;
@@ -204,20 +215,42 @@ const ChatItem = styled.div`
     font-size: 12px;
     font-weight: bold;
     position: absolute;
-    top: 12px;
-    right: 15px;
+    top: 15px;
+    right: 20px;
+  }
+  
+  .new-match-badge {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff8e8e 100%);
+    color: white;
+    border-radius: 12px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
   }
   
   @media (max-width: 768px) {
-    padding: 12px 15px;
+    padding: 15px 20px;
     
     .chat-info {
       .name {
-        font-size: 14px;
+        font-size: 15px;
       }
       
       .last-message {
-        font-size: 12px;
+        font-size: 13px;
       }
     }
   }
@@ -227,7 +260,8 @@ const ChatWindow = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: white;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
   
   @media (max-width: 768px) {
     width: ${props => props.$selectedChat ? '100%' : '0'};
@@ -238,18 +272,17 @@ const ChatWindow = styled.div`
 `;
 
 const ChatWindowHeader = styled.div`
-  padding: 20px 25px;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 20px 30px;
   background: white;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   display: flex;
   align-items: center;
   gap: 15px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
   
   .back-button {
-    display: none;
-    @media (max-width: 768px) {
-      display: flex;
+    @media (min-width: 769px) {
+      display: none;
     }
   }
   
@@ -258,32 +291,25 @@ const ChatWindowHeader = styled.div`
     
     .name {
       font-weight: 600;
-      margin-bottom: 2px;
       color: #2d3748;
       font-size: 18px;
+      margin-bottom: 2px;
     }
     
     .status {
-      font-size: 13px;
-      color: #718096;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
+      font-size: 14px;
+      color: #718096;
       
       .online-dot {
         width: 8px;
         height: 8px;
         background: #48bb78;
         border-radius: 50%;
+        animation: pulse 2s infinite;
       }
-    }
-  }
-  
-  @media (max-width: 768px) {
-    padding: 15px 20px;
-    
-    .user-info .name {
-      font-size: 16px;
     }
   }
 `;
@@ -292,195 +318,154 @@ const MessagesContainer = styled.div`
   flex: 1;
   overflow-y: auto;
   padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
   
   &::-webkit-scrollbar {
     width: 6px;
   }
   
   &::-webkit-scrollbar-track {
-    background: transparent;
+    background: #f1f1f1;
   }
   
   &::-webkit-scrollbar-thumb {
-    background: #cbd5e0;
+    background: #c1c1c1;
     border-radius: 3px;
   }
   
-  @media (max-width: 768px) {
-    padding: 15px;
-    gap: 12px;
+  &::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
   }
 `;
 
 const MessageGroup = styled.div`
   display: flex;
-  flex-direction: column;
-  align-items: ${props => props.$isOwn ? 'flex-end' : 'flex-start'};
-  gap: 4px;
-  max-width: 80%;
-  align-self: ${props => props.$isOwn ? 'flex-end' : 'flex-start'};
+  justify-content: ${props => props.$isOwn ? 'flex-end' : 'flex-start'};
+  margin-bottom: 20px;
 `;
 
 const Message = styled.div`
-  padding: 12px 16px;
-  border-radius: 18px;
-  background: ${props => props.$isOwn ? 
-    'linear-gradient(135deg, #dc3522 0%, #ff6b58 100%)' : 
-    'white'
-  };
+  max-width: 70%;
+  padding: 15px 20px;
+  border-radius: 20px;
+  background: ${props => props.$isOwn 
+    ? 'linear-gradient(135deg, #dc3522 0%, #ff6b58 100%)' 
+    : 'white'};
   color: ${props => props.$isOwn ? 'white' : '#2d3748'};
-  word-wrap: break-word;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   position: relative;
-  animation: messageSlide 0.3s ease-out;
-  
-  @keyframes messageSlide {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
   
   .message-text {
-    margin-bottom: 4px;
-    line-height: 1.4;
-    font-size: 15px;
+    font-size: 16px;
+    line-height: 1.5;
+    margin-bottom: 8px;
   }
   
   .message-file {
-    margin-bottom: 8px;
+    margin-top: 10px;
     
     img {
-      max-width: 250px;
-      border-radius: 12px;
-      cursor: pointer;
-    }
-    
-    .file-link {
-      color: ${props => props.$isOwn ? 'rgba(255,255,255,0.9)' : '#dc3522'};
-      text-decoration: none;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      background: ${props => props.$isOwn ? 'rgba(255,255,255,0.1)' : '#f7fafc'};
-      border-radius: 8px;
-      
-      &:hover {
-        text-decoration: underline;
-      }
+      border-radius: 10px;
+      max-width: 100%;
+      height: auto;
     }
   }
   
   .message-time {
-    font-size: 11px;
+    font-size: 12px;
     opacity: 0.7;
-    margin-top: 4px;
+    text-align: right;
+    margin-top: 5px;
   }
   
   @media (max-width: 768px) {
-    padding: 10px 14px;
+    max-width: 85%;
+    padding: 12px 16px;
     
     .message-text {
-      font-size: 14px;
+      font-size: 15px;
     }
   }
 `;
 
 const TypingIndicator = styled.div`
-  padding: 12px 16px;
+  padding: 15px 20px;
+  background: white;
+  border-radius: 20px;
   color: #718096;
   font-style: italic;
-  font-size: 14px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+`;
+
+const MessageInputWrapper = styled.div`
+  padding: 20px 30px;
   background: white;
-  border-radius: 18px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  align-self: flex-start;
-  animation: typing 1.5s infinite;
-  
-  @keyframes typing {
-    0%, 60%, 100% {
-      opacity: 1;
-    }
-    30% {
-      opacity: 0.5;
-    }
-  }
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  opacity: ${props => props.$disabled ? 0.5 : 1};
+  pointer-events: ${props => props.$disabled ? 'none' : 'auto'};
 `;
 
 const MessageInput = styled.div`
-  padding: 20px 25px;
-  border-top: 1px solid #e2e8f0;
-  background: white;
   display: flex;
-  gap: 12px;
   align-items: flex-end;
+  gap: 12px;
+  background: #f7fafc;
+  border-radius: 25px;
+  padding: 8px;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
   
-  @media (max-width: 768px) {
-    padding: 15px 20px;
-    gap: 10px;
+  &:focus-within {
+    border-color: #dc3522;
+    box-shadow: 0 0 0 3px rgba(220, 53, 34, 0.1);
   }
 `;
 
 const InputContainer = styled.div`
   flex: 1;
-  position: relative;
 `;
 
 const TextInput = styled.textarea`
   width: 100%;
-  min-height: 44px;
+  min-height: 20px;
   max-height: 120px;
-  padding: 12px 50px 12px 16px;
-  border: 2px solid #e2e8f0;
-  border-radius: 22px;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  font-size: 16px;
   resize: none;
+  outline: none;
   font-family: inherit;
-  font-size: 15px;
-  background: #f7fafc;
-  transition: all 0.3s ease;
-  
-  &:focus {
-    outline: none;
-    border-color: #dc3522;
-    background: white;
-    box-shadow: 0 0 0 3px rgba(220, 53, 34, 0.1);
-  }
   
   &::placeholder {
     color: #a0aec0;
   }
-  
-  @media (max-width: 768px) {
-    font-size: 14px;
-    padding: 10px 45px 10px 14px;
-  }
 `;
 
-const ActionButton = styled(IconButton)`
-  width: 44px;
-  height: 44px;
-  box-shadow: 0 4px 15px rgba(220, 53, 34, 0.3);
+const ActionButton = styled.button`
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: ${props => props.$primary 
+    ? 'linear-gradient(135deg, #dc3522 0%, #ff6b58 100%)' 
+    : 'rgba(220, 53, 34, 0.1)'};
+  color: ${props => props.$primary ? 'white' : '#dc3522'};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
   
-  &.attach {
-    background: #718096;
-    
-    &:hover:not(:disabled) {
-      background: #4a5568;
-    }
+  &:hover:not(:disabled) {
+    transform: scale(1.1);
+    box-shadow: 0 4px 15px rgba(220, 53, 34, 0.3);
   }
   
-  @media (max-width: 768px) {
-    width: 40px;
-    height: 40px;
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 `;
 
@@ -489,79 +474,210 @@ const HiddenInput = styled.input`
 `;
 
 const EmptyState = styled.div`
-  flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  height: 100%;
   text-align: center;
   color: #718096;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 40px 20px;
   
   .content {
-    max-width: 300px;
-  }
-  
-  .icon {
-    font-size: 64px;
-    margin-bottom: 20px;
-    opacity: 0.5;
-  }
-  
-  h3 {
-    margin: 0 0 10px 0;
-    color: #2d3748;
-    font-size: 20px;
-  }
-  
-  p {
-    margin: 0;
-    font-size: 14px;
-    line-height: 1.5;
-  }
-  
-  @media (max-width: 768px) {
+    max-width: 400px;
+    
     .icon {
-      font-size: 48px;
+      font-size: 80px;
+      margin-bottom: 20px;
+      opacity: 0.5;
     }
     
     h3 {
+      font-size: 24px;
+      font-weight: 600;
+      color: #2d3748;
+      margin: 0 0 10px 0;
+    }
+    
+    p {
+      font-size: 16px;
+      line-height: 1.6;
+      margin: 0;
+    }
+  }
+`;
+
+const ErrorMessage = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  color: #e53e3e;
+  padding: 40px 20px;
+  
+  p {
+    font-size: 18px;
+    margin-bottom: 20px;
+  }
+  
+      button {
+      padding: 12px 24px;
+      background: #dc3522;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      
+      &:hover {
+        background: #b8291e;
+      }
+    }
+`;
+
+const NewChatWelcome = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 20px;
+  
+  .welcome-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    max-width: 500px;
+  }
+  
+  .match-icon {
+    font-size: 80px;
+    animation: bounce 2s infinite;
+  }
+  
+  @keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+      transform: translateY(0);
+    }
+    40% {
+      transform: translateY(-10px);
+    }
+    60% {
+      transform: translateY(-5px);
+    }
+  }
+  
+      h3 {
+      font-size: 32px;
+      font-weight: 700;
+      color: #2d3748;
+      margin: 0;
+      background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+  
+  p {
+    font-size: 18px;
+    color: #718096;
+    margin: 0;
+  }
+  
+  .subtitle {
+    font-size: 16px;
+    color: #a0aec0;
+  }
+  
+  .suggestions {
+    margin-top: 30px;
+    width: 100%;
+    
+    h4 {
       font-size: 18px;
+      font-weight: 600;
+      color: #2d3748;
+      margin: 0 0 20px 0;
+    }
+  }
+  
+  .suggestion-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .suggestion-btn {
+    padding: 15px 20px;
+    background: white;
+    border: 2px solid rgba(102, 126, 234, 0.2);
+    border-radius: 15px;
+    font-size: 15px;
+    color: #2d3748;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    
+    &:hover {
+      background: rgba(102, 126, 234, 0.05);
+      border-color: #667eea;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+    }
+  }
+  
+  @media (max-width: 768px) {
+    padding: 30px 20px;
+    
+    .match-icon {
+      font-size: 60px;
+    }
+    
+    h3 {
+      font-size: 24px;
+    }
+    
+    p {
+      font-size: 16px;
+    }
+    
+    .subtitle {
+      font-size: 14px;
+    }
+    
+    .suggestion-btn {
+      padding: 12px 16px;
+      font-size: 14px;
     }
   }
 `;
 
 const MatchStatusBanner = styled.div`
-  padding: 12px 20px;
+  padding: 15px 20px;
+  margin: 0 20px 20px 20px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  
   background: ${props => {
     switch (props.$status) {
-      case 'matched': return 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)';
-      case 'waiting': return 'linear-gradient(135deg, #ed8936 0%, #dd6b20 100%)';
-      case 'incoming': return 'linear-gradient(135deg, #e53e3e 0%, #c53030 100%)';
-      case 'no_match': return 'linear-gradient(135deg, #718096 0%, #4a5568 100%)';
-      default: return 'linear-gradient(135deg, #4299e1 0%, #3182ce 100%)';
+      case 'match':
+        return 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)';
+      case 'liked':
+        return 'linear-gradient(135deg, #ed8936 0%, #dd6b20 100%)';
+      case 'liked_by':
+        return 'linear-gradient(135deg, #e53e3e 0%, #c53030 100%)';
+      default:
+        return 'linear-gradient(135deg, #a0aec0 0%, #718096 100%)';
     }
   }};
   color: white;
-  text-align: center;
-  font-size: 14px;
-  font-weight: 500;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  animation: slideIn 0.3s ease-out;
-  
-  @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateY(-10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
   
   .icon {
     font-size: 16px;
@@ -569,35 +685,11 @@ const MatchStatusBanner = styled.div`
   
   .message {
     flex: 1;
-    text-align: center;
   }
-  
-  @media (max-width: 768px) {
-    padding: 10px 15px;
-    font-size: 13px;
-  }
-`;
-
-const MessageInputWrapper = styled.div`
-  position: relative;
-  
-  ${props => props.$disabled && `
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(255, 255, 255, 0.8);
-      z-index: 10;
-      border-radius: 8px;
-    }
-  `}
 `;
 
 const Chat = () => {
-  const { chatId } = useParams();
+  const { username: chatId } = useParams();
   const navigate = useNavigate();
   const [selectedChat, setSelectedChat] = useState(chatId || null);
   const [messageText, setMessageText] = useState('');
@@ -611,21 +703,82 @@ const Chat = () => {
   const currentUser = apiUtils.getCurrentUser();
 
   // Получение списка чатов
-  const { data: chats = [] } = useQuery(
+  const { data: chats = [], error: chatsError, isLoading: chatsLoading } = useQuery(
     'conversations',
-    chatAPI.getConversations,
+    () => chatAPI.getConversations(50, 0), // Увеличим лимит для лучшего UX
     {
-      refetchInterval: 5000 // Обновляем каждые 5 секунд
+      refetchInterval: 5000, // Обновляем каждые 5 секунд
+      onError: (error) => {
+        console.error('Ошибка при получении списка чатов:', error);
+        toast.error('Не удалось загрузить список чатов');
+      }
     }
   );
 
+  // Создаем виртуальный чат для нового мэтча, если перешли через уведомления
+  const existingChat = chats?.conversations?.find(chat => chat.companion === chatId);
+  const virtualChat = chatId && !existingChat ? {
+    companion: chatId,
+    last_message: null,
+    last_message_date: null,
+    last_message_by: null,
+    unread_count: 0,
+    has_images: false,
+    companion_info: {
+      login: chatId,
+      ava: 'no_photo.jpg',
+      status: 'Новый мэтч',
+      online: null,
+      viptype: 'FREE'
+    }
+  } : null;
+
+  // Принудительно создаем виртуальный чат, если есть chatId и нет чатов
+  const forceVirtualChat = chatId && (!chats?.conversations || chats.conversations.length === 0) ? {
+    companion: chatId,
+    last_message: null,
+    last_message_date: null,
+    last_message_by: null,
+    unread_count: 0,
+    has_images: false,
+    companion_info: {
+      login: chatId,
+      ava: 'no_photo.jpg',
+      status: 'Новый мэтч',
+      online: null,
+      viptype: 'FREE'
+    }
+  } : null;
+
+  // Объединяем реальные чаты с виртуальным
+  const allChats = (virtualChat || forceVirtualChat)
+    ? [(virtualChat || forceVirtualChat), ...(chats?.conversations || [])]
+    : (chats?.conversations || []);
+
+  // Отладочная информация
+  console.log('Chat Debug:', {
+    chatId,
+    chats: chats?.conversations,
+    existingChat,
+    virtualChat,
+    forceVirtualChat,
+    allChats,
+    selectedChat,
+    userInfo
+  });
+
+
   // Получение сообщений текущего чата
-  const { data: messages = [] } = useQuery(
+  const { data: messages = [], error: messagesError, isLoading: messagesLoading } = useQuery(
     ['messages', selectedChat],
-    () => chatAPI.getMessages(selectedChat),
+    () => chatAPI.getMessages(selectedChat, 100, 0), // Увеличим лимит сообщений
     {
       enabled: !!selectedChat,
       refetchInterval: 2000, // Обновляем каждые 2 секунды
+      onError: (error) => {
+        console.error('Ошибка при получении сообщений:', error);
+        toast.error('Не удалось загрузить сообщения');
+      },
       onSuccess: (data) => {
         // Сохраняем информацию о мэтче из ответа
         if (data?.match_status) {
@@ -634,6 +787,48 @@ const Chat = () => {
       }
     }
   );
+
+  // Получение статуса мэтча для текущего чата
+  const { data: matchData } = useQuery(
+    ['match-status', selectedChat],
+    () => chatAPI.getMatchStatus(selectedChat),
+    {
+      enabled: !!selectedChat,
+      onError: (error) => {
+        console.error('Ошибка при получении статуса мэтча:', error);
+      },
+      onSuccess: (data) => {
+        if (data) {
+          setMatchStatus(data);
+        }
+      }
+    }
+  );
+
+  // Получение информации о пользователе для виртуального чата
+  const { data: userInfo } = useQuery(
+    ['user-info', chatId],
+    () => apiUtils.getUserInfo(chatId),
+    {
+      enabled: !!chatId && !!virtualChat,
+      onError: (error) => {
+        console.error('Ошибка при получении информации о пользователе:', error);
+      }
+    }
+  );
+
+  // Обновляем виртуальный чат с информацией о пользователе
+  useEffect(() => {
+    if (virtualChat && userInfo) {
+      virtualChat.companion_info = {
+        login: userInfo.login,
+        ava: userInfo.ava || 'no_photo.jpg',
+        status: userInfo.status || 'Новый мэтч',
+        online: userInfo.online,
+        viptype: userInfo.viptype || 'FREE'
+      };
+    }
+  }, [virtualChat, userInfo]);
 
   // Мутации
   const sendMessageMutation = useMutation(chatAPI.sendMessage, {
@@ -648,11 +843,16 @@ const Chat = () => {
       }
     },
     onError: (error) => {
+      console.error('Ошибка отправки сообщения:', error);
       // Обрабатываем ошибки мэтча отдельно
       if (error.response?.data?.error === 'no_match') {
         toast.error('Для отправки сообщений нужен взаимный лайк! 💕');
+      } else if (error.response?.status === 404) {
+        toast.error('Пользователь не найден или чат недоступен');
+      } else if (error.response?.status === 403) {
+        toast.error('У вас нет прав для отправки сообщений в этот чат');
       } else {
-        toast.error(apiUtils.handleError(error));
+        toast.error(apiUtils.handleError(error) || 'Ошибка отправки сообщения');
       }
     }
   });
@@ -661,9 +861,17 @@ const Chat = () => {
     onSuccess: () => {
       queryClient.invalidateQueries(['messages', selectedChat]);
       queryClient.invalidateQueries('conversations');
+      toast.success('Файл успешно отправлен');
     },
     onError: (error) => {
-      toast.error(apiUtils.handleError(error));
+      console.error('Ошибка отправки файла:', error);
+      if (error.response?.data?.error === 'no_match') {
+        toast.error('Для отправки файлов нужен взаимный лайк! 💕');
+      } else if (error.response?.status === 413) {
+        toast.error('Файл слишком большой');
+      } else {
+        toast.error(apiUtils.handleError(error) || 'Ошибка отправки файла');
+      }
     }
   });
 
@@ -672,14 +880,21 @@ const Chat = () => {
     if (chatId && chatId !== selectedChat) {
       setSelectedChat(chatId);
     }
-  }, [chatId]);
+  }, [chatId, selectedChat]);
+
+  // Автоматически выбираем виртуальный чат, если перешли через уведомления
+  useEffect(() => {
+    if ((virtualChat || forceVirtualChat) && !selectedChat) {
+      setSelectedChat(chatId);
+    }
+  }, [virtualChat, forceVirtualChat, selectedChat, chatId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   // Фильтрация чатов по поиску
-  const filteredChats = (chats?.conversations || []).filter(chat =>
+  const filteredChats = allChats.filter(chat =>
     chat.companion.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -735,7 +950,7 @@ const Chat = () => {
     });
   };
 
-  const selectedChatData = (chats?.conversations || []).find(chat => chat.companion === selectedChat);
+  const selectedChatData = allChats.find(chat => chat.companion === selectedChat);
 
   return (
     <ChatContainer>
@@ -758,41 +973,88 @@ const Chat = () => {
         </SearchContainer>
         
         <ChatsContainer>
-          {filteredChats.map(chat => (
-            <ChatItem
-              key={chat.companion}
-              className={selectedChat === chat.companion ? 'active' : ''}
-              onClick={() => handleChatSelect(chat.companion)}
-            >
-              <Avatar
-                $src={chat.companion_info?.ava ? `/uploads/${chat.companion_info.ava}` : ''}
-                $size="50px"
-                $fontSize="20px"
-                $online={chat.companion_info?.online}
-              >
-                {!chat.companion_info?.ava && chat.companion.charAt(0).toUpperCase()}
-              </Avatar>
-              
-              <div className="chat-info">
-                <div className="name">@{chat.companion}</div>
-                <div className="last-message">
-                  {chat.last_message || 'Начните общение'}
-                </div>
-                <div className="time">
-                  {chat.last_message_date && formatTime(chat.last_message_date)}
-                </div>
-              </div>
-              
-              {chat.unread_count > 0 && (
-                <div className="unread-badge">{chat.unread_count}</div>
+          {chatsError ? (
+            <ErrorMessage>
+              <p>Ошибка загрузки чатов</p>
+              <button onClick={() => window.location.reload()}>Попробовать снова</button>
+            </ErrorMessage>
+          ) : chatsLoading ? (
+            <EmptyState>
+              <p>Загрузка чатов...</p>
+            </EmptyState>
+          ) : (filteredChats.length > 0 || forceVirtualChat) ? (
+            <>
+              {/* Принудительно показываем виртуальный чат, если он есть */}
+              {forceVirtualChat && !filteredChats.find(chat => chat.companion === forceVirtualChat.companion) && (
+                <ChatItem
+                  key={forceVirtualChat.companion}
+                  className={selectedChat === forceVirtualChat.companion ? 'active' : ''}
+                  onClick={() => handleChatSelect(forceVirtualChat.companion)}
+                >
+                  <Avatar
+                    $src={forceVirtualChat.companion_info?.ava ? `/uploads/${forceVirtualChat.companion_info.ava}` : ''}
+                    $size="50px"
+                    $fontSize="20px"
+                    $online={forceVirtualChat.companion_info?.online}
+                  >
+                    {!forceVirtualChat.companion_info?.ava && forceVirtualChat.companion.charAt(0).toUpperCase()}
+                  </Avatar>
+                  
+                  <div className="chat-info">
+                    <div className="name">@{forceVirtualChat.companion}</div>
+                    <div className="last-message">
+                      <span className="new-match-indicator">💕 Новый мэтч - начните общение</span>
+                    </div>
+                    <div className="time">Сейчас</div>
+                  </div>
+                  
+                  <div className="new-match-badge">💕</div>
+                </ChatItem>
               )}
-            </ChatItem>
-          ))}
-          
-          {filteredChats.length === 0 && (
-            <div style={{ padding: '40px 20px', textAlign: 'center', color: '#718096' }}>
-              {searchTerm ? 'Чаты не найдены' : 'Пока нет активных чатов'}
-            </div>
+              
+                            {/* Показываем остальные чаты */}
+              {filteredChats.map(chat => (
+                <ChatItem
+                  key={chat.companion}
+                  className={selectedChat === chat.companion ? 'active' : ''}
+                  onClick={() => handleChatSelect(chat.companion)}
+                >
+                  <Avatar
+                    $src={chat.companion_info?.ava ? `/uploads/${chat.companion_info.ava}` : ''}
+                    $size="50px"
+                    $fontSize="20px"
+                    $online={chat.companion_info?.online}
+                  >
+                    {!chat.companion_info?.ava && chat.companion.charAt(0).toUpperCase()}
+                  </Avatar>
+                  
+                  <div className="chat-info">
+                    <div className="name">@{chat.companion}</div>
+                    <div className="last-message">
+                      {chat.last_message ? (
+                        chat.last_message
+                      ) : (
+                        <span className="new-match-indicator">💕 Новый мэтч - начните общение</span>
+                      )}
+                    </div>
+                    <div className="time">
+                      {chat.last_message_date ? formatTime(chat.last_message_date) : 'Сейчас'}
+                    </div>
+                  </div>
+                  
+                  {chat.unread_count > 0 ? (
+                    <div className="unread-badge">{chat.unread_count}</div>
+                  ) : !chat.last_message && (
+                    <div className="new-match-badge">💕</div>
+                  )}
+                </ChatItem>
+              ))}
+            </>
+          ) : (
+            <EmptyState>
+              <p>Нет активных чатов</p>
+              <p>Найдите интересных собеседников в каталоге</p>
+            </EmptyState>
           )}
         </ChatsContainer>
       </ChatSidebar>
@@ -842,38 +1104,88 @@ const Chat = () => {
             )}
 
             <MessagesContainer>
-              {(messages?.messages || []).map((message, index) => {
-                const isOwn = message.by_user === currentUser.login;
-                const prevMessage = messages.messages[index - 1];
-                const isNewGroup = !prevMessage ||
-                  prevMessage.by_user !== message.by_user ||
-                  (new Date(message.date) - new Date(prevMessage.date)) > 300000;
+              {messagesError ? (
+                <ErrorMessage>
+                  <p>Ошибка загрузки сообщений</p>
+                  <button onClick={() => window.location.reload()}>Попробовать снова</button>
+                </ErrorMessage>
+              ) : messagesLoading ? (
+                <EmptyState>
+                  <p>Загрузка сообщений...</p>
+                </EmptyState>
+              ) : (messages?.messages || []).length > 0 ? (
+                (messages?.messages || []).map((message, index) => {
+                  const isOwn = message.by_user === currentUser.login;
+                  const prevMessage = messages.messages[index - 1];
+                  const isNewGroup = !prevMessage ||
+                    prevMessage.by_user !== message.by_user ||
+                    (new Date(message.date) - new Date(prevMessage.date)) > 300000;
 
-                return (
-                  <MessageGroup key={message.id} $isOwn={isOwn}>
-                    <Message $isOwn={isOwn}>
-                      {message.message && (
-                        <div className="message-text">{message.message}</div>
-                      )}
-                      {message.images && message.images.length > 0 && (
-                        <div className="message-file">
-                          {message.images.map((image, idx) => (
-                            <img
-                              key={idx}
-                              src={`/uploads/${image}`}
-                              alt="Вложение"
-                              style={{ margin: '2px', maxWidth: '250px' }}
-                            />
-                          ))}
+                  return (
+                    <MessageGroup key={message.id} $isOwn={isOwn}>
+                      <Message $isOwn={isOwn}>
+                        {message.message && (
+                          <div className="message-text">{message.message}</div>
+                        )}
+                        {message.images && message.images.length > 0 && (
+                          <div className="message-file">
+                            {message.images.map((image, idx) => (
+                              <img
+                                key={idx}
+                                src={`/uploads/${image}`}
+                                alt="Вложение"
+                                style={{ margin: '2px', maxWidth: '250px' }}
+                              />
+                            ))}
+                          </div>
+                        )}
+                        <div className="message-time">
+                          {formatTime(message.date)}
                         </div>
-                      )}
-                      <div className="message-time">
-                        {formatTime(message.date)}
+                      </Message>
+                    </MessageGroup>
+                  );
+                })
+              ) : (
+                <NewChatWelcome>
+                  <div className="welcome-content">
+                    <div className="match-icon">💕</div>
+                    <h3>Взаимная симпатия!</h3>
+                    <p>У вас совпадение с @{selectedChat}</p>
+                    <p className="subtitle">Начните общение первым сообщением</p>
+                    
+                    <div className="suggestions">
+                      <h4>Идеи для первого сообщения:</h4>
+                      <div className="suggestion-buttons">
+                        <button 
+                          className="suggestion-btn"
+                          onClick={() => setMessageText('Привет! Рад нашему совпадению 😊')}
+                        >
+                          Привет! Рад нашему совпадению 😊
+                        </button>
+                        <button 
+                          className="suggestion-btn"
+                          onClick={() => setMessageText('Привет! Как дела?')}
+                        >
+                          Привет! Как дела?
+                        </button>
+                        <button 
+                          className="suggestion-btn"
+                          onClick={() => setMessageText('Привет! Интересно познакомиться поближе')}
+                        >
+                          Интересно познакомиться поближе
+                        </button>
+                        <button 
+                          className="suggestion-btn"
+                          onClick={() => setMessageText('Привет! Что планируешь на выходные?')}
+                        >
+                          Что планируешь на выходные?
+                        </button>
                       </div>
-                    </Message>
-                  </MessageGroup>
-                );
-              })}
+                    </div>
+                  </div>
+                </NewChatWelcome>
+              )}
               
               {isTyping && (
                 <TypingIndicator>

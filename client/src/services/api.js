@@ -369,10 +369,10 @@ export const swipeAPI = {
     return response.data;
   },
 
-  superlike: async (targetUser, message) => {
+  superlike: async ({ targetUser, message }) => {
     const response = await apiClient.post('/swipe/superlike', {
       target_user: targetUser, 
-      message 
+      message: message || ''
     });
     return response.data;
   },
@@ -601,7 +601,13 @@ export const giftsAPI = {
   },
 
   sendGift: async (giftData) => {
-    const response = await apiClient.post('/gifts/send', giftData);
+    // Преобразуем параметры в формат, ожидаемый сервером
+    const { to_user, gift_type, message } = giftData;
+    const response = await apiClient.post('/gifts/send', {
+      target_user: to_user,
+      gift_type,
+      message: message || ''
+    });
     return response.data;
   },
 
@@ -954,6 +960,17 @@ export const apiUtils = {
       case 'VIP': return '👑';
       case 'PREMIUM': return '💎';
       default: return null;
+    }
+  },
+
+  // Получение информации о пользователе
+  getUserInfo: async (login) => {
+    try {
+      const response = await apiClient.get(`/users/profile/${login}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching user info:', error);
+      return null;
     }
   }
 };

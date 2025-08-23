@@ -433,7 +433,7 @@ const Catalog = () => {
                         {user.city}, {user.distance}км
                       </div>
                       <Link
-                        to={`/profiles/${user.login}`}
+                        to={`/profile/${user.login}`}
                         className="username"
                       >
                         @{user.login}

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from 'react-query';
 import { notificationsAPI } from '../services/api';
 import MatchPopup from '../components/MatchPopup';
@@ -14,9 +15,35 @@ export const useNotifications = () => {
 };
 
 export const NotificationProvider = ({ children }) => {
+  const navigate = useNavigate();
   const [activePopups, setActivePopups] = useState([]);
   const [lastChecked, setLastChecked] = useState(Date.now());
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isMounted, setIsMounted] = useState(false);
+  const [isRouterReady, setIsRouterReady] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Проверяем, что Router контекст доступен
+  useEffect(() => {
+    if (navigate && typeof navigate === 'function') {
+      setIsRouterReady(true);
+      console.log('Router context is ready in NotificationProvider');
+    } else {
+      console.log('Router context not ready yet in NotificationProvider');
+    }
+  }, [navigate]);
+
+  // Проверяем, что navigate доступен
+  useEffect(() => {
+    if (!navigate) {
+      console.warn('Navigation not available in NotificationProvider');
+    } else {
+      console.log('Navigation is available in NotificationProvider');
+    }
+  }, [navigate]);
 
   // Проверяем новые уведомления каждые 15 секунд
   const { data: notificationsCount } = useQuery(
@@ -24,6 +51,7 @@ export const NotificationProvider = ({ children }) => {
     () => notificationsAPI.getUnreadCount(),
     {
       refetchInterval: 15000,
+      enabled: isRouterReady, // Не запускаем запросы пока роутер не готов
       onSuccess: (data) => {
         setUnreadCount(data?.total_unread || 0);
       }
@@ -39,6 +67,7 @@ export const NotificationProvider = ({ children }) => {
     }),
     {
       refetchInterval: 10000,
+      enabled: isRouterReady, // Не запускаем запросы пока роутер не готов
       onSuccess: (data) => {
         if (data?.notifications) {
           checkForNewMatchNotifications(data.notifications);
@@ -70,6 +99,12 @@ export const NotificationProvider = ({ children }) => {
   };
 
   const showMatchPopup = (notification) => {
+    // Не показываем попапы пока роутер не готов
+    if (!isRouterReady) {
+      console.log('Router not ready, skipping popup:', notification.id);
+      return;
+    }
+
     const popup = {
       id: notification.id,
       notification,
@@ -100,6 +135,12 @@ export const NotificationProvider = ({ children }) => {
   };
 
   const showCustomMatchPopup = (matchData) => {
+    // Не показываем попапы пока роутер не готов
+    if (!isRouterReady) {
+      console.log('Router not ready, skipping custom popup');
+      return;
+    }
+
     const notification = {
       id: `custom-${Date.now()}`,
       type: 'match',
@@ -127,15 +168,41 @@ export const NotificationProvider = ({ children }) => {
     <NotificationContext.Provider value={contextValue}>
       {children}
       
-      {/* Рендерим активные попапы */}
-      {activePopups.map(popup => (
+      {/* Рендерим активные попапы только после монтирования и готовности роутера */}
+      {isMounted && isRouterReady && activePopups.map(popup => (
         <MatchPopup
           key={popup.id}
           notification={popup.notification}
           onClose={() => removePopup(popup.id)}
           onStartChat={(username) => {
             markNotificationAsRead(popup.id);
-            // Навигация происходит в самом компоненте
+            if (navigate && typeof navigate === 'function') {
+              try {
+                navigate(`/chat/${username}`);
+              } catch (error) {
+                console.error('Navigation error:', error);
+                // Fallback: could redirect to a different page or show an error
+                window.location.href = `/chat/${username}`;
+              }
+            } else {
+              // Fallback if navigate is not available
+              window.location.href = `/chat/${username}`;
+            }
+          }}
+          onViewProfile={(username) => {
+            markNotificationAsRead(popup.id);
+            if (navigate && typeof navigate === 'function') {
+              try {
+                navigate(`/profiles/${username}`);
+              } catch (error) {
+                console.error('Navigation error:', error);
+                // Fallback: could redirect to a different page or show an error
+                window.location.href = `/profiles/${username}`;
+              }
+            } else {
+              // Fallback if navigate is not available
+              window.location.href = `/profiles/${username}`;
+            }
           }}
           autoCloseDelay={8000}
         />

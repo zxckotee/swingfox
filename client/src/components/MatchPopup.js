@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar, Button } from './UI';
@@ -249,10 +248,10 @@ const MatchPopup = ({
   notification, 
   onClose, 
   onStartChat,
+  onViewProfile,
   autoCloseDelay = 8000 
 }) => {
   const [isVisible, setIsVisible] = useState(true);
-  const navigate = useNavigate();
 
   const matchUser = notification?.data?.match_user || notification?.from_user;
   const userData = notification?.from_user_data;
@@ -275,14 +274,14 @@ const MatchPopup = ({
   const handleStartChat = () => {
     if (onStartChat) {
       onStartChat(matchUser);
-    } else {
-      navigate(`/chat/${matchUser}`);
     }
     handleClose();
   };
 
   const handleViewProfile = () => {
-    navigate(`/profiles/${matchUser}`);
+    if (onViewProfile) {
+      onViewProfile(matchUser);
+    }
     handleClose();
   };
 

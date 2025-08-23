@@ -9,6 +9,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { generateId } = require('../utils/helpers');
 const MatchChecker = require('../utils/matchChecker');
 const { APILogger } = require('../utils/logger');
+const Likes = require('../models/Likes');
 
 // Настройка multer для загрузки изображений в чат
 const storage = multer.diskStorage({
@@ -44,6 +45,176 @@ const userStatuses = new Map();
 
 // Feature flag для системы мэтчей (можно отключить для отладки)
 const ENABLE_MATCH_CHECKING = process.env.ENABLE_MATCH_CHECKING !== 'false';
+
+// GET /api/chat/conversations - Получение списка всех чатов
+router.get('/conversations', authenticateToken, async (req, res) => {
+  try {
+    const currentUser = req.user.login;
+    const { limit = 20, offset = 0 } = req.query;
+
+    // Получаем список уникальных собеседников с последними сообщениями
+    const conversations = await Chat.findAll({
+      where: {
+        [Op.or]: [
+          { by_user: currentUser },
+          { to_user: currentUser }
+        ]
+      },
+      order: [['date', 'DESC']],
+      limit: parseInt(limit) * 10, // Берем больше для фильтрации
+    });
+
+    // Группируем по собеседникам
+    const conversationMap = new Map();
+    
+    for (const msg of conversations) {
+      const companion = msg.by_user === currentUser ? msg.to_user : msg.by_user;
+      
+      if (!conversationMap.has(companion)) {
+        // Получаем количество непрочитанных от этого собеседника
+        const unreadCount = await Chat.count({
+          where: {
+            by_user: companion,
+            to_user: currentUser,
+            is_read: false
+          }
+        });
+
+        conversationMap.set(companion, {
+          companion,
+          last_message: msg.message,
+          last_message_date: msg.date,
+          last_message_by: msg.by_user,
+          unread_count: unreadCount,
+          has_images: msg.images && msg.images !== '0' && msg.images !== 'null'
+        });
+      }
+    }
+
+    // Получаем информацию о собеседниках
+    const companionLogins = Array.from(conversationMap.keys());
+    const companionUsers = await User.findAll({
+      where: { login: companionLogins },
+      attributes: ['login', 'ava', 'status', 'online', 'viptype']
+    });
+
+    // Формируем финальный список
+    const conversationsList = Array.from(conversationMap.values())
+      .slice(parseInt(offset), parseInt(offset) + parseInt(limit))
+      .map(conv => {
+        const companionInfo = companionUsers.find(u => u.login === conv.companion);
+        return {
+          ...conv,
+          companion_info: companionInfo || {
+            login: conv.companion,
+            ava: 'no_photo.jpg',
+            status: 'Неизвестно',
+            online: null,
+            viptype: 'FREE'
+          }
+        };
+      });
+
+    res.json({
+      success: true,
+      conversations: conversationsList,
+      total_count: conversationMap.size
+    });
+
+  } catch (error) {
+    console.error('Get conversations error:', error);
+    res.status(500).json({ 
+      error: 'server_error',
+      message: 'Ошибка при получении списка чатов' 
+    });
+  }
+});
+
+// GET /api/chat/unread-count - Получение количества непрочитанных сообщений
+router.get('/unread-count', authenticateToken, async (req, res) => {
+  try {
+    const currentUser = req.user.login;
+
+    const unreadCount = await Chat.count({
+      where: {
+        to_user: currentUser,
+        is_read: false
+      }
+    });
+
+    res.json({
+      success: true,
+      unread_count: unreadCount
+    });
+
+  } catch (error) {
+    console.error('Get unread count error:', error);
+    res.status(500).json({ 
+      error: 'server_error',
+      message: 'Ошибка при получении количества непрочитанных сообщений' 
+    });
+  }
+});
+
+// GET /api/chat/status/:username - Получение статуса пользователя
+router.get('/status/:username', authenticateToken, async (req, res) => {
+  try {
+    const { username } = req.params;
+    const currentUser = req.user.login;
+
+    // Обновляем свой статус как "онлайн"
+    userStatuses.set(currentUser, {
+      status: 'online',
+      timestamp: Date.now()
+    });
+
+    // Получаем статус собеседника
+    const companionStatus = userStatuses.get(username);
+    const now = Date.now();
+
+    let status = 'offline';
+    
+    if (companionStatus) {
+      const timeDiff = now - companionStatus.timestamp;
+      
+      if (timeDiff <= 2000) { // 2 секунды
+        if (companionStatus.status === 'typing') {
+          status = 'печатает...';
+        } else {
+          status = 'онлайн';
+        }
+      } else if (timeDiff <= 300000) { // 5 минут
+        status = 'онлайн';
+      } else {
+        // Получаем последнее время активности из базы
+        const user = await User.findOne({ where: { login: username } });
+        if (user && user.online) {
+          const lastOnline = new Date(user.online);
+          status = `был ${lastOnline.toLocaleString('ru-RU', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          })}`;
+        }
+      }
+    }
+
+    res.json({
+      username,
+      status,
+      timestamp: now
+    });
+
+  } catch (error) {
+    console.error('Get status error:', error);
+    res.status(500).json({ 
+      error: 'server_error',
+      message: 'Ошибка при получении статуса' 
+    });
+  }
+});
 
 // GET /api/chat/:username - Получение истории чата
 router.get('/:username', authenticateToken, async (req, res) => {
@@ -311,66 +482,6 @@ router.post('/send', authenticateToken, upload.array('images', 5), async (req, r
   }
 });
 
-// GET /api/chat/status/:username - Получение статуса пользователя
-router.get('/status/:username', authenticateToken, async (req, res) => {
-  try {
-    const { username } = req.params;
-    const currentUser = req.user.login;
-
-    // Обновляем свой статус как "онлайн"
-    userStatuses.set(currentUser, {
-      status: 'online',
-      timestamp: Date.now()
-    });
-
-    // Получаем статус собеседника
-    const companionStatus = userStatuses.get(username);
-    const now = Date.now();
-
-    let status = 'offline';
-    
-    if (companionStatus) {
-      const timeDiff = now - companionStatus.timestamp;
-      
-      if (timeDiff <= 2000) { // 2 секунды
-        if (companionStatus.status === 'typing') {
-          status = 'печатает...';
-        } else {
-          status = 'онлайн';
-        }
-      } else if (timeDiff <= 300000) { // 5 минут
-        status = 'онлайн';
-      } else {
-        // Получаем последнее время активности из базы
-        const user = await User.findOne({ where: { login: username } });
-        if (user && user.online) {
-          const lastOnline = new Date(user.online);
-          status = `был ${lastOnline.toLocaleString('ru-RU', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-          })}`;
-        }
-      }
-    }
-
-    res.json({
-      username,
-      status,
-      timestamp: now
-    });
-
-  } catch (error) {
-    console.error('Get status error:', error);
-    res.status(500).json({ 
-      error: 'server_error',
-      message: 'Ошибка при получении статуса' 
-    });
-  }
-});
-
 // POST /api/chat/typing - Уведомление о печати
 router.post('/typing', authenticateToken, async (req, res) => {
   try {
@@ -401,116 +512,6 @@ router.post('/typing', authenticateToken, async (req, res) => {
     res.status(500).json({ 
       error: 'server_error',
       message: 'Ошибка при обновлении статуса печати' 
-    });
-  }
-});
-
-// GET /api/chat/unread-count - Получение количества непрочитанных сообщений
-router.get('/unread-count', authenticateToken, async (req, res) => {
-  try {
-    const currentUser = req.user.login;
-
-    const unreadCount = await Chat.count({
-      where: {
-        to_user: currentUser,
-        is_read: false
-      }
-    });
-
-    res.json({
-      success: true,
-      unread_count: unreadCount
-    });
-
-  } catch (error) {
-    console.error('Get unread count error:', error);
-    res.status(500).json({ 
-      error: 'server_error',
-      message: 'Ошибка при получении количества непрочитанных сообщений' 
-    });
-  }
-});
-
-// GET /api/chat/conversations - Получение списка всех чатов
-router.get('/conversations', authenticateToken, async (req, res) => {
-  try {
-    const currentUser = req.user.login;
-    const { limit = 20, offset = 0 } = req.query;
-
-    // Получаем список уникальных собеседников с последними сообщениями
-    const conversations = await Chat.findAll({
-      where: {
-        [Op.or]: [
-          { by_user: currentUser },
-          { to_user: currentUser }
-        ]
-      },
-      order: [['date', 'DESC']],
-      limit: parseInt(limit) * 10, // Берем больше для фильтрации
-    });
-
-    // Группируем по собеседникам
-    const conversationMap = new Map();
-    
-    for (const msg of conversations) {
-      const companion = msg.by_user === currentUser ? msg.to_user : msg.by_user;
-      
-      if (!conversationMap.has(companion)) {
-        // Получаем количество непрочитанных от этого собеседника
-        const unreadCount = await Chat.count({
-          where: {
-            by_user: companion,
-            to_user: currentUser,
-            is_read: false
-          }
-        });
-
-        conversationMap.set(companion, {
-          companion,
-          last_message: msg.message,
-          last_message_date: msg.date,
-          last_message_by: msg.by_user,
-          unread_count: unreadCount,
-          has_images: msg.images && msg.images !== '0' && msg.images !== 'null'
-        });
-      }
-    }
-
-    // Получаем информацию о собеседниках
-    const companionLogins = Array.from(conversationMap.keys());
-    const companionUsers = await User.findAll({
-      where: { login: companionLogins },
-      attributes: ['login', 'ava', 'status', 'online', 'viptype']
-    });
-
-    // Формируем финальный список
-    const conversationsList = Array.from(conversationMap.values())
-      .slice(parseInt(offset), parseInt(offset) + parseInt(limit))
-      .map(conv => {
-        const companionInfo = companionUsers.find(u => u.login === conv.companion);
-        return {
-          ...conv,
-          companion_info: companionInfo || {
-            login: conv.companion,
-            ava: 'no_photo.jpg',
-            status: 'Неизвестно',
-            online: null,
-            viptype: 'FREE'
-          }
-        };
-      });
-
-    res.json({
-      success: true,
-      conversations: conversationsList,
-      total_count: conversationMap.size
-    });
-
-  } catch (error) {
-    console.error('Get conversations error:', error);
-    res.status(500).json({ 
-      error: 'server_error',
-      message: 'Ошибка при получении списка чатов' 
     });
   }
 });
@@ -1034,5 +1035,134 @@ setInterval(() => {
     }
   }
 }, 30000);
+
+// GET /api/chat/match-status/:username - Получение статуса мэтча с пользователем
+router.get('/match-status/:username', authenticateToken, async (req, res) => {
+  try {
+    const { username } = req.params;
+    const currentUser = req.user.login;
+
+    // Проверяем существование пользователя
+    const targetUser = await User.findOne({ where: { login: username } });
+    if (!targetUser) {
+      return res.status(404).json({
+        error: 'user_not_found',
+        message: 'Пользователь не найден'
+      });
+    }
+
+    // Проверяем взаимные лайки
+    const myLike = await Likes.findOne({
+      where: {
+        like_from: currentUser,
+        like_to: username
+      }
+    });
+
+    const theirLike = await Likes.findOne({
+      where: {
+        like_from: username,
+        like_to: currentUser
+      }
+    });
+
+    const hasMatch = myLike && theirLike;
+    const canChat = hasMatch;
+
+    let status = 'no_match';
+    let message = 'Нет взаимной симпатии';
+    let icon = '💔';
+
+    if (hasMatch) {
+      status = 'match';
+      message = 'Взаимная симпатия! Можно общаться';
+      icon = '💕';
+    } else if (myLike && !theirLike) {
+      status = 'liked';
+      message = 'Вы поставили лайк, ждем ответа';
+      icon = '❤️';
+    } else if (!myLike && theirLike) {
+      status = 'liked_by';
+      message = 'Вам поставили лайк, поставьте в ответ';
+      icon = '💝';
+    }
+
+    res.json({
+      success: true,
+      status,
+      message,
+      icon,
+      hasMatch: !!hasMatch,
+      canChat: !!hasMatch,
+      matchData: {
+        hasMatch: !!hasMatch,
+        myLike: !!myLike,
+        theirLike: !!theirLike
+      }
+    });
+
+  } catch (error) {
+    console.error('Get match status error:', error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при получении статуса мэтча'
+    });
+  }
+});
+
+// GET /api/chat/can-message/:username - Проверка разрешения на отправку сообщений
+router.get('/can-message/:username', authenticateToken, async (req, res) => {
+  try {
+    const { username } = req.params;
+    const currentUser = req.user.login;
+
+    // Проверяем существование пользователя
+    const targetUser = await User.findOne({ where: { login: username } });
+    if (!targetUser) {
+      return res.status(404).json({
+        error: 'user_not_found',
+        message: 'Пользователь не найден'
+      });
+    }
+
+    // Проверяем взаимные лайки
+    const myLike = await Likes.findOne({
+      where: {
+        like_from: currentUser,
+        like_to: username
+      }
+    });
+
+    const theirLike = await Likes.findOne({
+      where: {
+        like_from: username,
+        like_to: currentUser
+      }
+    });
+
+    const hasMatch = myLike && theirLike;
+    const canMessage = hasMatch;
+
+    res.json({
+      success: true,
+      canMessage,
+      hasMatch,
+      reason: hasMatch ? 'match' : 'no_match',
+      message: hasMatch ? 'Можно отправлять сообщения' : 'Нужна взаимная симпатия',
+      matchData: {
+        hasMatch,
+        myLike: !!myLike,
+        theirLike: !!theirLike
+      }
+    });
+
+  } catch (error) {
+    console.error('Check message permission error:', error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при проверке разрешения на отправку сообщений'
+    });
+  }
+});
 
 module.exports = router;
