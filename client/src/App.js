@@ -7,10 +7,13 @@ import styled, { ThemeProvider, createGlobalStyle } from 'styled-components';
 // Компоненты
 import AuthGuard from './components/AuthGuard';
 import Navigation from './components/Navigation';
+import { NotificationProvider } from './contexts/NotificationContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
-import Profile from './pages/Profile';
+import Catalog from './pages/Catalog';
+import MyProfile from './pages/MyProfile';
+import OtherProfile from './pages/OtherProfile';
 import Chat from './pages/Chat';
 import Ads from './pages/Ads';
 import Admin from './pages/Admin';
@@ -232,14 +235,15 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
         <GlobalStyle />
-        <AppContainer>
-          <Router
-            future={{
-              v7_startTransition: true,
-              v7_relativeSplatPath: true
-            }}
-          >
-            <Routes>
+        <NotificationProvider>
+          <AppContainer>
+            <Router
+              future={{
+                v7_startTransition: true,
+                v7_relativeSplatPath: true
+              }}
+            >
+              <Routes>
               {/* Публичные роуты */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
@@ -252,10 +256,24 @@ function App() {
                 </AuthGuard>
               } />
               
-              <Route path="/profile/:login?" element={
+              <Route path="/catalog" element={
                 <AuthGuard>
                   <Navigation />
-                  <Profile />
+                  <Catalog />
+                </AuthGuard>
+              } />
+              
+              <Route path="/profile" element={
+                <AuthGuard>
+                  <Navigation />
+                  <MyProfile />
+                </AuthGuard>
+              } />
+              
+              <Route path="/profiles/:login" element={
+                <AuthGuard>
+                  <Navigation />
+                  <OtherProfile />
                 </AuthGuard>
               } />
               
@@ -316,34 +334,35 @@ function App() {
               {/* Редирект на главную */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
-          </Router>
-          
-          {/* Уведомления */}
-          <Toaster 
-            position="top-right"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: theme.colors.surface,
-                color: theme.colors.text,
-                border: `1px solid ${theme.colors.border}`,
-                borderRadius: theme.borderRadius,
-              },
-              success: {
-                iconTheme: {
-                  primary: theme.colors.success,
-                  secondary: 'white',
+            </Router>
+            
+            {/* Уведомления */}
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: theme.colors.surface,
+                  color: theme.colors.text,
+                  border: `1px solid ${theme.colors.border}`,
+                  borderRadius: theme.borderRadius,
                 },
-              },
-              error: {
-                iconTheme: {
-                  primary: theme.colors.error,
-                  secondary: 'white',
+                success: {
+                  iconTheme: {
+                    primary: theme.colors.success,
+                    secondary: 'white',
+                  },
                 },
-              },
-            }}
-          />
-        </AppContainer>
+                error: {
+                  iconTheme: {
+                    primary: theme.colors.error,
+                    secondary: 'white',
+                  },
+                },
+              }}
+            />
+          </AppContainer>
+        </NotificationProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

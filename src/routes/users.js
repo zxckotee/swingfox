@@ -4,7 +4,7 @@ const multer = require('multer');
 const sharp = require('sharp');
 const path = require('path');
 const fs = require('fs').promises;
-const { User } = require('../models');
+const { User, Rating } = require('../models');
 const { authenticateToken, requireVip } = require('../middleware/auth');
 const { generateId, calculateDistance, formatAge, parseGeo, formatOnlineTime } = require('../utils/helpers');
 const { APILogger } = require('../utils/logger');
@@ -125,12 +125,52 @@ router.get('/profile/:login', async (req, res) => {
       }
     }
 
+    // Получаем рейтинг пользователя
+    logger.logBusinessLogic(3, 'Получение рейтинга пользователя', {
+      target_user: login
+    }, req);
+    
+    let userRating = null;
+    let currentUserRating = null;
+    
+    try {
+      userRating = await Rating.getUserRating(login);
+      
+      // Если есть авторизованный пользователь, проверяем его оценку
+      if (requesterId) {
+        const existingRating = await Rating.findOne({
+          where: {
+            from_user: requesterId,
+            to_user: login
+          }
+        });
+        currentUserRating = existingRating ? existingRating.value : null;
+      }
+      
+      logger.logResult('Получение рейтинга', true, {
+        total_rating: userRating.total_rating,
+        total_votes: userRating.total_votes,
+        user_has_voted: !!currentUserRating
+      }, req);
+    } catch (ratingError) {
+      logger.logWarning('Ошибка получения рейтинга', ratingError, req);
+      userRating = {
+        total_rating: 0,
+        total_votes: 0,
+        positive_votes: 0,
+        negative_votes: 0,
+        average_rating: 0,
+        percentage_positive: 0
+      };
+    }
+
     // Форматируем данные профиля
-    logger.logBusinessLogic(3, 'Форматирование данных профиля', {
+    logger.logBusinessLogic(4, 'Форматирование данных профиля', {
       user_id: user.id,
       has_images: !!user.images,
       has_locked_images: !!user.locked_images,
-      distance_calculated: distance > 0
+      distance_calculated: distance > 0,
+      rating_included: !!userRating
     }, req);
     
     const profileData = {
@@ -152,7 +192,11 @@ router.get('/profile/:login', async (req, res) => {
       online: formatOnlineTime(user.online),
       viptype: user.viptype,
       distance,
-      mobile: user.mobile
+      mobile: user.mobile,
+      // Интеграция рейтинговой системы
+      rating: userRating,
+      user_vote: currentUserRating,
+      can_vote: requesterId && requesterId !== login // Можно голосовать только за других
     };
 
     logger.logSuccess(req, 200, profileData);

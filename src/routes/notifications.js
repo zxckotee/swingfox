@@ -55,7 +55,6 @@ router.get('/', authenticateToken, async (req, res) => {
         from_user: notification.from_user,
         from_user_data: notification.FromUser ? {
           login: notification.FromUser.login,
-          name: notification.FromUser.name,
           avatar: notification.FromUser.ava
         } : null,
         target_id: notification.target_id,
@@ -101,6 +100,52 @@ router.get('/count', authenticateToken, async (req, res) => {
     const { type = null } = req.query;
 
     logger.logBusinessLogic(1, 'Подсчет непрочитанных уведомлений', {
+      user_id: userId,
+      type
+    }, req);
+
+    const unreadCount = await Notifications.getUnreadCount(userId, type);
+
+    // Получаем детализацию по типам
+    const typeCounts = {};
+    const notificationTypes = [
+      'like', 'superlike', 'match', 'message', 'gift', 
+      'profile_visit', 'image_like', 'rating', 'event_invite', 
+      'system', 'warning'
+    ];
+
+    for (const notificationType of notificationTypes) {
+      typeCounts[notificationType] = await Notifications.getUnreadCount(userId, notificationType);
+    }
+
+    const responseData = {
+      total_unread: unreadCount,
+      by_type: typeCounts
+    };
+
+    logger.logSuccess(req, 200, responseData);
+    res.json(responseData);
+
+  } catch (error) {
+    logger.logError(req, error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при подсчете уведомлений'
+    });
+  }
+});
+
+// GET /api/notifications/unread-count - Алиас для /count (для совместимости с фронтендом)
+router.get('/unread-count', authenticateToken, async (req, res) => {
+  const logger = new APILogger('NOTIFICATIONS');
+  
+  try {
+    logger.logRequest(req, 'GET /notifications/unread-count');
+    
+    const userId = req.user.login;
+    const { type = null } = req.query;
+
+    logger.logBusinessLogic(1, 'Подсчет непрочитанных уведомлений (unread-count)', {
       user_id: userId,
       type
     }, req);

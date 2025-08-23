@@ -36,9 +36,21 @@ const Login = () => {
 
   // Проверяем, не авторизован ли уже пользователь
   React.useEffect(() => {
-    if (apiUtils.isAuthenticated()) {
-      navigate('/', { replace: true });
-    }
+    const checkExistingAuth = async () => {
+      if (apiUtils.isAuthenticated()) {
+        try {
+          // Проверяем валидность токена
+          await apiUtils.refreshCurrentUser();
+          navigate('/', { replace: true });
+        } catch (error) {
+          // Токен невалиден, очищаем
+          console.warn('Токен невалиден при входе в Login');
+          apiUtils.logout();
+        }
+      }
+    };
+
+    checkExistingAuth();
   }, [navigate]);
 
   const onSubmit = async (data) => {

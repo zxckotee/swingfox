@@ -14,6 +14,8 @@ const Notifications = require('./Notifications');
 const Clubs = require('./Clubs');
 const ClubApplications = require('./ClubApplications');
 const Subscriptions = require('./Subscriptions');
+const PhotoLike = require('./PhotoLike');
+const ProfileVisit = require('./ProfileVisit');
 
 // Определение ассоциаций между моделями
 
@@ -103,13 +105,13 @@ Chat.belongsTo(User, {
 
 // Likes ассоциации
 Likes.belongsTo(User, { 
-  foreignKey: 'from_user', 
+  foreignKey: 'like_from', 
   targetKey: 'login',
   as: 'LikerUser'
 });
 
 Likes.belongsTo(User, { 
-  foreignKey: 'target_user', 
+  foreignKey: 'like_to', 
   targetKey: 'login',
   as: 'LikedUser'
 });
@@ -140,19 +142,6 @@ Reports.belongsTo(User, {
   as: 'ResolverUser'
 });
 
-// Events ассоциации
-Events.belongsTo(User, { 
-  foreignKey: 'organizer', 
-  targetKey: 'login',
-  as: 'OrganizerUser'
-});
-
-Events.belongsTo(User, { 
-  foreignKey: 'approved_by', 
-  targetKey: 'login',
-  as: 'ApproverUser'
-});
-
 // Инициализация новых моделей
 const GiftsModel = Gifts(sequelize);
 const ImageLikesModel = ImageLikes(sequelize);
@@ -162,6 +151,8 @@ const NotificationsModel = Notifications(sequelize);
 const ClubsModel = Clubs(sequelize);
 const ClubApplicationsModel = ClubApplications(sequelize);
 const SubscriptionsModel = Subscriptions(sequelize);
+const PhotoLikeModel = PhotoLike(sequelize);
+const ProfileVisitModel = ProfileVisit(sequelize);
 
 // Ассоциации для новых моделей
 if (GiftsModel.associate) GiftsModel.associate({ User });
@@ -173,6 +164,8 @@ if (ClubsModel.associate) ClubsModel.associate({ User, ClubApplications: ClubApp
 if (ClubApplicationsModel.associate) ClubApplicationsModel.associate({ User, Clubs: ClubsModel });
 if (Events.associate) Events.associate({ User, Clubs: ClubsModel });
 if (SubscriptionsModel.associate) SubscriptionsModel.associate({ User });
+if (PhotoLikeModel.associate) PhotoLikeModel.associate({ User });
+if (ProfileVisitModel.associate) ProfileVisitModel.associate({ User });
 
 module.exports = {
   sequelize,
@@ -190,5 +183,7 @@ module.exports = {
   Notifications: NotificationsModel,
   Clubs: ClubsModel,
   ClubApplications: ClubApplicationsModel,
-  Subscriptions: SubscriptionsModel
+  Subscriptions: SubscriptionsModel,
+  PhotoLike: PhotoLikeModel,
+  ProfileVisit: ProfileVisitModel
 };

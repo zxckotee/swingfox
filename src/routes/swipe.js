@@ -1,13 +1,94 @@
 const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
-const { User, Likes, Status, Gifts, Notifications } = require('../models');
+const { User, Likes, Status, Gifts, Notifications, Rating } = require('../models');
 const { authenticateToken, requireVip } = require('../middleware/auth');
 const { generateId, calculateDistance, formatAge, parseGeo, formatOnlineTime } = require('../utils/helpers');
+const MatchChecker = require('../utils/matchChecker');
+const { APILogger } = require('../utils/logger');
 const axios = require('axios');
 
 // Хранилище для истории слайдов пользователей (в продакшене использовать Redis)
 const userSlideHistory = new Map();
+
+// Умный алгоритм рекомендаций на основе рейтинга
+const getRecommendedProfile = async (currentUserId) => {
+  const logger = new APILogger('SWIPE_RECOMMENDATIONS');
+  
+  try {
+    logger.logBusinessLogic(1, 'Запуск алгоритма рекомендаций', {
+      current_user: currentUserId
+    });
+
+    // Получаем пользователей с высоким рейтингом (приоритет)
+    const highRatedUsers = await Rating.findAll({
+      attributes: [
+        'to_user',
+        [Rating.sequelize.fn('SUM', Rating.sequelize.col('value')), 'total_rating'],
+        [Rating.sequelize.fn('COUNT', Rating.sequelize.col('value')), 'total_votes']
+      ],
+      include: [
+        {
+          model: User,
+          as: 'rated',
+          attributes: ['login', 'ava', 'status', 'city', 'country', 'date', 'info', 'registration', 'online', 'viptype', 'geo'],
+          where: {
+            login: { [Op.ne]: currentUserId },
+            status: { [Op.ne]: 'BANNED' },
+            viptype: { [Op.ne]: 'FREE' }
+          }
+        }
+      ],
+      group: ['to_user', 'rated.login', 'rated.ava', 'rated.status', 'rated.city', 'rated.country', 'rated.date', 'rated.info', 'rated.registration', 'rated.online', 'rated.viptype', 'rated.geo'],
+      having: Rating.sequelize.literal('SUM(value) >= 3 AND COUNT(value) >= 3'), // Высокий рейтинг
+      order: [
+        [Rating.sequelize.fn('SUM', Rating.sequelize.col('value')), 'DESC']
+      ],
+      limit: 5
+    });
+
+    if (highRatedUsers.length > 0) {
+      // Возвращаем случайного пользователя из топ-5 по рейтингу
+      const randomIndex = Math.floor(Math.random() * highRatedUsers.length);
+      const selectedUser = highRatedUsers[randomIndex];
+      
+      logger.logResult('Выбран пользователь с высоким рейтингом', true, {
+        selected_user: selectedUser.rated.login,
+        rating: parseInt(selectedUser.get('total_rating')),
+        votes: parseInt(selectedUser.get('total_votes'))
+      });
+      
+      return selectedUser.rated;
+    }
+
+    // Fallback: любой VIP пользователь
+    logger.logWarning('Нет пользователей с высоким рейтингом, используем fallback', {
+      current_user: currentUserId
+    });
+    
+    return await User.findOne({
+      where: {
+        login: { [Op.ne]: currentUserId },
+        status: { [Op.ne]: 'BANNED' },
+        viptype: { [Op.ne]: 'FREE' }
+      },
+      order: User.sequelize.random()
+    });
+
+  } catch (error) {
+    logger.logError('Ошибка в алгоритме рекомендаций', error);
+    
+    // Fallback: обычный случайный выбор
+    return await User.findOne({
+      where: {
+        login: { [Op.ne]: currentUserId },
+        status: { [Op.ne]: 'BANNED' },
+        viptype: { [Op.ne]: 'FREE' }
+      },
+      order: User.sequelize.random()
+    });
+  }
+};
 
 // GET /api/swipe/profiles - Получение профилей для свайпинга
 router.get('/profiles', authenticateToken, async (req, res) => {
@@ -47,14 +128,8 @@ router.get('/profiles', authenticateToken, async (req, res) => {
       const targetLogin = history[history.length - 2];
       targetUser = await User.findOne({ where: { login: targetLogin } });
     } else {
-      // Получение нового случайного профиля
-      targetUser = await User.findOne({
-        where: {
-          login: { [Op.ne]: userId },
-          viptype: { [Op.ne]: 'FREE' } // Показываем только VIP пользователей
-        },
-        order: User.sequelize.random()
-      });
+      // Получение нового профиля с помощью умного алгоритма рекомендаций
+      targetUser = await getRecommendedProfile(userId);
     }
 
     if (!targetUser) {
@@ -118,13 +193,13 @@ router.get('/profiles', authenticateToken, async (req, res) => {
 // POST /api/swipe/like - Лайк профиля
 router.post('/like', authenticateToken, async (req, res) => {
   try {
-    const { target_user } = req.body;
+    const { target_user, source = 'gesture' } = req.body;
     const fromUser = req.user.login;
 
     if (!target_user) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'missing_target',
-        message: 'Не указан пользователь для лайка' 
+        message: 'Не указан пользователь для лайка'
       });
     }
 
@@ -149,53 +224,103 @@ router.post('/like', authenticateToken, async (req, res) => {
     const likeId = generateId();
     const today = new Date().toISOString().split('T')[0];
 
-    if (mutualLike) {
-      // Взаимный лайк - обновляем статус
-      await mutualLike.update({ reciprocal: 'yes' });
+    // Создаем основной лайк
+    await Likes.create({
+      id: likeId,
+      date: today,
+      like_from: fromUser,
+      like_to: target_user,
+      reciprocal: mutualLike ? 'yes' : 'empty',
+      super_message: '0'
+    });
+
+    // Используем новую систему MatchChecker для проверки мэтча
+    let matchCreated = false;
+    try {
+      const matchResult = await MatchChecker.checkMutualLike(fromUser, target_user);
       
-      // Создаем новый лайк
-      await Likes.create({
-        id: likeId,
-        date: today,
-        like_from: fromUser,
-        like_to: target_user,
-        reciprocal: 'yes',
-        super_message: '0'
-      });
+      if (matchResult.hasMatch) {
+        // Создаем мэтч с новой системой
+        await MatchChecker.createMatch(fromUser, target_user);
+        matchCreated = true;
+        
+        console.log('Match created via swipe:', {
+          user1: fromUser,
+          user2: target_user,
+          source: source
+        });
 
-      // Создаем уведомления о взаимной симпатии
-      try {
-        await Notifications.createMatchNotification(fromUser, target_user);
-      } catch (notifError) {
-        console.error('Error creating match notification:', notifError);
+        // Обновляем статус старого лайка если он был
+        if (mutualLike) {
+          await mutualLike.update({ reciprocal: 'mutual' });
+        }
+
+        // Создаем уведомления о мэтче для обоих пользователей
+        try {
+          await Notifications.createMatchNotification(fromUser, target_user);
+          await Notifications.createMatchNotification(target_user, fromUser);
+        } catch (notifError) {
+          console.error('Error creating match notifications:', notifError);
+        }
+
+        res.json({
+          result: 'reciprocal_like',
+          message: 'Взаимная симпатия! 💕 Теперь вы можете общаться в чате!',
+          source,
+          match_created: true
+        });
+      } else {
+        // Создаем обычное уведомление о лайке
+        try {
+          await Notifications.createLikeNotification(target_user, fromUser, false);
+        } catch (notifError) {
+          console.error('Error creating like notification:', notifError);
+        }
+
+        res.json({
+          result: 'success',
+          message: 'Лайк отправлен',
+          source,
+          match_created: false
+        });
       }
-
-      res.json({
-        result: 'reciprocal_like',
-        message: 'Есть взаимная симпатия! Заходите в личный кабинет, чтобы посмотреть кто это!'
+    } catch (error) {
+      console.error('Error checking match after swipe like:', {
+        fromUser,
+        target_user,
+        error: error.message
       });
-    } else {
-      // Обычный лайк
-      await Likes.create({
-        id: likeId,
-        date: today,
-        like_from: fromUser,
-        like_to: target_user,
-        reciprocal: 'empty',
-        super_message: '0'
-      });
+      
+      // Fallback: используем старую логику
+      if (mutualLike) {
+        await mutualLike.update({ reciprocal: 'yes' });
+        
+        try {
+          await Notifications.createMatchNotification(fromUser, target_user);
+        } catch (notifError) {
+          console.error('Error creating fallback match notification:', notifError);
+        }
 
-      // Создаем уведомление о лайке
-      try {
-        await Notifications.createLikeNotification(target_user, fromUser, false);
-      } catch (notifError) {
-        console.error('Error creating like notification:', notifError);
+        res.json({
+          result: 'reciprocal_like',
+          message: 'Взаимная симпатия! (режим совместимости)',
+          source,
+          match_created: true
+        });
+      } else {
+        try {
+          await Notifications.createLikeNotification(target_user, fromUser, false);
+        } catch (notifError) {
+          console.error('Error creating fallback like notification:', notifError);
+        }
+
+        res.json({
+          result: 'success',
+          message: 'Лайк отправлен',
+          source,
+          match_created: false
+        });
       }
-
-      res.json({
-        result: 'success',
-        message: 'Лайк отправлен'
-      });
     }
 
   } catch (error) {
@@ -210,13 +335,13 @@ router.post('/like', authenticateToken, async (req, res) => {
 // POST /api/swipe/dislike - Дизлайк профиля
 router.post('/dislike', authenticateToken, async (req, res) => {
   try {
-    const { target_user } = req.body;
+    const { target_user, source = 'gesture' } = req.body;
     const fromUser = req.user.login;
 
     if (!target_user) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'missing_target',
-        message: 'Не указан пользователь для дизлайка' 
+        message: 'Не указан пользователь для дизлайка'
       });
     }
 
@@ -235,12 +360,14 @@ router.post('/dislike', authenticateToken, async (req, res) => {
       
       res.json({
         result: 'reciprocal_dislike',
-        message: 'Лайк отклонен'
+        message: 'Лайк отклонен',
+        source
       });
     } else {
       res.json({
         result: 'forward',
-        message: 'Профиль пропущен'
+        message: 'Профиль пропущен',
+        source
       });
     }
 

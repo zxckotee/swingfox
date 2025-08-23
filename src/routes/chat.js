@@ -7,6 +7,8 @@ const { Op } = require('sequelize');
 const { Chat, User, Notifications } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { generateId } = require('../utils/helpers');
+const MatchChecker = require('../utils/matchChecker');
+const { APILogger } = require('../utils/logger');
 
 // Настройка multer для загрузки изображений в чат
 const storage = multer.diskStorage({
@@ -40,6 +42,9 @@ const upload = multer({
 // Хранилище для статусов пользователей (в продакшене использовать Redis)
 const userStatuses = new Map();
 
+// Feature flag для системы мэтчей (можно отключить для отладки)
+const ENABLE_MATCH_CHECKING = process.env.ENABLE_MATCH_CHECKING !== 'false';
+
 // GET /api/chat/:username - Получение истории чата
 router.get('/:username', authenticateToken, async (req, res) => {
   try {
@@ -50,10 +55,34 @@ router.get('/:username', authenticateToken, async (req, res) => {
     // Проверяем существование собеседника
     const targetUser = await User.findOne({ where: { login: username } });
     if (!targetUser) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'user_not_found',
-        message: 'Пользователь не найден' 
+        message: 'Пользователь не найден'
       });
+    }
+
+    // Проверяем разрешение на просмотр чата (с fallback'ом)
+    let matchStatus = null;
+    if (ENABLE_MATCH_CHECKING) {
+      try {
+        const viewPermission = await MatchChecker.canViewChat(currentUser, username);
+        matchStatus = await MatchChecker.getMatchStatus(currentUser, username);
+        
+        console.log('Chat view permission checked:', {
+          currentUser,
+          chatPartner: username,
+          allowed: viewPermission.allowed,
+          hasMatch: viewPermission.hasMatch,
+          canReply: viewPermission.canReply
+        });
+      } catch (error) {
+        console.error('Match checking failed in chat view:', {
+          currentUser,
+          chatPartner: username,
+          error: error.message
+        });
+        // Продолжаем без проверки мэтча
+      }
     }
 
     // Получаем сообщения
@@ -107,7 +136,9 @@ router.get('/:username', authenticateToken, async (req, res) => {
       success: true,
       messages: formattedMessages.reverse(), // Возвращаем в хронологическом порядке
       companion: companionInfo,
-      total_count: messages.length
+      total_count: messages.length,
+      match_status: matchStatus, // Информация о мэтче для UI
+      match_checking_enabled: ENABLE_MATCH_CHECKING
     });
 
   } catch (error) {
@@ -126,16 +157,16 @@ router.post('/send', authenticateToken, upload.array('images', 5), async (req, r
     const fromUser = req.user.login;
 
     if (!to_user) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'missing_recipient',
-        message: 'Не указан получатель' 
+        message: 'Не указан получатель'
       });
     }
 
     if (!message && (!req.files || req.files.length === 0)) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'empty_message',
-        message: 'Сообщение не может быть пустым' 
+        message: 'Сообщение не может быть пустым'
       });
     }
 
@@ -153,10 +184,66 @@ router.post('/send', authenticateToken, upload.array('images', 5), async (req, r
         }
       }
       
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'recipient_not_found',
-        message: 'Получатель не найден' 
+        message: 'Получатель не найден'
       });
+    }
+
+    // Проверяем разрешение на отправку сообщения (с fallback'ом)
+    let sendAllowed = true;
+    let matchWarning = null;
+    
+    if (ENABLE_MATCH_CHECKING) {
+      try {
+        const permission = await MatchChecker.canSendMessage(fromUser, to_user);
+        
+        if (!permission.allowed) {
+          // Удаляем загруженные файлы
+          if (req.files) {
+            for (const file of req.files) {
+              try {
+                await fs.unlink(file.path);
+              } catch (err) {
+                console.error('Error deleting file:', err);
+              }
+            }
+          }
+          
+          console.warn('Message sending blocked due to no match:', {
+            fromUser,
+            toUser: to_user,
+            reason: permission.reason
+          });
+          
+          return res.status(403).json({
+            error: permission.reason,
+            message: permission.message,
+            match_data: permission.matchData
+          });
+        }
+        
+        // Записываем в лог успешную проверку
+        console.log('Message sending allowed:', {
+          fromUser,
+          toUser: to_user,
+          reason: permission.reason,
+          hasMatch: permission.matchData?.hasMatch
+        });
+        
+        if (permission.reason === 'fallback_allow') {
+          matchWarning = 'Отправлено без проверки мэтча (технические неполадки)';
+        }
+        
+      } catch (error) {
+        console.error('Match checking failed in send message:', {
+          fromUser,
+          toUser: to_user,
+          error: error.message
+        });
+        // Продолжаем отправку в случае ошибки
+        matchWarning = 'Проверка мэтча недоступна';
+      }
     }
 
     // Обрабатываем загруженные изображения
@@ -198,7 +285,9 @@ router.post('/send', authenticateToken, upload.array('images', 5), async (req, r
     res.json({
       success: true,
       message: 'Сообщение отправлено',
-      data: responseMessage
+      data: responseMessage,
+      match_warning: matchWarning,
+      match_checking_enabled: ENABLE_MATCH_CHECKING
     });
 
   } catch (error) {

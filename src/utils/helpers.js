@@ -2,6 +2,9 @@
  * Утилиты для SwingFox приложения
  */
 
+const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+
 /**
  * Генерирует уникальный ID на основе времени и случайных чисел
  * @returns {string} Уникальный ID
@@ -198,6 +201,34 @@ function escapeHtml(str) {
 }
 
 /**
+ * Генерирует JWT токен для пользователя
+ * @param {Object} user - Объект пользователя с полем id
+ * @returns {string} JWT токен
+ */
+function generateToken(user) {
+  const payload = {
+    userId: user.id,
+    login: user.login
+  };
+  
+  const secret = process.env.JWT_SECRET || 'swingfox_default_secret';
+  const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
+  
+  return jwt.sign(payload, secret, { expiresIn });
+}
+
+/**
+ * Генерирует 6-значный цифровой код для подтверждения email
+ * @returns {string} 6-значный код
+ */
+function generateEmailCode() {
+  // Используем криптографически стойкий генератор
+  const buffer = crypto.randomBytes(3);
+  const code = parseInt(buffer.toString('hex'), 16) % 1000000;
+  return code.toString().padStart(6, '0');
+}
+
+/**
  * Дебаунс функция
  * @param {Function} func - Функция для дебаунса
  * @param {number} wait - Время ожидания в мс
@@ -217,6 +248,8 @@ function debounce(func, wait) {
 
 module.exports = {
   generateId,
+  generateToken,
+  generateEmailCode,
   isValidEmail,
   stripHtml,
   truncateString,
@@ -228,5 +261,133 @@ module.exports = {
   yearToAge,
   maskEmail,
   escapeHtml,
-  debounce
+  debounce,
+  parseGeo,
+  formatAge,
+  formatOnlineTime
 };
+
+/**
+ * Парсинг геолокационных данных из строки формата "lat&&lng"
+ * @param {string} geoString - Строка с координатами в формате "lat&&lng"
+ * @returns {object|null} Объект с координатами {lat, lng} или null
+ */
+function parseGeo(geoString) {
+  if (!geoString || typeof geoString !== 'string') {
+    return null;
+  }
+  
+  const parts = geoString.split('&&');
+  if (parts.length !== 2) {
+    return null;
+  }
+  
+  const lat = parseFloat(parts[0]);
+  const lng = parseFloat(parts[1]);
+  
+  if (isNaN(lat) || isNaN(lng)) {
+    return null;
+  }
+  
+  return { lat, lng };
+}
+
+/**
+ * Форматирование возраста по дате рождения
+ * @param {string|Date} birthDate - Дата рождения
+ * @returns {number|null} Возраст в годах или null
+ */
+function formatAge(birthDate) {
+  if (!birthDate) {
+    return null;
+  }
+  
+  let date;
+  if (typeof birthDate === 'string') {
+    // Пробуем парсить разные форматы дат
+    if (birthDate.includes('-')) {
+      date = new Date(birthDate);
+    } else if (birthDate.length === 4) {
+      // Если это просто год
+      date = new Date(parseInt(birthDate), 0, 1);
+    } else {
+      date = new Date(birthDate);
+    }
+  } else {
+    date = new Date(birthDate);
+  }
+  
+  if (isNaN(date.getTime())) {
+    return null;
+  }
+  
+  const today = new Date();
+  let age = today.getFullYear() - date.getFullYear();
+  const monthDiff = today.getMonth() - date.getMonth();
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) {
+    age--;
+  }
+  
+  return age >= 0 ? age : null;
+}
+
+/**
+ * Форматирование времени последней активности
+ * @param {string|Date|number} lastOnline - Время последней активности
+ * @returns {string} Отформатированное время или статус
+ */
+function formatOnlineTime(lastOnline) {
+  if (!lastOnline) {
+    return 'Не в сети';
+  }
+  
+  let onlineDate;
+  
+  // Обрабатываем разные форматы времени
+  if (typeof lastOnline === 'number') {
+    // Unix timestamp
+    onlineDate = new Date(lastOnline * 1000);
+  } else if (typeof lastOnline === 'string') {
+    onlineDate = new Date(lastOnline);
+  } else {
+    onlineDate = new Date(lastOnline);
+  }
+  
+  if (isNaN(onlineDate.getTime())) {
+    return 'Не в сети';
+  }
+  
+  const now = new Date();
+  const diff = now - onlineDate;
+  
+  // Онлайн (последние 5 минут)
+  if (diff < 300000) { // 5 minutes
+    return 'В сети';
+  }
+  
+  // Меньше часа
+  if (diff < 3600000) {
+    const minutes = Math.floor(diff / 60000);
+    return `${minutes} мин назад`;
+  }
+  
+  // Меньше дня
+  if (diff < 86400000) {
+    const hours = Math.floor(diff / 3600000);
+    return `${hours} час${hours === 1 ? '' : hours < 5 ? 'а' : 'ов'} назад`;
+  }
+  
+  // Меньше недели
+  if (diff < 604800000) {
+    const days = Math.floor(diff / 86400000);
+    return `${days} ${days === 1 ? 'день' : days < 5 ? 'дня' : 'дней'} назад`;
+  }
+  
+  // Больше недели - показываем дату
+  const day = onlineDate.getDate().toString().padStart(2, '0');
+  const month = (onlineDate.getMonth() + 1).toString().padStart(2, '0');
+  const year = onlineDate.getFullYear();
+  
+  return `${day}.${month}.${year}`;
+}

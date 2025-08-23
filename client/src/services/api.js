@@ -64,6 +64,9 @@ const isCacheValid = (cachedData) => {
   return (Date.now() - cachedData.cachedAt) < CACHE_LIFETIME;
 };
 
+// Флаг для предотвращения повторных редиректов
+let isRedirecting = false;
+
 // Интерцептор для добавления токена к запросам
 apiClient.interceptors.request.use(
   (config) => {
@@ -80,10 +83,18 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !isRedirecting) {
       // Токен истек или недействителен
+      isRedirecting = true;
       setToken(null);
-      window.location.href = '/login';
+      
+      // Вместо window.location.href используем событие
+      window.dispatchEvent(new CustomEvent('auth-logout'));
+      
+      // Сбрасываем флаг через некоторое время
+      setTimeout(() => {
+        isRedirecting = false;
+      }, 1000);
     } else if (error.response?.status >= 500) {
       toast.error('Ошибка сервера. Попробуйте позже.');
     }
@@ -283,6 +294,55 @@ export const usersAPI = {
       password
     });
     return response.data;
+  },
+
+  // Лайки фото
+  likePhoto: async (targetUser, photoIndex) => {
+    const response = await apiClient.post(`/profiles/${targetUser}/like-photo`, {
+      photo_index: photoIndex
+    });
+    return response.data;
+  },
+
+  getPhotoLikes: async (targetUser) => {
+    const response = await apiClient.get(`/profiles/${targetUser}/photo-likes`);
+    return response.data;
+  },
+
+  // Отправка подарков
+  sendGift: async (targetUser, giftType, message = '') => {
+    const response = await apiClient.post(`/profiles/${targetUser}/send-gift`, {
+      gift_type: giftType,
+      message
+    });
+    return response.data;
+  },
+
+  // Система рейтинга
+  rateUser: async (targetUser, value) => {
+    const response = await apiClient.post(`/profiles/${targetUser}/rate`, {
+      value
+    });
+    return response.data;
+  },
+
+  getUserRating: async (targetUser) => {
+    const response = await apiClient.get(`/profiles/${targetUser}/rating`);
+    return response.data;
+  },
+
+  // Суперлайки
+  sendSuperlike: async (targetUser, message = '') => {
+    const response = await apiClient.post(`/profiles/${targetUser}/superlike`, {
+      message
+    });
+    return response.data;
+  },
+
+  // Регистрация посещений
+  registerVisit: async (targetUser) => {
+    const response = await apiClient.post(`/profiles/${targetUser}/visit`);
+    return response.data;
   }
 };
 
@@ -293,13 +353,19 @@ export const swipeAPI = {
     return response.data;
   },
 
-  like: async (targetUser) => {
-    const response = await apiClient.post('/swipe/like', { target_user: targetUser });
+  like: async (targetUser, source = 'gesture') => {
+    const response = await apiClient.post('/swipe/like', {
+      target_user: targetUser,
+      source
+    });
     return response.data;
   },
 
-  dislike: async (targetUser) => {
-    const response = await apiClient.post('/swipe/dislike', { target_user: targetUser });
+  dislike: async (targetUser, source = 'gesture') => {
+    const response = await apiClient.post('/swipe/dislike', {
+      target_user: targetUser,
+      source
+    });
     return response.data;
   },
 
@@ -313,6 +379,30 @@ export const swipeAPI = {
 
   getSuperlikes: async () => {
     const response = await apiClient.get('/swipe/superlike-count');
+    return response.data;
+  }
+};
+
+// API методы для каталога анкет
+export const catalogAPI = {
+  getProfiles: async (filters = {}) => {
+    const params = new URLSearchParams();
+    
+    // Добавляем фильтры как параметры запроса
+    if (filters.status && filters.status.length > 0) {
+      filters.status.forEach(s => params.append('status', s));
+    }
+    if (filters.country) params.append('country', filters.country);
+    if (filters.city) params.append('city', filters.city);
+    if (filters.limit) params.append('limit', filters.limit);
+    if (filters.offset) params.append('offset', filters.offset);
+
+    const response = await apiClient.get(`/catalog?${params.toString()}`);
+    return response.data;
+  },
+
+  getFilters: async () => {
+    const response = await apiClient.get('/catalog/filters');
     return response.data;
   }
 };
@@ -356,6 +446,17 @@ export const chatAPI = {
 
   deleteConversation: async (username) => {
     const response = await apiClient.delete(`/chat/${username}`);
+    return response.data;
+  },
+
+  // Новые методы для работы с мэтчами
+  getMatchStatus: async (targetUser) => {
+    const response = await apiClient.get(`/chat/match-status/${targetUser}`);
+    return response.data;
+  },
+
+  checkMatchPermission: async (targetUser) => {
+    const response = await apiClient.get(`/chat/can-message/${targetUser}`);
     return response.data;
   }
 };
@@ -487,7 +588,7 @@ export const notificationsAPI = {
   },
 
   getUnreadCount: async () => {
-    const response = await apiClient.get('/notifications/unread-count');
+    const response = await apiClient.get('/notifications/count');
     return response.data;
   }
 };
@@ -665,11 +766,11 @@ export const ratingAPI = {
     return response.data;
   },
 
-  getTopUsers: async (period = 'all', limit = 20) => {
-    const params = new URLSearchParams({
-      period,
-      limit: limit.toString()
-    });
+  getTopUsers: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.period) params.append('period', filters.period);
+    if (filters.limit) params.append('limit', filters.limit.toString());
+    
     const response = await apiClient.get(`/rating/top/users?${params.toString()}`);
     return response.data;
   },
@@ -689,6 +790,23 @@ export const ratingAPI = {
       limit: limit.toString()
     });
     const response = await apiClient.get(`/rating/my/received?${params.toString()}`);
+    return response.data;
+  },
+
+  // Новые методы для интеграции с frontend
+  getLeaderboard: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.period) params.append('period', filters.period);
+    if (filters.category) params.append('category', filters.category);
+    if (filters.city) params.append('city', filters.city);
+    if (filters.limit) params.append('limit', filters.limit.toString());
+    
+    const response = await apiClient.get(`/rating/leaderboard?${params.toString()}`);
+    return response.data;
+  },
+
+  getMyStats: async () => {
+    const response = await apiClient.get('/rating/my/stats');
     return response.data;
   }
 };
@@ -845,6 +963,7 @@ export const api = {
   auth: authAPI,
   users: usersAPI,
   swipe: swipeAPI,
+  catalog: catalogAPI,
   chat: chatAPI,
   ads: adsAPI,
   admin: adminAPI,

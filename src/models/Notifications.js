@@ -210,7 +210,7 @@ module.exports = (sequelize) => {
           {
             model: sequelize.models.User,
             as: 'FromUser',
-            attributes: ['login', 'name', 'ava'],
+            attributes: ['login', 'ava'],
             required: false
           }
         ]
@@ -300,9 +300,9 @@ module.exports = (sequelize) => {
 
     const type = isSuper ? 'superlike' : 'like';
     const title = isSuper ? 'Суперлайк!' : 'Новый лайк!';
-    const message = isSuper 
-      ? `${fromUser.name} отправил(а) вам суперлайк!`
-      : `${fromUser.name} лайкнул(а) ваш профиль!`;
+    const message = isSuper
+      ? `${fromUser.login} отправил(а) вам суперлайк!`
+      : `${fromUser.login} лайкнул(а) ваш профиль!`;
 
     return await this.createNotification({
       user_id: targetUserId,
@@ -330,7 +330,7 @@ module.exports = (sequelize) => {
         user_id: userId1,
         type: 'match',
         title: 'Взаимная симпатия!',
-        message: `У вас взаимная симпатия с ${user2.name}! Теперь вы можете общаться.`,
+        message: `У вас взаимная симпатия с ${user2.login}! Теперь вы можете общаться.`,
         from_user: userId2,
         target_id: userId2,
         target_type: 'user',
@@ -341,7 +341,7 @@ module.exports = (sequelize) => {
         user_id: userId2,
         type: 'match',
         title: 'Взаимная симпатия!',
-        message: `У вас взаимная симпатия с ${user1.name}! Теперь вы можете общаться.`,
+        message: `У вас взаимная симпатия с ${user1.login}! Теперь вы можете общаться.`,
         from_user: userId1,
         target_id: userId1,
         target_type: 'user',
@@ -367,7 +367,7 @@ module.exports = (sequelize) => {
       user_id: toUserId,
       type: 'message',
       title: 'Новое сообщение',
-      message: `${fromUser.name}: ${truncatedMessage}`,
+      message: `${fromUser.login}: ${truncatedMessage}`,
       from_user: fromUserId,
       target_id: fromUserId,
       target_type: 'user',
@@ -386,7 +386,7 @@ module.exports = (sequelize) => {
       user_id: toUserId,
       type: 'gift',
       title: 'Новый подарок!',
-      message: `${fromUser.name} отправил(а) вам подарок!`,
+      message: `${fromUser.login} отправил(а) вам подарок!`,
       from_user: fromUserId,
       target_id: fromUserId,
       target_type: 'gift',

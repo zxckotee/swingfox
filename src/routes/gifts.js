@@ -132,6 +132,111 @@ router.get('/types', authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/gifts/history - История подарков (отправленные и полученные)
+router.get('/history', authenticateToken, async (req, res) => {
+  const logger = new APILogger('GIFTS');
+  
+  try {
+    logger.logRequest(req, 'GET /gifts/history');
+    
+    const userId = req.user.login;
+    const { type = 'all', limit = 20, offset = 0 } = req.query;
+
+    logger.logBusinessLogic(1, 'Получение истории подарков', {
+      user_id: userId,
+      type,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    }, req);
+
+    let whereCondition = { is_valid: true };
+    
+    if (type === 'sent') {
+      whereCondition.from_user = userId;
+    } else if (type === 'received') {
+      whereCondition.owner = userId;
+    } else {
+      // 'all' - получаем и отправленные и полученные
+      whereCondition = {
+        [require('sequelize').Op.or]: [
+          { from_user: userId, is_valid: true },
+          { owner: userId, is_valid: true }
+        ]
+      };
+    }
+
+    // Получаем подарки
+    const gifts = await Gifts.findAll({
+      where: whereCondition,
+      include: [
+        {
+          model: User,
+          as: 'sender',
+          attributes: ['login', 'name', 'ava']
+        },
+        {
+          model: User,
+          as: 'recipient',
+          attributes: ['login', 'name', 'ava']
+        }
+      ],
+      order: [['created_at', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    // Подсчитываем общее количество
+    const totalCount = await Gifts.count({ where: whereCondition });
+
+    // Форматируем подарки
+    const formattedGifts = gifts.map(gift => ({
+      id: gift.id,
+      gift_type: gift.gift_type,
+      type_name: gift.getTypeName(),
+      cost: gift.getCost(),
+      from_user: gift.from_user,
+      to_user: gift.owner,
+      sender_info: gift.sender ? {
+        login: gift.sender.login,
+        name: gift.sender.name,
+        avatar: gift.sender.ava
+      } : null,
+      recipient_info: gift.recipient ? {
+        login: gift.recipient.login,
+        name: gift.recipient.name,
+        avatar: gift.recipient.ava
+      } : null,
+      message: gift.message || '',
+      date: gift.date,
+      created_at: gift.created_at
+    }));
+
+    const responseData = {
+      gifts: formattedGifts,
+      pagination: {
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        total: totalCount,
+        hasMore: (parseInt(offset) + parseInt(limit)) < totalCount
+      }
+    };
+
+    logger.logSuccess(req, 200, {
+      gifts_count: gifts.length,
+      total_count: totalCount
+    });
+    
+    res.json(responseData);
+
+  } catch (error) {
+    logger.logError(req, error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при получении истории подарков'
+    });
+  }
+});
+
 // POST /api/gifts/send - Отправка подарка
 router.post('/send', authenticateToken, async (req, res) => {
   const logger = new APILogger('GIFTS');
@@ -139,7 +244,7 @@ router.post('/send', authenticateToken, async (req, res) => {
   try {
     logger.logRequest(req, 'POST /gifts/send');
     
-    const { target_user, gift_type } = req.body;
+    const { target_user, gift_type, message } = req.body;
     const fromUser = req.user.login;
 
     if (!target_user || !gift_type) {
@@ -152,7 +257,8 @@ router.post('/send', authenticateToken, async (req, res) => {
     logger.logBusinessLogic(1, 'Отправка подарка', {
       from_user: fromUser,
       target_user,
-      gift_type
+      gift_type,
+      message: message || ''
     }, req);
 
     // Получаем данные отправителя
@@ -208,6 +314,7 @@ router.post('/send', authenticateToken, async (req, res) => {
       owner: target_user,
       from_user: fromUser,
       gift_type,
+      message: message || '',
       date: today,
       is_valid: true
     });

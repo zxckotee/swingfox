@@ -530,6 +530,72 @@ const EmptyState = styled.div`
   }
 `;
 
+const MatchStatusBanner = styled.div`
+  padding: 12px 20px;
+  background: ${props => {
+    switch (props.$status) {
+      case 'matched': return 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)';
+      case 'waiting': return 'linear-gradient(135deg, #ed8936 0%, #dd6b20 100%)';
+      case 'incoming': return 'linear-gradient(135deg, #e53e3e 0%, #c53030 100%)';
+      case 'no_match': return 'linear-gradient(135deg, #718096 0%, #4a5568 100%)';
+      default: return 'linear-gradient(135deg, #4299e1 0%, #3182ce 100%)';
+    }
+  }};
+  color: white;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  animation: slideIn 0.3s ease-out;
+  
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .icon {
+    font-size: 16px;
+  }
+  
+  .message {
+    flex: 1;
+    text-align: center;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 10px 15px;
+    font-size: 13px;
+  }
+`;
+
+const MessageInputWrapper = styled.div`
+  position: relative;
+  
+  ${props => props.$disabled && `
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.8);
+      z-index: 10;
+      border-radius: 8px;
+    }
+  `}
+`;
+
 const Chat = () => {
   const { chatId } = useParams();
   const navigate = useNavigate();
@@ -537,6 +603,7 @@ const Chat = () => {
   const [messageText, setMessageText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [matchStatus, setMatchStatus] = useState(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const queryClient = useQueryClient();
@@ -558,19 +625,35 @@ const Chat = () => {
     () => chatAPI.getMessages(selectedChat),
     {
       enabled: !!selectedChat,
-      refetchInterval: 2000 // Обновляем каждые 2 секунды
+      refetchInterval: 2000, // Обновляем каждые 2 секунды
+      onSuccess: (data) => {
+        // Сохраняем информацию о мэтче из ответа
+        if (data?.match_status) {
+          setMatchStatus(data.match_status);
+        }
+      }
     }
   );
 
   // Мутации
   const sendMessageMutation = useMutation(chatAPI.sendMessage, {
-    onSuccess: () => {
+    onSuccess: (data) => {
       setMessageText('');
       queryClient.invalidateQueries(['messages', selectedChat]);
       queryClient.invalidateQueries('conversations');
+      
+      // Показываем предупреждение если есть
+      if (data?.match_warning) {
+        toast.warning(data.match_warning);
+      }
     },
     onError: (error) => {
-      toast.error(apiUtils.handleError(error));
+      // Обрабатываем ошибки мэтча отдельно
+      if (error.response?.data?.error === 'no_match') {
+        toast.error('Для отправки сообщений нужен взаимный лайк! 💕');
+      } else {
+        toast.error(apiUtils.handleError(error));
+      }
     }
   });
 
@@ -608,6 +691,12 @@ const Chat = () => {
 
   const handleSendMessage = () => {
     if (messageText.trim() && selectedChat) {
+      // Проверяем статус мэтча перед отправкой
+      if (matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown') {
+        toast.error(`${matchStatus.message} ${matchStatus.icon}`);
+        return;
+      }
+
       const formData = new FormData();
       formData.append('to_user', selectedChat);
       formData.append('message', messageText.trim());
@@ -625,6 +714,12 @@ const Chat = () => {
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file && selectedChat) {
+      // Проверяем статус мэтча перед отправкой файла
+      if (matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown') {
+        toast.error(`${matchStatus.message} ${matchStatus.icon}`);
+        return;
+      }
+
       const formData = new FormData();
       formData.append('images', file);
       formData.append('to_user', selectedChat);
@@ -738,6 +833,14 @@ const Chat = () => {
               </IconButton>
             </ChatWindowHeader>
 
+            {/* Баннер статуса мэтча */}
+            {matchStatus && matchStatus.status !== 'unknown' && (
+              <MatchStatusBanner $status={matchStatus.status}>
+                <span className="icon">{matchStatus.icon}</span>
+                <span className="message">{matchStatus.message}</span>
+              </MatchStatusBanner>
+            )}
+
             <MessagesContainer>
               {(messages?.messages || []).map((message, index) => {
                 const isOwn = message.by_user === currentUser.login;
@@ -781,7 +884,8 @@ const Chat = () => {
               <div ref={messagesEndRef} />
             </MessagesContainer>
 
-            <MessageInput>
+            <MessageInputWrapper $disabled={matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown'}>
+              <MessageInput>
               <InputContainer>
                 <TextInput
                   value={messageText}
@@ -801,7 +905,11 @@ const Chat = () => {
               
               <ActionButton
                 onClick={handleSendMessage}
-                disabled={!messageText.trim() || sendMessageMutation.isLoading}
+                disabled={
+                  !messageText.trim() ||
+                  sendMessageMutation.isLoading ||
+                  (matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown')
+                }
               >
                 <SendIcon />
               </ActionButton>
@@ -812,6 +920,7 @@ const Chat = () => {
                 onChange={handleFileUpload}
               />
             </MessageInput>
+            </MessageInputWrapper>
           </>
         ) : (
           <EmptyState>

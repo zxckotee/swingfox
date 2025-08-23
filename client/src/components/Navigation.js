@@ -79,6 +79,13 @@ const TrophyIcon = () => (
   </svg>
 );
 
+const SearchIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="11" cy="11" r="8"/>
+    <path d="M21 21l-4.35-4.35"/>
+  </svg>
+);
+
 const MenuIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <line x1="3" y1="6" x2="21" y2="6"/>
@@ -377,7 +384,7 @@ const NotificationBadge = styled.span`
 
 // Компонент счетчика уведомлений
 const NotificationCounter = () => {
-  const { data: unreadCount } = useQuery(
+  const { data: unreadCountData } = useQuery(
     'unread-notifications-count',
     () => notificationsAPI.getUnreadCount(),
     {
@@ -388,6 +395,8 @@ const NotificationCounter = () => {
       }
     }
   );
+
+  const unreadCount = unreadCountData?.total_unread || 0;
 
   if (!unreadCount || unreadCount === 0) return null;
 
@@ -509,16 +518,24 @@ const Navigation = () => {
         </LogoContainer>
 
         <NavLinks>
-          <NavLink 
-            to="/" 
+          <NavLink
+            to="/"
             className={isActiveRoute('/') ? 'active' : ''}
           >
             <HomeIcon />
             Свайп
           </NavLink>
           
-          <NavLink 
-            to="/chat" 
+          <NavLink
+            to="/catalog"
+            className={isActiveRoute('/catalog') ? 'active' : ''}
+          >
+            <SearchIcon />
+            Каталог
+          </NavLink>
+          
+          <NavLink
+            to="/chat"
             className={location.pathname.startsWith('/chat') ? 'active' : ''}
           >
             <ChatIcon />
@@ -631,8 +648,8 @@ const Navigation = () => {
       </NavContent>
 
       <MobileMenu $show={showMobileMenu}>
-        <MobileNavLink 
-          to="/" 
+        <MobileNavLink
+          to="/"
           className={isActiveRoute('/') ? 'active' : ''}
           onClick={() => setShowMobileMenu(false)}
         >
@@ -640,8 +657,17 @@ const Navigation = () => {
           Свайп
         </MobileNavLink>
         
-        <MobileNavLink 
-          to="/chat" 
+        <MobileNavLink
+          to="/catalog"
+          className={isActiveRoute('/catalog') ? 'active' : ''}
+          onClick={() => setShowMobileMenu(false)}
+        >
+          <SearchIcon />
+          Каталог
+        </MobileNavLink>
+        
+        <MobileNavLink
+          to="/chat"
           className={location.pathname.startsWith('/chat') ? 'active' : ''}
           onClick={() => setShowMobileMenu(false)}
         >

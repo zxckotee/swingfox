@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { swipeAPI, apiUtils } from '../services/api';
+import { useNotifications } from '../contexts/NotificationContext';
 import {
   PageContainer,
   Avatar,
@@ -12,7 +13,12 @@ import {
   LoadingSpinner,
   FlexContainer,
   Card,
-  HeartIcon
+  HeartIcon,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  CloseIcon,
+  TextArea
 } from '../components/UI';
 
 // Иконки для действий
@@ -432,8 +438,11 @@ const SwipeHint = styled.div`
 const Home = () => {
   const [currentProfile, setCurrentProfile] = useState(null);
   const [showHint, setShowHint] = useState(false);
+  const [showSuperlikeModal, setShowSuperlikeModal] = useState(false);
+  const [superlikeMessage, setSuperlikeMessage] = useState('');
   const queryClient = useQueryClient();
   const currentUser = apiUtils.getCurrentUser();
+  const { showMatchPopup } = useNotifications();
 
   // Получение профилей
   const { data: profile, isLoading, refetch } = useQuery(
@@ -454,35 +463,72 @@ const Home = () => {
   );
 
   // Мутации для лайков
-  const likeMutation = useMutation(swipeAPI.like, {
-    onSuccess: (data) => {
-      if (data.result === 'reciprocal_like') {
-        toast.success(data.message, { duration: 6000 });
-      } else {
-        toast.success('Лайк отправлен!');
+  const likeMutation = useMutation(
+    ({ targetUser, source }) => swipeAPI.like(targetUser, source),
+    {
+      onSuccess: (data) => {
+        if (data.result === 'reciprocal_like' || data.match_created) {
+          // Показываем специальный попап для мэтча
+          if (currentProfile) {
+            showMatchPopup({
+              username: currentProfile.login,
+              userData: {
+                avatar: currentProfile.ava,
+                login: currentProfile.login
+              }
+            });
+          }
+          toast.success('Взаимная симпатия! 💕', { duration: 6000 });
+        } else {
+          toast.success('Лайк отправлен! 💖');
+        }
+        // Принудительно получаем следующий профиль
+        setTimeout(() => {
+          refetch();
+        }, 100);
+      },
+      onError: (error) => {
+        toast.error(apiUtils.handleError(error));
       }
-      refetch();
-    },
-    onError: (error) => {
-      toast.error(apiUtils.handleError(error));
     }
-  });
+  );
 
-  const dislikeMutation = useMutation(swipeAPI.dislike, {
-    onSuccess: () => {
-      refetch();
-    },
-    onError: (error) => {
-      toast.error(apiUtils.handleError(error));
+  const dislikeMutation = useMutation(
+    ({ targetUser, source }) => swipeAPI.dislike(targetUser, source),
+    {
+      onSuccess: () => {
+        refetch();
+      },
+      onError: (error) => {
+        toast.error(apiUtils.handleError(error));
+      }
     }
-  });
+  );
 
   const superlikeMutation = useMutation(
     ({ targetUser, message }) => swipeAPI.superlike(targetUser, message),
     {
       onSuccess: (data) => {
-        toast.success('Суперлайк отправлен!');
-        refetch();
+        setShowSuperlikeModal(false);
+        setSuperlikeMessage('');
+        
+        // Суперлайки часто создают мэтчи - показываем попап если есть
+        if (currentProfile && (data.result === 'reciprocal_like' || data.match_created)) {
+          showMatchPopup({
+            username: currentProfile.login,
+            userData: {
+              avatar: currentProfile.ava,
+              login: currentProfile.login
+            }
+          });
+          toast.success('Взаимная симпатия! 💕', { duration: 6000 });
+        } else {
+          toast.success('Суперлайк отправлен! ⭐');
+        }
+        
+        setTimeout(() => {
+          refetch();
+        }, 100);
       },
       onError: (error) => {
         toast.error(apiUtils.handleError(error));
@@ -505,26 +551,40 @@ const Home = () => {
   // Обработчики действий
   const handleLike = () => {
     if (currentProfile) {
-      likeMutation.mutate(currentProfile.login);
+      likeMutation.mutate({
+        targetUser: currentProfile.login,
+        source: 'button'
+      });
     }
   };
 
   const handleDislike = () => {
     if (currentProfile) {
-      dislikeMutation.mutate(currentProfile.login);
+      dislikeMutation.mutate({
+        targetUser: currentProfile.login,
+        source: 'button'
+      });
     }
   };
 
   const handleSuperlike = () => {
     if (currentProfile) {
-      const message = prompt('Напишите сообщение для суперлайка:');
-      if (message && message.trim()) {
-        superlikeMutation.mutate({
-          targetUser: currentProfile.login,
-          message: message.trim()
-        });
-      }
+      setShowSuperlikeModal(true);
     }
+  };
+
+  const handleSendSuperlike = () => {
+    if (currentProfile && superlikeMessage.trim()) {
+      superlikeMutation.mutate({
+        targetUser: currentProfile.login,
+        message: superlikeMessage.trim()
+      });
+    }
+  };
+
+  const handleCloseSuperlikeModal = () => {
+    setShowSuperlikeModal(false);
+    setSuperlikeMessage('');
   };
 
   const handleBack = async () => {
@@ -542,10 +602,20 @@ const Home = () => {
     
     if (info.offset.x > threshold) {
       // Свайп вправо - лайк
-      handleLike();
+      if (currentProfile) {
+        likeMutation.mutate({
+          targetUser: currentProfile.login,
+          source: 'gesture'
+        });
+      }
     } else if (info.offset.x < -threshold) {
       // Свайп влево - дизлайк
-      handleDislike();
+      if (currentProfile) {
+        dislikeMutation.mutate({
+          targetUser: currentProfile.login,
+          source: 'gesture'
+        });
+      }
     }
   };
 
@@ -685,6 +755,71 @@ const Home = () => {
             <SuperlikeIcon />
           </ActionButton>
         </ActionButtons>
+      )}
+
+      {/* Модальное окно для суперлайка */}
+      {showSuperlikeModal && (
+        <Modal onClick={handleCloseSuperlikeModal}>
+          <ModalContent $maxWidth="500px" onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <h2>Отправить суперлайк</h2>
+              <IconButton
+                $variant="secondary"
+                onClick={handleCloseSuperlikeModal}
+              >
+                <CloseIcon />
+              </IconButton>
+            </ModalHeader>
+            
+            <div style={{ padding: '20px' }}>
+              <p style={{
+                marginBottom: '20px',
+                color: '#4a5568',
+                lineHeight: '1.5'
+              }}>
+                Суперлайк поможет выделиться среди других пользователей.
+                Напишите сообщение для <strong>@{currentProfile?.login}</strong>:
+              </p>
+              
+              <TextArea
+                value={superlikeMessage}
+                onChange={(e) => setSuperlikeMessage(e.target.value)}
+                placeholder="Привет! Ты мне очень понравился(лась)..."
+                $minHeight="120px"
+                style={{ marginBottom: '20px' }}
+                maxLength={500}
+              />
+              
+              <div style={{
+                display: 'flex',
+                gap: '15px',
+                justifyContent: 'flex-end'
+              }}>
+                <Button
+                  $variant="secondary"
+                  onClick={handleCloseSuperlikeModal}
+                >
+                  Отмена
+                </Button>
+                <Button
+                  onClick={handleSendSuperlike}
+                  disabled={!superlikeMessage.trim() || superlikeMutation.isLoading}
+                >
+                  {superlikeMutation.isLoading ? 'Отправляем...' : 'Отправить суперлайк'}
+                </Button>
+              </div>
+              
+              <p style={{
+                marginTop: '15px',
+                fontSize: '12px',
+                color: '#718096',
+                textAlign: 'center'
+              }}>
+                У вас осталось суперлайков: ∞
+              </p>
+            </div>
+          </ModalContent>
+        </Modal>
       )}
     </HomeContainer>
   );

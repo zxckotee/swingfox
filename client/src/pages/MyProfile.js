@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { Navigate } from 'react-router-dom';
 import styled from 'styled-components';
 import toast from 'react-hot-toast';
 import { usersAPI, apiUtils } from '../services/api';
@@ -390,7 +391,7 @@ const StatsCard = styled(Card)`
   }
 `;
 
-const Profile = () => {
+const MyProfile = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
@@ -400,9 +401,14 @@ const Profile = () => {
   
   const currentUser = apiUtils.getCurrentUser();
 
-  // Получение профиля
+  // Проверка авторизации - только для собственного профиля
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Получение собственного профиля
   const { data: profile, isLoading } = useQuery(
-    ['profile', currentUser?.login],
+    ['profile', currentUser.login],
     () => usersAPI.getProfile(currentUser.login),
     {
       enabled: !!currentUser
@@ -799,4 +805,4 @@ const Profile = () => {
   );
 };
 
-export default Profile;
+export default MyProfile;

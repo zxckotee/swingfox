@@ -123,6 +123,28 @@ export const CrownIcon = () => (
   </svg>
 );
 
+export const ChevronUpIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="18,15 12,9 6,15"/>
+  </svg>
+);
+
+export const ChevronDownIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="6,9 12,15 18,9"/>
+  </svg>
+);
+
+export const TrophyIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="8" y1="21" x2="16" y2="21"/>
+    <line x1="12" y1="17" x2="12" y2="21"/>
+    <path d="M5.7 8H2a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h3.7"/>
+    <path d="M18.3 8H22a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2h-3.7"/>
+    <path d="M5.7 8v5.7C5.7 17 8.3 19 12 19s6.3-2 6.3-5.3V8"/>
+  </svg>
+);
+
 // Контейнеры
 export const PageContainer = styled.div`
   min-height: 100vh;
@@ -674,3 +696,15 @@ export const ProgressBar = styled.div`
     transition: width 0.3s ease;
   }
 `;
+
+export const ThumbsUpIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+  </svg>
+);
+
+export const ThumbsDownIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" transform="rotate(180)">
+    <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+  </svg>
+);

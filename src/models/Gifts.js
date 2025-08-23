@@ -22,6 +22,11 @@ module.exports = (sequelize) => {
       allowNull: false,
       comment: 'Тип подарка (1-10 или стоимость)'
     },
+    message: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: 'Сообщение к подарку'
+    },
     date: {
       type: DataTypes.DATEONLY,
       allowNull: false

@@ -30,16 +30,16 @@ import {
 
 // Конфигурация типов подарков
 const GIFT_CONFIG = {
-  rose: { emoji: '🌹', name: 'Роза', color: '#e53e3e' },
-  teddy: { emoji: '🧸', name: 'Мишка', color: '#d69e2e' },
-  wine: { emoji: '🍷', name: 'Вино', color: '#805ad5' },
-  chocolate: { emoji: '🍫', name: 'Шоколад', color: '#744210' },
-  perfume: { emoji: '💄', name: 'Духи', color: '#d53f8c' },
-  jewelry: { emoji: '💎', name: 'Украшения', color: '#4299e1' },
-  flowers: { emoji: '💐', name: 'Букет', color: '#38a169' },
-  champagne: { emoji: '🍾', name: 'Шампанское', color: '#d69e2e' },
-  diamond: { emoji: '💍', name: 'Бриллиант', color: '#4299e1' },
-  car: { emoji: '🚗', name: 'Автомобиль', color: '#2d3748' }
+  '1': { emoji: '🌹', name: 'Роза', color: '#e53e3e' },
+  '2': { emoji: '💐', name: 'Букет цветов', color: '#38a169' },
+  '3': { emoji: '🍾', name: 'Шампанское', color: '#d69e2e' },
+  '4': { emoji: '🎁', name: 'Подарок', color: '#805ad5' },
+  '5': { emoji: '🍽️', name: 'Романтический ужин', color: '#d53f8c' },
+  '6': { emoji: '✈️', name: 'Путешествие', color: '#4299e1' },
+  '7': { emoji: '💎', name: 'Украшение', color: '#4299e1' },
+  '8': { emoji: '👑', name: 'VIP статус на месяц', color: '#ffd700' },
+  '9': { emoji: '⭐', name: 'Premium статус на месяц', color: '#9b59b6' },
+  '10': { emoji: '🏆', name: 'Эксклюзивный подарок', color: '#2d3748' }
 };
 
 const GiftsContainer = styled(PageContainer)`
@@ -371,7 +371,7 @@ const Gifts = () => {
 
     sendGiftMutation.mutate({
       to_user: recipientUser.trim(),
-      gift_type: selectedGift.type,
+      gift_type: selectedGift.id,
       message: giftMessage.trim()
     });
   };
@@ -431,11 +431,11 @@ const Gifts = () => {
         {activeTab === 'shop' && (
           <div>
             <Grid $columns="repeat(auto-fill, minmax(200px, 1fr))" $gap="20px">
-              {giftTypes?.map((gift) => {
-                const config = GIFT_CONFIG[gift.type] || {};
+              {giftTypes?.gift_types?.map((gift) => {
+                const config = GIFT_CONFIG[gift.id] || {};
                 return (
                   <GiftCard
-                    key={gift.type}
+                    key={gift.id}
                     $color={config.color || '#dc3522'}
                     onClick={() => handleGiftSelect(gift)}
                     whileHover={{ scale: 1.02 }}
@@ -497,7 +497,7 @@ const Gifts = () => {
                       </HistoryGiftIcon>
                       <HistoryDetails>
                         <HistoryTitle>
-                          {config.name || gift.gift_type}
+                          {config.name || gift.type_name || gift.gift_type}
                         </HistoryTitle>
                         <HistoryInfo>
                           {historyType === 'sent' ? `Кому: ${gift.to_user}` : `От: ${gift.from_user}`}
@@ -562,10 +562,10 @@ const Gifts = () => {
                     <SectionTitle>Популярные подарки</SectionTitle>
                     <Grid $columns="repeat(auto-fill, minmax(120px, 1fr))" $gap="15px">
                       {giftStats.popular_gifts.map((gift) => {
-                        const config = GIFT_CONFIG[gift.type] || {};
+                        const config = GIFT_CONFIG[gift.type || gift.gift_type] || {};
                         return (
                           <div
-                            key={gift.type}
+                            key={gift.type || gift.gift_type}
                             style={{
                               background: 'white',
                               borderRadius: '12px',
@@ -578,7 +578,7 @@ const Gifts = () => {
                               {config.emoji || '🎁'}
                             </div>
                             <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '4px' }}>
-                              {config.name || gift.type}
+                              {config.name || gift.name || gift.type || gift.gift_type}
                             </div>
                             <div style={{ fontSize: '12px', color: '#718096' }}>
                               {gift.count} раз
@@ -607,10 +607,10 @@ const Gifts = () => {
 
               <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                 <div style={{ fontSize: '48px', marginBottom: '10px' }}>
-                  {GIFT_CONFIG[selectedGift.type]?.emoji || '🎁'}
+                  {GIFT_CONFIG[selectedGift.id]?.emoji || '🎁'}
                 </div>
                 <h3 style={{ margin: '0 0 5px 0', color: '#2d3748' }}>
-                  {GIFT_CONFIG[selectedGift.type]?.name || selectedGift.name}
+                  {GIFT_CONFIG[selectedGift.id]?.name || selectedGift.name}
                 </h3>
                 <div style={{ fontSize: '20px', fontWeight: '700', color: '#dc3522' }}>
                   {selectedGift.cost}₽

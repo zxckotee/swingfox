@@ -4,6 +4,7 @@ import styled, { css } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { notificationsAPI, apiUtils } from '../services/api';
+import MatchNotification from '../components/MatchNotification';
 import {
   PageContainer,
   ContentCard,
@@ -422,14 +423,21 @@ const Notifications = () => {
     }
   };
 
+  // Подсчитаем количество по типам
+  const countByType = notifications.reduce((acc, notif) => {
+    acc[notif.type] = (acc[notif.type] || 0) + 1;
+    return acc;
+  }, {});
+
   // Фильтры
   const filterTabs = [
     { key: 'all', label: 'Все', count: notifications.length },
     { key: 'unread', label: 'Непрочитанные', count: unreadCount },
-    { key: 'message', label: 'Сообщения', count: 0 },
-    { key: 'like', label: 'Лайки', count: 0 },
-    { key: 'gift', label: 'Подарки', count: 0 },
-    { key: 'system', label: 'Системные', count: 0 }
+    { key: 'match', label: '💕 Мэтчи', count: countByType.match || 0 },
+    { key: 'message', label: 'Сообщения', count: countByType.message || 0 },
+    { key: 'like', label: 'Лайки', count: countByType.like || 0 },
+    { key: 'gift', label: 'Подарки', count: countByType.gift || 0 },
+    { key: 'system', label: 'Системные', count: countByType.system || 0 }
   ];
 
   if (isLoading) {
@@ -508,71 +516,89 @@ const Notifications = () => {
         ) : (
           <NotificationsList>
             <AnimatePresence>
-              {notifications.map((notification) => (
-                <NotificationItem
-                  key={notification.id}
-                  $color={getNotificationColor(notification.type)}
-                  $isRead={notification.is_read}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <NotificationContent>
-                    <NotificationIcon $color={getNotificationColor(notification.type)}>
-                      {getNotificationIcon(notification.type)}
-                    </NotificationIcon>
-                    
-                    <NotificationDetails>
-                      <NotificationTitle>
-                        {notification.title}
-                      </NotificationTitle>
+              {notifications.map((notification) => {
+                // Специальная обработка для мэтч-уведомлений
+                if (notification.type === 'match') {
+                  return (
+                    <MatchNotification
+                      key={notification.id}
+                      notification={notification}
+                      onDismiss={() => handleMarkAsRead(notification.id)}
+                      onStartChat={(username) => {
+                        // Перенаправляем в чат
+                        window.location.href = `/chat/${username}`;
+                      }}
+                    />
+                  );
+                }
+
+                // Обычные уведомления
+                return (
+                  <NotificationItem
+                    key={notification.id}
+                    $color={getNotificationColor(notification.type)}
+                    $isRead={notification.is_read}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <NotificationContent>
+                      <NotificationIcon $color={getNotificationColor(notification.type)}>
+                        {getNotificationIcon(notification.type)}
+                      </NotificationIcon>
                       
-                      <NotificationMessage>
-                        {notification.message}
-                      </NotificationMessage>
+                      <NotificationDetails>
+                        <NotificationTitle>
+                          {notification.title}
+                        </NotificationTitle>
+                        
+                        <NotificationMessage>
+                          {notification.message}
+                        </NotificationMessage>
+                        
+                        <NotificationMeta>
+                          <NotificationTime>
+                            {apiUtils.formatTimeAgo(notification.created_at)}
+                          </NotificationTime>
+                          
+                          <NotificationPriority $priority={notification.priority}>
+                            {notification.priority}
+                          </NotificationPriority>
+                          
+                          {notification.from_user && (
+                            <span style={{ fontSize: '12px', color: '#718096' }}>
+                              от {notification.from_user}
+                            </span>
+                          )}
+                        </NotificationMeta>
+                      </NotificationDetails>
                       
-                      <NotificationMeta>
-                        <NotificationTime>
-                          {apiUtils.formatTimeAgo(notification.created_at)}
-                        </NotificationTime>
-                        
-                        <NotificationPriority $priority={notification.priority}>
-                          {notification.priority}
-                        </NotificationPriority>
-                        
-                        {notification.from_user && (
-                          <span style={{ fontSize: '12px', color: '#718096' }}>
-                            от {notification.from_user}
-                          </span>
+                      <NotificationActions>
+                        {!notification.is_read && (
+                          <IconButton
+                            $size="35px"
+                            $variant="secondary"
+                            onClick={() => handleMarkAsRead(notification.id)}
+                            title="Отметить как прочитанное"
+                          >
+                            <CheckIcon />
+                          </IconButton>
                         )}
-                      </NotificationMeta>
-                    </NotificationDetails>
-                    
-                    <NotificationActions>
-                      {!notification.is_read && (
+                        
                         <IconButton
                           $size="35px"
                           $variant="secondary"
-                          onClick={() => handleMarkAsRead(notification.id)}
-                          title="Отметить как прочитанное"
+                          onClick={() => handleDelete(notification.id)}
+                          title="Удалить уведомление"
                         >
-                          <CheckIcon />
+                          <TrashIcon />
                         </IconButton>
-                      )}
-                      
-                      <IconButton
-                        $size="35px"
-                        $variant="secondary"
-                        onClick={() => handleDelete(notification.id)}
-                        title="Удалить уведомление"
-                      >
-                        <TrashIcon />
-                      </IconButton>
-                    </NotificationActions>
-                  </NotificationContent>
-                </NotificationItem>
-              ))}
+                      </NotificationActions>
+                    </NotificationContent>
+                  </NotificationItem>
+                );
+              })}
             </AnimatePresence>
           </NotificationsList>
         )}

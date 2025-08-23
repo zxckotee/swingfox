@@ -23,12 +23,12 @@ app.use(cors({
 }));
 
 // Rate limiting
-const limiter = rateLimit({
+/*const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 минут
   max: 100, // максимум 100 запросов с одного IP
   message: 'Слишком много запросов с этого IP, попробуйте позже.'
 });
-app.use('/api/', limiter);
+app.use('/api/', limiter);*/
 
 // Парсинг JSON
 app.use(express.json({ limit: '10mb' }));
@@ -41,6 +41,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 const authRoutes = require('./src/routes/auth');
 const userRoutes = require('./src/routes/users');
 const swipeRoutes = require('./src/routes/swipe');
+const catalogRoutes = require('./src/routes/catalog');
 const chatRoutes = require('./src/routes/chat');
 const adsRoutes = require('./src/routes/ads');
 const adminRoutes = require('./src/routes/admin');
@@ -51,11 +52,13 @@ const giftsRoutes = require('./src/routes/gifts');
 const clubsRoutes = require('./src/routes/clubs');
 const subscriptionsRoutes = require('./src/routes/subscriptions');
 const ratingRoutes = require('./src/routes/rating');
+const profilesRoutes = require('./src/routes/profiles');
 
 // Подключение роутов
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/swipe', swipeRoutes);
+app.use('/api/catalog', catalogRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/ads', adsRoutes);
 app.use('/api/admin', adminRoutes);
@@ -66,6 +69,7 @@ app.use('/api/gifts', giftsRoutes);
 app.use('/api/clubs', clubsRoutes);
 app.use('/api/subscriptions', subscriptionsRoutes);
 app.use('/api/rating', ratingRoutes);
+app.use('/api/profiles', profilesRoutes);
 
 // Проверка статуса API
 app.get('/api/status', (req, res) => {
