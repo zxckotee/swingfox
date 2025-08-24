@@ -8,10 +8,37 @@ const LOG_LEVELS = {
   TRACE: 4
 };
 
-// Текущий уровень логирования (можно настроить через переменную окружения)
-const CURRENT_LOG_LEVEL = process.env.LOG_LEVEL 
-  ? LOG_LEVELS[process.env.LOG_LEVEL.toUpperCase()] 
-  : LOG_LEVELS.DEBUG;
+// Текущий уровень логирования (можно настроить через переменную окружения или конфиг)
+let CURRENT_LOG_LEVEL = LOG_LEVELS.DEBUG;
+let MAX_ARRAY_SIZE = 10;
+let TRUNCATE_LARGE_DATA = true;
+
+// Загружаем настройки логирования из конфига
+try {
+  const config = require('../../config/config.json');
+  const env = process.env.NODE_ENV || 'development';
+  const loggingConfig = config[env]?.logging_config;
+  
+  if (loggingConfig) {
+    if (loggingConfig.level && LOG_LEVELS[loggingConfig.level.toUpperCase()] !== undefined) {
+      CURRENT_LOG_LEVEL = LOG_LEVELS[loggingConfig.level.toUpperCase()];
+    }
+    if (loggingConfig.max_array_size !== undefined) {
+      MAX_ARRAY_SIZE = loggingConfig.max_array_size;
+    }
+    if (loggingConfig.truncate_large_data !== undefined) {
+      TRUNCATE_LARGE_DATA = loggingConfig.truncate_large_data;
+    }
+  }
+} catch (error) {
+  // Если конфиг не загружен, используем значения по умолчанию
+  console.log('⚠️  Не удалось загрузить конфигурацию логирования, используются значения по умолчанию');
+}
+
+// Также можно переопределить через переменную окружения
+if (process.env.LOG_LEVEL && LOG_LEVELS[process.env.LOG_LEVEL.toUpperCase()] !== undefined) {
+  CURRENT_LOG_LEVEL = LOG_LEVELS[process.env.LOG_LEVEL.toUpperCase()];
+}
 
 // Утилиты для форматирования
 const formatTimestamp = () => {
@@ -26,16 +53,31 @@ const formatIP = (req) => {
   return req.ip || req.connection?.remoteAddress || 'unknown';
 };
 
-// Функция для безопасного логирования (удаляет пароли и токены)
+// Функция для безопасного логирования (удаляет пароли, токены и ограничивает размер массивов)
 const sanitizeData = (data) => {
   if (!data || typeof data !== 'object') return data;
   
   const sanitized = { ...data };
   const sensitiveFields = ['password', 'auth_token', 'token', 'mail_code', 'images_password'];
   
+  // Удаляем чувствительные поля
   sensitiveFields.forEach(field => {
     if (sanitized[field]) {
       sanitized[field] = '[HIDDEN]';
+    }
+  });
+  
+  // Ограничиваем размер массивов в data поле
+  if (sanitized.data && Array.isArray(sanitized.data)) {
+    if (sanitized.data.length > MAX_ARRAY_SIZE) {
+      sanitized.data = `[Array with ${sanitized.data.length} items - truncated for logging]`;
+    }
+  }
+  
+  // Ограничиваем размер других массивов
+  Object.keys(sanitized).forEach(key => {
+    if (Array.isArray(sanitized[key]) && sanitized[key].length > MAX_ARRAY_SIZE) {
+      sanitized[key] = `[Array with ${sanitized[key].length} items - truncated for logging]`;
     }
   });
   
@@ -227,5 +269,8 @@ module.exports = {
   loggerMiddleware,
   log,
   LOG_LEVELS,
-  sanitizeData
+  sanitizeData,
+  CURRENT_LOG_LEVEL,
+  MAX_ARRAY_SIZE,
+  TRUNCATE_LARGE_DATA
 };

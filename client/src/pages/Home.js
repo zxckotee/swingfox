@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { swipeAPI, apiUtils } from '../services/api';
 import { useNotifications } from '../contexts/NotificationContext';
+// Убираем импорт getStatusDisplayName, так как теперь статусы уже русские
 import {
   PageContainer,
   Avatar,
@@ -444,6 +445,26 @@ const Home = () => {
   const currentUser = apiUtils.getCurrentUser();
   const { showMatchPopup } = useNotifications();
 
+  // Функция для форматирования возраста партнеров
+  const formatPartnerAge = (dateString) => {
+    if (!dateString) return 'Возраст не указан';
+    
+    try {
+      const birthDate = new Date(dateString);
+      const today = new Date();
+      const age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        return age - 1;
+      }
+      
+      return age;
+    } catch (error) {
+      return 'Возраст не указан';
+    }
+  };
+
   // Получение профилей
   const { data: profile, isLoading, refetch } = useQuery(
     'current-profile',
@@ -699,7 +720,48 @@ const Home = () => {
                     <InfoIcon />
                     {currentProfile.status}
                   </div>
-                  <div className="info">
+                  
+                  {/* Показываем данные партнера для пар */}
+                  {currentProfile.isCouple && currentProfile.partnerData && (
+                    <div className="partner-info" style={{ 
+                      margin: '10px 0', 
+                      padding: '10px', 
+                      background: 'rgba(255,255,255,0.1)', 
+                      borderRadius: '8px' 
+                    }}>
+                      <div style={{ fontSize: '14px', marginBottom: '8px', fontWeight: 'bold' }}>
+                        👫 Данные пары:
+                      </div>
+                      <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                        <div>👨 Мужчина: {formatPartnerAge(currentProfile.partnerData.manDate)} лет</div>
+                        <div>👩 Женщина: {formatPartnerAge(currentProfile.partnerData.womanDate)} лет</div>
+                        {currentProfile.partnerData.manHeight && currentProfile.partnerData.womanHeight && (
+                          <div>📏 Рост: {currentProfile.partnerData.manHeight}см / {currentProfile.partnerData.womanHeight}см</div>
+                        )}
+                        {currentProfile.partnerData.manWeight && currentProfile.partnerData.womanWeight && (
+                          <div>⚖️ Вес: {currentProfile.partnerData.manWeight}кг / {currentProfile.partnerData.womanWeight}кг</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Дополнительная информация */}
+                  <div className="additional-info" style={{ fontSize: '12px', marginTop: '10px' }}>
+                    {currentProfile.height && (
+                      <div>📏 Рост: {currentProfile.height}см</div>
+                    )}
+                    {currentProfile.weight && (
+                      <div>⚖️ Вес: {currentProfile.weight}кг</div>
+                    )}
+                    {currentProfile.smoking && (
+                      <div>🚬 {currentProfile.smoking}</div>
+                    )}
+                    {currentProfile.alko && (
+                      <div>🍷 {currentProfile.alko}</div>
+                    )}
+                  </div>
+                  
+                  <div className="info" style={{ marginTop: '15px' }}>
                     {currentProfile.info || 'Информация не указана'}
                   </div>
                 </div>

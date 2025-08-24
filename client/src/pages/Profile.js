@@ -11,6 +11,7 @@ import RatingDisplay from '../components/RatingDisplay';
 import PhotoComments from '../components/PhotoComments';
 import ProfileComments from '../components/ProfileComments';
 import Reactions from '../components/Reactions';
+// Убираем импорт getStatusDisplayName, так как теперь статусы уже русские
 import {
   PageContainer,
   ContentCard,
@@ -743,7 +744,7 @@ const Profile = () => {
           
           <UserInfo>
             <h2>@{profile.login}</h2>
-            <p>{profile.city} • {profile.status} {profile.distance > 0 && `• ${profile.distance}км от вас`}</p>
+                            <p>{profile.city} • {profile.status} {profile.distance > 0 && `• ${profile.distance}км от вас`}</p>
           </UserInfo>
         </ProfileHeader>
 
@@ -898,17 +899,84 @@ const Profile = () => {
                     )}
                   </InfoSection>
 
+                  {/* Показываем данные партнера для пар */}
+                  {profile.isCouple && profile.partnerData && (
+                    <InfoSection>
+                      <h3>👫 Данные пары</h3>
+                      <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: '1fr 1fr', 
+                        gap: '15px',
+                        padding: '15px',
+                        background: 'rgba(220, 53, 34, 0.05)',
+                        borderRadius: '10px',
+                        border: '1px solid rgba(220, 53, 34, 0.1)'
+                      }}>
+                        <div>
+                          <h4 style={{ margin: '0 0 10px 0', color: '#dc3522', fontSize: '16px' }}>👨 Мужчина</h4>
+                          {profile.partnerData.manDate && (
+                            <InfoItem><strong>Дата рождения:</strong> {new Date(profile.partnerData.manDate).toLocaleDateString('ru-RU')}</InfoItem>
+                          )}
+                          {profile.partnerData.manHeight && (
+                            <InfoItem><strong>Рост:</strong> {profile.partnerData.manHeight} см</InfoItem>
+                          )}
+                          {profile.partnerData.manWeight && (
+                            <InfoItem><strong>Вес:</strong> {profile.partnerData.manWeight} кг</InfoItem>
+                          )}
+                          {profile.partnerData.manSmoking && (
+                            <InfoItem><strong>Курение:</strong> {profile.partnerData.manSmoking}</InfoItem>
+                          )}
+                          {profile.partnerData.manAlko && (
+                            <InfoItem><strong>Алкоголь:</strong> {profile.partnerData.manAlko}</InfoItem>
+                          )}
+                        </div>
+                        <div>
+                          <h4 style={{ margin: '0 0 10px 0', color: '#dc3522', fontSize: '16px' }}>👩 Женщина</h4>
+                          {profile.partnerData.womanDate && (
+                            <InfoItem><strong>Дата рождения:</strong> {new Date(profile.partnerData.womanDate).toLocaleDateString('ru-RU')}</InfoItem>
+                          )}
+                          {profile.partnerData.womanHeight && (
+                            <InfoItem><strong>Рост:</strong> {profile.partnerData.womanHeight} см</InfoItem>
+                          )}
+                          {profile.partnerData.womanWeight && (
+                            <InfoItem><strong>Вес:</strong> {profile.partnerData.womanWeight} кг</InfoItem>
+                          )}
+                          {profile.partnerData.womanSmoking && (
+                            <InfoItem><strong>Курение:</strong> {profile.partnerData.womanSmoking}</InfoItem>
+                          )}
+                          {profile.partnerData.womanAlko && (
+                            <InfoItem><strong>Алкоголь:</strong> {profile.partnerData.womanAlko}</InfoItem>
+                          )}
+                        </div>
+                      </div>
+                    </InfoSection>
+                  )}
+
+                  {/* Дополнительная информация */}
+                  {(profile.height || profile.weight || profile.smoking || profile.alko) && (
+                    <InfoSection>
+                      <h3>Дополнительная информация</h3>
+                      {profile.height && <InfoItem><strong>Рост:</strong> {profile.height} см</InfoItem>}
+                      {profile.weight && <InfoItem><strong>Вес:</strong> {profile.weight} кг</InfoItem>}
+                      {profile.smoking && <InfoItem><strong>Отношение к курению:</strong> {profile.smoking}</InfoItem>}
+                      {profile.alko && <InfoItem><strong>Отношение к алкоголю:</strong> {profile.alko}</InfoItem>}
+                    </InfoSection>
+                  )}
+
+                  {/* Предпочтения в поиске */}
+                  {(profile.searchStatus || profile.searchAge || profile.location) && (
+                    <InfoSection>
+                      <h3>Что ищет</h3>
+                      {profile.searchStatus && <InfoItem><strong>Статус:</strong> {profile.searchStatus}</InfoItem>}
+                      {profile.searchAge && <InfoItem><strong>Возраст:</strong> {profile.searchAge}</InfoItem>}
+                      {profile.location && <InfoItem><strong>Места для встреч:</strong> {profile.location}</InfoItem>}
+                    </InfoSection>
+                  )}
+
                   {profile.info && (
                     <InfoSection>
                       <h3>О пользователе</h3>
                       <InfoItem>{profile.info}</InfoItem>
-                    </InfoSection>
-                  )}
-
-                  {profile.looking_for && (
-                    <InfoSection>
-                      <h3>Что ищет</h3>
-                      <InfoItem>{profile.looking_for}</InfoItem>
                     </InfoSection>
                   )}
                   

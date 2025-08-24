@@ -34,13 +34,7 @@ router.get('/', authenticateToken, async (req, res) => {
     // Фильтр по семейному статусу
     if (status && status.length > 0) {
       const statusArray = Array.isArray(status) ? status : [status];
-      // Преобразуем статусы как в PHP версии
-      const normalizedStatuses = statusArray.map(s => {
-        if (s === 'Семейная пара(М Ж)') return 'Семейная пара(М+Ж)';
-        if (s === 'Несемейная пара(М Ж)') return 'Несемейная пара(М+Ж)';
-        return s;
-      });
-      whereConditions.status = { [Op.in]: normalizedStatuses };
+      whereConditions.status = { [Op.in]: statusArray };
     }
 
     // Фильтр по стране
@@ -83,7 +77,8 @@ router.get('/', authenticateToken, async (req, res) => {
       // Форматируем возраст
       const age = formatAge(user.date);
 
-      return {
+      // Базовые данные пользователя
+      let userData = {
         id: user.id,
         login: user.login,
         ava: user.ava,
@@ -97,6 +92,28 @@ router.get('/', authenticateToken, async (req, res) => {
         online: user.online,
         viptype: user.viptype
       };
+
+      // Добавляем данные партнера для пар
+      if (user.status === 'Семейная пара(М+Ж)' || user.status === 'Несемейная пара(М+Ж)') {
+        const partnerData = user.getPartnerData();
+        if (partnerData) {
+          userData.partnerData = partnerData;
+          userData.isCouple = true;
+        }
+      } else {
+        userData.isCouple = false;
+      }
+
+      // Добавляем дополнительные поля для отображения
+      if (user.height) userData.height = user.height;
+      if (user.weight) userData.weight = user.weight;
+      if (user.smoking) userData.smoking = user.smoking;
+      if (user.alko) user.alko = user.alko;
+      if (user.search_status) userData.searchStatus = user.search_status;
+      if (user.search_age) userData.searchAge = user.search_age;
+      if (user.location) userData.location = user.location;
+
+      return userData;
     });
 
     // Получаем общее количество для пагинации
@@ -129,13 +146,16 @@ router.get('/', authenticateToken, async (req, res) => {
 // GET /api/catalog/filters - Получение доступных фильтров
 router.get('/filters', authenticateToken, async (req, res) => {
   try {
-    // Получаем доступные статусы
-    const statuses = [
-      'Семейная пара(М+Ж)',
-      'Несемейная пара(М+Ж)',
-      'Мужчина',
-      'Женщина'
-    ];
+    // Получаем доступные статусы из базы данных
+    const statuses = await User.findAll({
+      attributes: ['status'],
+      where: {
+        status: { [Op.ne]: null },
+        status: { [Op.ne]: '' }
+      },
+      group: ['status'],
+      order: [['status', 'ASC']]
+    });
 
     // Получаем доступные страны и города
     const countries = await User.findAll({
@@ -168,7 +188,7 @@ router.get('/filters', authenticateToken, async (req, res) => {
     });
 
     res.json({
-      statuses,
+      statuses: statuses.map(s => s.status),
       countries: countries.map(c => c.country),
       cities: citiesByCountry
     });

@@ -32,7 +32,8 @@ const User = sequelize.define('User', {
   },
   status: {
     type: DataTypes.TEXT,
-    allowNull: false
+    allowNull: false,
+    comment: 'Русские статусы: "Семейная пара(М+Ж)", "Несемейная пара(М+Ж)", "Мужчина", "Женщина"'
   },
   country: {
     type: DataTypes.TEXT,
@@ -44,7 +45,8 @@ const User = sequelize.define('User', {
   },
   geo: {
     type: DataTypes.TEXT,
-    allowNull: true
+    allowNull: true,
+    comment: 'Формат: lat&&lng'
   },
   registration: {
     type: DataTypes.DATEONLY,
@@ -64,11 +66,13 @@ const User = sequelize.define('User', {
   },
   images: {
     type: DataTypes.TEXT,
-    allowNull: true
+    allowNull: true,
+    comment: 'Формат: img1.jpg&&img2.jpg'
   },
   search_status: {
     type: DataTypes.TEXT,
-    allowNull: true
+    allowNull: true,
+    comment: 'Формат: "Семейная пара(М+Ж)&&Несемейная пара(М+Ж)&&Мужчина&&Женщина"'
   },
   search_age: {
     type: DataTypes.TEXT,
@@ -76,7 +80,8 @@ const User = sequelize.define('User', {
   },
   location: {
     type: DataTypes.TEXT,
-    allowNull: true
+    allowNull: true,
+    comment: 'Формат: "У себя дома&&У вас дома&&В свинг-клубе&&В сауне&&В гостинице"'
   },
   mobile: {
     type: DataTypes.STRING(255),
@@ -84,23 +89,28 @@ const User = sequelize.define('User', {
   },
   height: {
     type: DataTypes.TEXT,
-    allowNull: true
+    allowNull: true,
+    comment: 'Формат: 180 или 180_165 для пар (муж_женщина)'
   },
   weight: {
     type: DataTypes.TEXT,
-    allowNull: true
+    allowNull: true,
+    comment: 'Формат: 70 или 70_60 для пар (муж_женщина)'
   },
   smoking: {
     type: DataTypes.TEXT,
-    allowNull: true
+    allowNull: true,
+    comment: 'Формат: "Не курю" или "Не курю&&Не курю" для пар (муж_женщина)'
   },
   alko: {
     type: DataTypes.TEXT,
-    allowNull: true
+    allowNull: true,
+    comment: 'Формат: "Не употребляю" или "Не употребляю&&Не употребляю" для пар (муж_женщина)'
   },
   date: {
     type: DataTypes.TEXT,
-    allowNull: true
+    allowNull: true,
+    comment: 'Формат: 1990-01-01 или 1990-01-01_1992-05-15 для пар (муж_женщина)'
   },
   balance: {
     type: DataTypes.INTEGER,
@@ -142,6 +152,45 @@ User.prototype.toJSON = function() {
   delete values.password;
   delete values.auth_token;
   return values;
+};
+
+// Метод для проверки, является ли пользователь парой
+User.prototype.isCouple = function() {
+  return this.status === 'Семейная пара(М+Ж)' || this.status === 'Несемейная пара(М+Ж)';
+};
+
+// Метод для получения данных партнера
+User.prototype.getPartnerData = function() {
+  if (!this.isCouple()) return null;
+  
+  const data = {};
+  if (this.date && this.date.includes('_')) {
+    const [manDate, womanDate] = this.date.split('_');
+    data.manDate = manDate;
+    data.womanDate = womanDate;
+  }
+  if (this.height && this.height.includes('_')) {
+    const [manHeight, womanHeight] = this.height.split('_');
+    data.manHeight = manHeight;
+    data.womanHeight = womanHeight;
+  }
+  if (this.weight && this.weight.includes('_')) {
+    const [manWeight, womanWeight] = this.weight.split('_');
+    data.manWeight = manWeight;
+    data.womanWeight = womanWeight;
+  }
+  if (this.smoking && this.smoking.includes('_')) {
+    const [manSmoking, womanSmoking] = this.smoking.split('_');
+    data.manSmoking = manSmoking;
+    data.womanSmoking = womanSmoking;
+  }
+  if (this.alko && this.alko.includes('_')) {
+    const [manAlko, womanAlko] = this.alko.split('_');
+    data.manAlko = manAlko;
+    data.womanAlko = womanAlko;
+  }
+  
+  return data;
 };
 
 // Статические методы

@@ -390,8 +390,12 @@ const NotificationCounter = () => {
     {
       refetchInterval: 30000, // Обновляем каждые 30 секунд
       retry: 1,
-      onError: () => {
-        // Тихо игнорируем ошибки для счетчика
+      enabled: apiUtils.isAuthenticated(), // Проверяем авторизацию
+      onError: (error) => {
+        // Тихо игнорируем ошибки для счетчика, но логируем 401
+        if (error.response?.status === 401) {
+          console.log('Unauthorized in Navigation notification counter');
+        }
       }
     }
   );

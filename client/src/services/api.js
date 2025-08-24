@@ -224,21 +224,21 @@ export const authAPI = {
 // API методы для пользователей
 export const usersAPI = {
   getProfile: async (login) => {
-    const response = await apiClient.get(`/users/profile/${login}`);
+    const response = await apiClient.get(`/profiles/${login}`);
     
     // Обновляем кэш, если это профиль текущего пользователя
     const currentUser = authAPI.getCurrentUser();
     if (currentUser && currentUser.login === login) {
       authAPI.updateUserCache({
-        ava: response.data.ava,
-        status: response.data.status,
-        city: response.data.city,
-        country: response.data.country,
-        viptype: response.data.viptype
+        ava: response.data.profile.ava,
+        status: response.data.profile.status,
+        city: response.data.profile.city,
+        country: response.data.profile.country,
+        viptype: response.data.profile.viptype
       });
     }
     
-    return response.data;
+    return response.data.profile;
   },
 
   updateProfile: async (profileData) => {

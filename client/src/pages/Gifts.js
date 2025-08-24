@@ -30,16 +30,16 @@ import {
 
 // Конфигурация типов подарков
 const GIFT_CONFIG = {
-  '1': { emoji: '🌹', name: 'Роза', color: '#e53e3e' },
-  '2': { emoji: '💐', name: 'Букет цветов', color: '#38a169' },
-  '3': { emoji: '🍾', name: 'Шампанское', color: '#d69e2e' },
-  '4': { emoji: '🎁', name: 'Подарок', color: '#805ad5' },
-  '5': { emoji: '🍽️', name: 'Романтический ужин', color: '#d53f8c' },
-  '6': { emoji: '✈️', name: 'Путешествие', color: '#4299e1' },
-  '7': { emoji: '💎', name: 'Украшение', color: '#4299e1' },
-  '8': { emoji: '👑', name: 'VIP статус на месяц', color: '#ffd700' },
-  '9': { emoji: '⭐', name: 'Premium статус на месяц', color: '#9b59b6' },
-  '10': { emoji: '🏆', name: 'Эксклюзивный подарок', color: '#2d3748' }
+  '1': { emoji: '🌹', name: 'Роза', color: 'linear-gradient(135deg, #e53e3e 0%, #ff6b6b 100%)' },
+  '2': { emoji: '💐', name: 'Букет цветов', color: 'linear-gradient(135deg, #38a169 0%, #68d391 100%)' },
+  '3': { emoji: '🍾', name: 'Шампанское', color: 'linear-gradient(135deg, #d69e2e 0%, #f6e05e 100%)' },
+  '4': { emoji: '🎁', name: 'Подарок', color: 'linear-gradient(135deg, #805ad5 0%, #b794f4 100%)' },
+  '5': { emoji: '🍽️', name: 'Романтический ужин', color: 'linear-gradient(135deg, #d53f8c 0%, #f687b3 100%)' },
+  '6': { emoji: '✈️', name: 'Путешествие', color: 'linear-gradient(135deg, #4299e1 0%, #90cdf4 100%)' },
+  '7': { emoji: '💎', name: 'Украшение', color: 'linear-gradient(135deg, #4299e1 0%, #90cdf4 100%)' },
+  '8': { emoji: '👑', name: 'VIP статус на месяц', color: 'linear-gradient(135deg, #ffd700 0%, #fbbf24 100%)' },
+  '9': { emoji: '⭐', name: 'Premium статус на месяц', color: 'linear-gradient(135deg, #9b59b6 0%, #d6bcfa 100%)' },
+  '10': { emoji: '🏆', name: 'Эксклюзивный подарок', color: 'linear-gradient(135deg, #2d3748 0%, #4a5568 100%)' }
 };
 
 const GiftsContainer = styled(PageContainer)`
@@ -65,7 +65,11 @@ const Tab = styled.button`
   padding: 15px 20px;
   border: none;
   background: ${props => props.$active ? 'linear-gradient(135deg, #dc3522 0%, #ff6b58 100%)' : 'transparent'};
-  color: ${props => props.$active ? 'white' : '#4a5568'};
+  color: ${props => props.$active ? 'white' : 'transparent'};
+  background-image: ${props => props.$active ? 'none' : 'linear-gradient(135deg, #4a5568 0%, #718096 100%)'};
+  -webkit-background-clip: ${props => props.$active ? 'unset' : 'text'};
+  -webkit-text-fill-color: ${props => props.$active ? 'white' : 'transparent'};
+  background-clip: ${props => props.$active ? 'unset' : 'text'};
   border-radius: 8px;
   font-size: 16px;
   font-weight: 600;
@@ -81,7 +85,11 @@ const Tab = styled.button`
       'linear-gradient(135deg, #dc3522 0%, #ff6b58 100%)' : 
       'linear-gradient(135deg, rgba(220, 53, 34, 0.1) 0%, rgba(255, 107, 88, 0.1) 100%)'
     };
-    color: ${props => props.$active ? 'white' : '#dc3522'};
+    color: ${props => props.$active ? 'white' : 'transparent'};
+    background-image: ${props => props.$active ? 'none' : 'linear-gradient(135deg, #dc3522 0%, #ff6b58 100%)'};
+    -webkit-background-clip: ${props => props.$active ? 'unset' : 'text'};
+    -webkit-text-fill-color: ${props => props.$active ? 'white' : 'transparent'};
+    background-clip: ${props => props.$active ? 'unset' : 'text'};
   }
   
   @media (max-width: 768px) {
@@ -129,7 +137,10 @@ const GiftEmoji = styled.div`
 
 const GiftName = styled.h3`
   margin: 0 0 8px 0;
-  color: #2d3748;
+  background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   font-size: 18px;
   font-weight: 600;
   
@@ -141,7 +152,10 @@ const GiftName = styled.h3`
 const GiftPrice = styled.div`
   font-size: 24px;
   font-weight: 700;
-  color: ${props => props.$color};
+  background: ${props => props.$color};
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin-bottom: 15px;
   
   @media (max-width: 768px) {
@@ -197,7 +211,10 @@ const HistoryDetails = styled.div`
 
 const HistoryTitle = styled.h4`
   margin: 0 0 5px 0;
-  color: #2d3748;
+  background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   font-size: 16px;
   font-weight: 600;
   
@@ -208,7 +225,10 @@ const HistoryTitle = styled.h4`
 
 const HistoryInfo = styled.p`
   margin: 0 0 5px 0;
-  color: #4a5568;
+  background: linear-gradient(135deg, #4a5568 0%, #718096 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   font-size: 14px;
   
   @media (max-width: 768px) {
@@ -224,7 +244,10 @@ const HistoryMeta = styled.div`
   
   span {
     font-size: 12px;
-    color: #718096;
+    background: linear-gradient(135deg, #718096 0%, #a0aec0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
   
   @media (max-width: 768px) {
@@ -246,13 +269,19 @@ const StatCard = styled.div`
   .number {
     font-size: 32px;
     font-weight: 700;
-    color: #dc3522;
+    background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
     margin-bottom: 8px;
   }
   
   .label {
     font-size: 14px;
-    color: #718096;
+    background: linear-gradient(135deg, #718096 0%, #a0aec0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
     font-weight: 500;
   }
   
@@ -272,7 +301,6 @@ const StatCard = styled.div`
 const EmptyState = styled.div`
   text-align: center;
   padding: 60px 20px;
-  color: #718096;
   
   .icon {
     font-size: 64px;
@@ -283,12 +311,19 @@ const EmptyState = styled.div`
   h3 {
     margin: 0 0 10px 0;
     font-size: 20px;
-    color: #2d3748;
+    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
   
   p {
     margin: 0;
     font-size: 16px;
+    background: linear-gradient(135deg, #718096 0%, #a0aec0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 `;
 
@@ -577,10 +612,24 @@ const Gifts = () => {
                             <div style={{ fontSize: '24px', marginBottom: '8px' }}>
                               {config.emoji || '🎁'}
                             </div>
-                            <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '4px' }}>
+                            <div style={{ 
+                              fontSize: '14px', 
+                              fontWeight: '600', 
+                              marginBottom: '4px',
+                              background: 'linear-gradient(135deg, #2d3748 0%, #4a5568 100%)',
+                              WebkitBackgroundClip: 'text',
+                              WebkitTextFillColor: 'transparent',
+                              backgroundClip: 'text'
+                            }}>
                               {config.name || gift.name || gift.type || gift.gift_type}
                             </div>
-                            <div style={{ fontSize: '12px', color: '#718096' }}>
+                            <div style={{ 
+                              fontSize: '12px', 
+                              background: 'linear-gradient(135deg, #718096 0%, #a0aec0 100%)',
+                              WebkitBackgroundClip: 'text',
+                              WebkitTextFillColor: 'transparent',
+                              backgroundClip: 'text'
+                            }}>
                               {gift.count} раз
                             </div>
                           </div>
@@ -609,10 +658,23 @@ const Gifts = () => {
                 <div style={{ fontSize: '48px', marginBottom: '10px' }}>
                   {GIFT_CONFIG[selectedGift.id]?.emoji || '🎁'}
                 </div>
-                <h3 style={{ margin: '0 0 5px 0', color: '#2d3748' }}>
+                <h3 style={{ 
+                  margin: '0 0 5px 0', 
+                  background: 'linear-gradient(135deg, #2d3748 0%, #4a5568 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text'
+                }}>
                   {GIFT_CONFIG[selectedGift.id]?.name || selectedGift.name}
                 </h3>
-                <div style={{ fontSize: '20px', fontWeight: '700', color: '#dc3522' }}>
+                <div style={{ 
+                  fontSize: '20px', 
+                  fontWeight: '700', 
+                  background: 'linear-gradient(135deg, #dc3522 0%, #ff6b58 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text'
+                }}>
                   {selectedGift.cost}₽
                 </div>
               </div>

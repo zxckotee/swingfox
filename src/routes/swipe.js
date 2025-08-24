@@ -165,8 +165,8 @@ router.get('/profiles', authenticateToken, async (req, res) => {
     history.push(targetUser.login);
     userSlideHistory.set(userId, history);
 
-    // Формируем ответ
-    const profileData = {
+    // Формируем ответ с учетом статуса (пара или одиночка)
+    let profileData = {
       id: targetUser.id,
       login: targetUser.login,
       ava: targetUser.ava,
@@ -178,6 +178,26 @@ router.get('/profiles', authenticateToken, async (req, res) => {
       info: targetUser.info,
       online: onlineStatus
     };
+
+    // Добавляем данные партнера для пар
+    if (targetUser.status === 'Семейная пара(М+Ж)' || targetUser.status === 'Несемейная пара(М+Ж)') {
+      const partnerData = targetUser.getPartnerData();
+      if (partnerData) {
+        profileData.partnerData = partnerData;
+        profileData.isCouple = true;
+      }
+    } else {
+      profileData.isCouple = false;
+    }
+
+    // Добавляем дополнительные поля для отображения
+    if (targetUser.height) profileData.height = targetUser.height;
+    if (targetUser.weight) profileData.weight = targetUser.weight;
+    if (targetUser.smoking) profileData.smoking = targetUser.smoking;
+    if (targetUser.alko) profileData.alko = targetUser.alko;
+    if (targetUser.search_status) profileData.searchStatus = targetUser.search_status;
+    if (targetUser.search_age) profileData.searchAge = targetUser.search_age;
+    if (targetUser.location) profileData.location = targetUser.location;
 
     res.json(profileData);
 

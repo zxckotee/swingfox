@@ -31,7 +31,12 @@ router.get('/countries', async (req, res) => {
       count: countries.length
     };
 
-    logger.logSuccess(req, 200, responseData);
+    // Логируем успех без полных данных (только метаинформация)
+    logger.logSuccess(req, 200, {
+      success: true,
+      count: responseData.count,
+      data_summary: `${responseData.data.length} countries`
+    });
     res.json(responseData);
 
   } catch (error) {
@@ -119,7 +124,13 @@ router.get('/cities/:country', async (req, res) => {
       country
     };
 
-    logger.logSuccess(req, 200, responseData);
+    // Логируем успех без полных данных (только метаинформация)
+    logger.logSuccess(req, 200, {
+      success: true,
+      count: responseData.count,
+      country: responseData.country,
+      data_summary: `${responseData.data.length} cities`
+    });
     res.json(responseData);
 
   } catch (error) {
@@ -174,7 +185,13 @@ router.get('/regions/:country', async (req, res) => {
       country
     };
 
-    logger.logSuccess(req, 200, responseData);
+    // Логируем успех без полных данных (только метаинформация)
+    logger.logSuccess(req, 200, {
+      success: true,
+      count: responseData.count,
+      country: responseData.country,
+      data_summary: `${responseData.data.length} regions`
+    });
     res.json(responseData);
 
   } catch (error) {
@@ -237,7 +254,14 @@ router.get('/cities/:country/:region', async (req, res) => {
       region
     };
 
-    logger.logSuccess(req, 200, responseData);
+    // Логируем успех без полных данных (только метаинформация)
+    logger.logSuccess(req, 200, {
+      success: true,
+      count: responseData.count,
+      country: responseData.country,
+      region: responseData.region,
+      data_summary: `${responseData.data.length} cities`
+    });
     res.json(responseData);
 
   } catch (error) {
@@ -299,7 +323,13 @@ router.get('/search', async (req, res) => {
       search_term: searchTerm
     };
 
-    logger.logSuccess(req, 200, responseData);
+    // Логируем успех без полных данных (только метаинформация)
+    logger.logSuccess(req, 200, {
+      success: true,
+      count: responseData.count,
+      search_term: responseData.search_term,
+      data_summary: `${responseData.data.length} search results`
+    });
     res.json(responseData);
 
   } catch (error) {
@@ -362,7 +392,12 @@ router.post('/validate', async (req, res) => {
       location: { country, city, region }
     };
 
-    logger.logSuccess(req, 200, responseData);
+    // Логируем успех без полных данных (только метаинформация)
+    logger.logSuccess(req, 200, {
+      success: true,
+      valid: responseData.valid,
+      location_summary: `${responseData.location.country}, ${responseData.location.city}${responseData.location.region ? `, ${responseData.location.region}` : ''}`
+    });
     res.json(responseData);
 
   } catch (error) {

@@ -2,8 +2,142 @@ const express = require('express');
 const router = express.Router();
 const { User, Likes, Gifts, Rating, PhotoLike, ProfileVisit } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
-const { generateId, calculateDistance, parseGeo } = require('../utils/helpers');
+const { generateId, calculateDistance, parseGeo, formatAge, formatOnlineTime } = require('../utils/helpers');
 const { APILogger } = require('../utils/logger');
+
+// GET /api/profiles/:login - Получение полного профиля пользователя
+router.get('/:login', authenticateToken, async (req, res) => {
+  const logger = new APILogger('PROFILES');
+  
+  try {
+    logger.logRequest(req, 'GET /:login');
+    
+    const { login } = req.params;
+    const fromUser = req.user.login;
+
+    logger.logProcess('Получение профиля пользователя', { target_user: login }, req);
+
+    // Получаем профиль пользователя
+    const targetUser = await User.findOne({ where: { login } });
+    if (!targetUser) {
+      const errorData = { error: 'user_not_found', message: 'Пользователь не найден' };
+      logger.logError(req, new Error('Target user not found'), 404);
+      return res.status(404).json(errorData);
+    }
+
+    // Вычисляем расстояние между пользователями
+    const currentUser = await User.findOne({ where: { login: fromUser } });
+    let distance = 0;
+    
+    if (currentUser && currentUser.geo && targetUser.geo) {
+      const currentGeo = parseGeo(currentUser.geo);
+      const targetGeo = parseGeo(targetUser.geo);
+      
+      if (currentGeo && targetGeo) {
+        distance = Math.round(calculateDistance(
+          currentGeo.lat, currentGeo.lng,
+          targetGeo.lat, targetGeo.lng
+        ));
+      }
+    }
+
+    // Форматируем возраст
+    const age = formatAge(targetUser.date);
+
+    // Форматируем время онлайн
+    const onlineStatus = formatOnlineTime(targetUser.online);
+
+    // Базовые данные профиля
+    let profileData = {
+      id: targetUser.id,
+      login: targetUser.login,
+      ava: targetUser.ava,
+      status: targetUser.status,
+      country: targetUser.country,
+      city: targetUser.city,
+      age,
+      distance,
+      registration: targetUser.registration,
+      info: targetUser.info,
+      online: onlineStatus,
+      viptype: targetUser.viptype
+    };
+
+    // Добавляем данные партнера для пар
+    if (targetUser.status === 'Семейная пара(М+Ж)' || targetUser.status === 'Несемейная пара(М+Ж)') {
+      const partnerData = targetUser.getPartnerData();
+      if (partnerData) {
+        profileData.partnerData = partnerData;
+        profileData.isCouple = true;
+      }
+    } else {
+      profileData.isCouple = false;
+    }
+
+    // Добавляем дополнительные поля для отображения
+    if (targetUser.height) profileData.height = targetUser.height;
+    if (targetUser.weight) profileData.weight = targetUser.weight;
+    if (targetUser.smoking) profileData.smoking = targetUser.smoking;
+    if (targetUser.alko) profileData.alko = targetUser.alko;
+    if (targetUser.search_status) profileData.searchStatus = targetUser.search_status;
+    if (targetUser.search_age) profileData.searchAge = targetUser.search_age;
+    if (targetUser.location) profileData.location = targetUser.location;
+    if (targetUser.mobile) profileData.mobile = targetUser.mobile;
+    if (targetUser.images) profileData.images = targetUser.images;
+
+    // Получаем статистику лайков фото
+    const photoLikes = await PhotoLike.findAll({
+      where: { to_user: login },
+      attributes: ['photo_index'],
+      group: ['photo_index'],
+      raw: true
+    });
+
+    const likeCounts = {};
+    for (const like of photoLikes) {
+      const count = await PhotoLike.count({
+        where: {
+          to_user: login,
+          photo_index: like.photo_index
+        }
+      });
+      likeCounts[like.photo_index] = count;
+    }
+    profileData.photoLikes = likeCounts;
+
+    // Получаем рейтинг пользователя
+    const ratings = await Rating.findAll({
+      where: { to_user: login },
+      attributes: ['value']
+    });
+    profileData.totalRating = ratings.reduce((sum, rating) => sum + rating.value, 0);
+    profileData.ratingCount = ratings.length;
+
+    // Получаем мою оценку (если не свой профиль)
+    if (fromUser !== login) {
+      const myRating = await Rating.findOne({
+        where: {
+          from_user: fromUser,
+          to_user: login
+        }
+      });
+      profileData.myRating = myRating ? myRating.value : 0;
+    }
+
+    logger.logSuccess(req, 200, { profile_found: true, user_status: targetUser.status });
+    res.json({
+      success: true,
+      profile: profileData
+    });
+
+  } catch (error) {
+    logger.logError(req, error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при получении профиля'
+    });
+  }
+});
 
 // POST /api/profiles/:login/like-photo - Лайк фото
 router.post('/:login/like-photo', authenticateToken, async (req, res) => {

@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import { catalogAPI, apiUtils } from '../services/api';
+// Убираем импорт функций маппинга, так как теперь статусы уже русские
 import {
   PageContainer,
   Avatar,
@@ -274,17 +275,6 @@ const Catalog = () => {
     }
   );
 
-  // Получение профилей
-  const { data: profilesData, isLoading, refetch } = useQuery(
-    ['catalog-profiles', filters],
-    () => catalogAPI.getProfiles(filters),
-    {
-      onError: (error) => {
-        toast.error(apiUtils.handleError(error));
-      }
-    }
-  );
-
   // Обработчики фильтров
   const handleStatusChange = (status, checked) => {
     setFilters(prev => ({
@@ -295,6 +285,29 @@ const Catalog = () => {
       offset: 0 // Сбрасываем пагинацию при изменении фильтров
     }));
   };
+
+  // Функция для преобразования фильтров перед отправкой на сервер
+  const getServerFilters = () => {
+    const serverFilters = { ...filters };
+    
+    // Преобразуем отображаемые названия статусов в значения базы данных
+    if (serverFilters.status && serverFilters.status.length > 0) {
+      serverFilters.status = serverFilters.status.map(status => getStatusDbValue(status));
+    }
+    
+    return serverFilters;
+  };
+
+  // Получение профилей с преобразованными фильтрами
+  const { data: profilesData, isLoading, refetch } = useQuery(
+    ['catalog-profiles', filters],
+    () => catalogAPI.getProfiles(getServerFilters()),
+    {
+      onError: (error) => {
+        toast.error(apiUtils.handleError(error));
+      }
+    }
+  );
 
   const handleCountryChange = (country) => {
     setFilters(prev => ({
@@ -429,9 +442,33 @@ const Catalog = () => {
                     <ProfileInfo>
                       <div className="status">{user.status}</div>
                       <div className="age">{user.age}</div>
+                      
+                      {/* Показываем данные партнера для пар */}
+                      {user.isCouple && user.partnerData && (
+                        <div className="partner-data" style={{ 
+                          fontSize: '12px', 
+                          margin: '5px 0', 
+                          padding: '5px', 
+                          background: 'rgba(220, 53, 34, 0.1)', 
+                          borderRadius: '5px',
+                          border: '1px solid rgba(220, 53, 34, 0.2)'
+                        }}>
+                          <div style={{ fontWeight: 'bold', marginBottom: '3px' }}>👫 Пара:</div>
+                          <div>👨 {user.partnerData.manHeight || '?'}см, {user.partnerData.manWeight || '?'}кг</div>
+                          <div>👩 {user.partnerData.womanHeight || '?'}см, {user.partnerData.womanWeight || '?'}кг</div>
+                        </div>
+                      )}
+                      
                       <div className="location">
                         {user.city}, {user.distance}км
                       </div>
+                      
+                      {/* Дополнительная информация */}
+                      <div className="additional-info" style={{ fontSize: '11px', marginTop: '5px', color: '#666' }}>
+                        {user.height && <span>📏 {user.height}см </span>}
+                        {user.smoking && <span>🚬 {user.smoking.length > 20 ? user.smoking.substring(0, 20) + '...' : user.smoking} </span>}
+                      </div>
+                      
                       <Link
                         to={`/profile/${user.login}`}
                         className="username"

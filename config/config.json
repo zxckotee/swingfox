@@ -11,6 +11,11 @@
       "timestamps": true,
       "underscored": true,
       "freezeTableName": true
+    },
+    "logging_config": {
+      "level": "INFO",
+      "max_array_size": 10,
+      "truncate_large_data": true
     }
   },
   "test": {
@@ -20,7 +25,12 @@
     "host": "localhost",
     "port": 5432,
     "dialect": "postgres",
-    "logging": false
+    "logging": false,
+    "logging_config": {
+      "level": "WARN",
+      "max_array_size": 5,
+      "truncate_large_data": true
+    }
   },
   "production": {
     "use_env_variable": "DATABASE_URL",
@@ -30,6 +40,11 @@
         "require": true,
         "rejectUnauthorized": false
       }
+    },
+    "logging_config": {
+      "level": "ERROR",
+      "max_array_size": 3,
+      "truncate_large_data": true
     }
   }
 }

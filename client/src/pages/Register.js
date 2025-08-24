@@ -613,11 +613,32 @@ const Register = () => {
 
   // Вычисление прогресса заполнения формы
   useEffect(() => {
-    const requiredFields = ['login', 'email', 'password', 'confirmPassword', 'searchStatus', 'searchAge', 'birthday', 'city'];
-    const filledFields = requiredFields.filter(field => allFields[field]);
+    let requiredFields = ['login', 'email', 'password', 'confirmPassword', 'searchStatus', 'searchAge', 'city'];
+    
+    // Добавляем поля в зависимости от статуса
+    if (selectedStatus === 'Семейная пара(М+Ж)' || selectedStatus === 'Несемейная пара(М+Ж)') {
+      requiredFields.push('manBirthday', 'womanBirthday');
+    } else if (selectedStatus === 'Мужчина') {
+      requiredFields.push('manBirthday');
+    } else if (selectedStatus === 'Женщина') {
+      requiredFields.push('womanBirthday');
+    }
+    
+    // Проверяем, что выбрано хотя бы одно место для встреч
+    if (allFields.location && Array.isArray(allFields.location) && allFields.location.length > 0) {
+      requiredFields.push('location');
+    }
+    
+    const filledFields = requiredFields.filter(field => {
+      if (field === 'location') {
+        return allFields.location && Array.isArray(allFields.location) && allFields.location.length > 0;
+      }
+      return allFields[field];
+    });
+    
     const progress = (filledFields.length / requiredFields.length) * 100;
     setFormProgress(progress);
-  }, [allFields]);
+  }, [allFields, selectedStatus]);
 
   // Таймер для повторной отправки кода
   useEffect(() => {
@@ -672,6 +693,43 @@ const Register = () => {
       return;
     }
 
+    // Формируем данные в зависимости от статуса
+    let individualData = {};
+    
+    if (selectedStatus === 'Семейная пара(М+Ж)' || selectedStatus === 'Несемейная пара(М+Ж)') {
+      // Для пар - объединяем данные через подчеркивание
+      individualData = {
+        date: `${data.manBirthday}_${data.womanBirthday}`,
+        height: `${data.manHeight || ''}_${data.womanHeight || ''}`,
+        weight: `${data.manWeight || ''}_${data.womanWeight || ''}`,
+        smoking: `${data.manSmoking || 'no_matter'}_${data.womanSmoking || 'no_matter'}`,
+        alko: `${data.manAlko || 'no_matter'}_${data.womanAlko || 'no_matter'}`
+      };
+    } else {
+      // Для одиночек - только мужские или женские данные
+      if (selectedStatus === 'Мужчина') {
+        individualData = {
+          date: data.manBirthday,
+          height: data.manHeight || '',
+          weight: data.manWeight || '',
+          smoking: data.manSmoking || 'no_matter',
+          alko: data.manAlko || 'no_matter'
+        };
+      } else if (selectedStatus === 'Женщина') {
+        individualData = {
+          date: data.womanBirthday,
+          height: data.womanHeight || '',
+          weight: data.womanWeight || '',
+          smoking: data.womanSmoking || 'no_matter',
+          alko: data.womanAlko || 'no_matter'
+        };
+      }
+    }
+
+    // Обработка поля location (массив чекбоксов)
+    const locationArray = Array.isArray(data.location) ? data.location : [];
+    const locationString = locationArray.join('&&');
+
     const submitData = {
       email: data.email,
       mail_code: emailCode,
@@ -683,68 +741,70 @@ const Register = () => {
         city: data.city,
         search_status: data.searchStatus,
         search_age: data.searchAge,
-        location: data.location || '',
+        location: locationString,
         mobile: data.mobile || '',
         info: data.info || ''
       },
-      individual: {
-        date: data.birthday,
-        height: data.height || '',
-        weight: data.weight || '',
-        smoking: data.smoking || 'no_matter',
-        alko: data.alko || 'no_matter'
-      }
+      individual: individualData
     };
 
     registerMutation.mutate(submitData);
   };
 
   const statusTypes = [
-    { value: 'single_man', label: 'Одинокий мужчина' },
-    { value: 'single_woman', label: 'Одинокая женщина' },
-    { value: 'couple_mf', label: 'Пара М+Ж' },
-    { value: 'couple_mm', label: 'Пара М+М' },
-    { value: 'couple_ff', label: 'Пара Ж+Ж' },
-    { value: 'open_relationship', label: 'Открытые отношения' }
+    { value: 'Семейная пара(М+Ж)', label: 'Семейная пара(М+Ж)' },
+    { value: 'Несемейная пара(М+Ж)', label: 'Несемейная пара(М+Ж)' },
+    { value: 'Мужчина', label: 'Мужчина' },
+    { value: 'Женщина', label: 'Женщина' }
   ];
 
   const searchStatusTypes = [
-    { value: 'single_man', label: 'Одинокого мужчину' },
-    { value: 'single_woman', label: 'Одинокую женщину' },
-    { value: 'couple_mf', label: 'Пару М+Ж' },
-    { value: 'couple_mm', label: 'Пару М+М' },
-    { value: 'couple_ff', label: 'Пару Ж+Ж' },
-    { value: 'any', label: 'Любых' }
+    { value: 'Семейная пара(М+Ж)', label: 'Семейную пару(М+Ж)' },
+    { value: 'Несемейная пара(М+Ж)', label: 'Несемейную пару(М+Ж)' },
+    { value: 'Мужчина', label: 'Мужчину' },
+    { value: 'Женщина', label: 'Женщину' }
   ];
 
   const ageRanges = [
-    { value: '18-25', label: '18-25 лет' },
-    { value: '25-30', label: '25-30 лет' },
-    { value: '30-35', label: '30-35 лет' },
-    { value: '35-40', label: '35-40 лет' },
-    { value: '40-45', label: '40-45 лет' },
-    { value: '45-50', label: '45-50 лет' },
-    { value: '50+', label: '50+ лет' }
+    { value: 'Возраст значения не имеет', label: 'Возраст значения не имеет' },
+    { value: 'С ровестниками', label: 'С ровестниками' },
+    { value: 'С ровестниками или с разницей +/- 5 лет', label: 'С ровестниками или с разницей +/- 5 лет' },
+    { value: 'С ровестниками или с разницей +/- 10 лет', label: 'С ровестниками или с разницей +/- 10 лет' }
   ];
 
   const smokingOptions = [
-    { value: 'never', label: 'Не курю' },
-    { value: 'sometimes', label: 'Иногда' },
-    { value: 'regular', label: 'Регулярно' },
-    { value: 'no_matter', label: 'Не важно' }
+    { value: 'Не курю и не переношу табачного дыма', label: 'Не курю и не переношу табачного дыма' },
+    { value: 'Не курю, но терпимо отношусь к табачному дыму', label: 'Не курю, но терпимо отношусь к табачному дыму' },
+    { value: 'Курю, но могу обойтись какое-то время без сигарет', label: 'Курю, но могу обойтись какое-то время без сигарет' },
+    { value: 'Не могу отказаться от курения ни при каких обстоятельствах', label: 'Не могу отказаться от курения ни при каких обстоятельствах' }
   ];
 
   const alkoOptions = [
-    { value: 'never', label: 'Не пью' },
-    { value: 'sometimes', label: 'Иногда' },
-    { value: 'regular', label: 'Регулярно' },
-    { value: 'no_matter', label: 'Не важно' }
+    { value: 'Не употребляю вообще', label: 'Не употребляю вообще' },
+    { value: 'В незначительных дозах, количество выпитого не отражается на моем поведении', label: 'В незначительных дозах, количество выпитого не отражается на моем поведении' },
+    { value: 'Умеренно, до легкого опьянения, контролирую свое поведение', label: 'Умеренно, до легкого опьянения, контролирую свое поведение' },
+    { value: 'Могу напиться, потерять контроль над своим поведением', label: 'Могу напиться, потерять контроль над своим поведением' }
   ];
 
   // Определение текущего шага на основе заполненных полей
   useEffect(() => {
     if (allFields.searchStatus && allFields.searchAge && selectedStatus) {
-      setCurrentStep(3);
+      // Проверяем, что заполнены все необходимые поля для выбранного статуса
+      let canProceed = true;
+      
+      if (selectedStatus === 'Семейная пара(М+Ж)' || selectedStatus === 'Несемейная пара(М+Ж)') {
+        canProceed = allFields.manBirthday && allFields.womanBirthday;
+      } else if (selectedStatus === 'Мужчина') {
+        canProceed = allFields.manBirthday;
+      } else if (selectedStatus === 'Женщина') {
+        canProceed = allFields.womanBirthday;
+      }
+      
+      if (canProceed) {
+        setCurrentStep(3);
+      } else {
+        setCurrentStep(2);
+      }
     } else if (allFields.login && allFields.email && allFields.password) {
       setCurrentStep(2);
     } else {
@@ -993,10 +1053,10 @@ const Register = () => {
             
             <FormRow>
               <FormGroup>
-                <Label>Дата рождения <span className="required">*</span></Label>
+                <Label>Дата рождения {selectedStatus && (selectedStatus === 'Семейная пара(М+Ж)' || selectedStatus === 'Несемейная пара(М+Ж)') ? '(Мужчина)' : ''} <span className="required">*</span></Label>
                 <Input
                   type="date"
-                  {...register('birthday', {
+                  {...register('manBirthday', {
                     required: 'Дата рождения обязательна',
                     validate: value => {
                       const today = new Date();
@@ -1005,10 +1065,30 @@ const Register = () => {
                       return age >= 18 || 'Вам должно быть больше 18 лет';
                     }
                   })}
-                  className={errors.birthday ? 'error' : ''}
+                  className={errors.manBirthday ? 'error' : ''}
                 />
-                {errors.birthday && <ErrorText>{errors.birthday.message}</ErrorText>}
+                {errors.manBirthday && <ErrorText>{errors.manBirthday.message}</ErrorText>}
               </FormGroup>
+
+              {selectedStatus && (selectedStatus === 'Семейная пара(М+Ж)' || selectedStatus === 'Несемейная пара(М+Ж)') && (
+                <FormGroup>
+                  <Label>Дата рождения (Женщина) <span className="required">*</span></Label>
+                  <Input
+                    type="date"
+                    {...register('womanBirthday', {
+                      required: 'Дата рождения партнера обязательна',
+                      validate: value => {
+                        const today = new Date();
+                        const birthDate = new Date(value);
+                        const age = today.getFullYear() - birthDate.getFullYear();
+                        return age >= 18 || 'Партнеру должно быть больше 18 лет';
+                      }
+                    })}
+                    className={errors.womanBirthday ? 'error' : ''}
+                  />
+                  {errors.womanBirthday && <ErrorText>{errors.womanBirthday.message}</ErrorText>}
+                </FormGroup>
+              )}
 
               <LocationSelector
                 countryValue={watch('country') || 'Россия'}
@@ -1045,7 +1125,6 @@ const Register = () => {
             </FormRow>
 
             <FormRow>
-
               <FormGroup>
                 <Label>Мобильный телефон</Label>
                 <Input
@@ -1054,36 +1133,86 @@ const Register = () => {
                   placeholder="+7 (999) 123-45-67"
                 />
               </FormGroup>
+
+              <FormGroup>
+                <Label>Предпочитаемые места для встреч</Label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {[
+                    { id: 'У себя дома (пригласим к себе)', label: 'У себя дома (пригласим к себе)' },
+                    { id: 'У вас дома (примем приглашение)', label: 'У вас дома (примем приглашение)' },
+                    { id: 'В свинг-клубе или на закрытой вечеринке', label: 'В свинг-клубе или на закрытой вечеринке' },
+                    { id: 'В сауне', label: 'В сауне' },
+                    { id: 'В гостинице или на съемной квартире', label: 'В гостинице или на съемной квартире' }
+                  ].map(option => (
+                    <label key={option.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input
+                        type="checkbox"
+                        value={option.id}
+                        {...register('location')}
+                      />
+                      <span style={{ fontSize: '14px' }}>{option.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </FormGroup>
             </FormRow>
 
             <FormRow>
               <FormGroup>
-                <Label>Рост (см)</Label>
+                <Label>Рост (см) {selectedStatus && (selectedStatus === 'Семейная пара(М+Ж)' || selectedStatus === 'Несемейная пара(М+Ж)') ? '(Мужчина)' : ''}</Label>
                 <Input
                   type="number"
-                  {...register('height')}
+                  {...register('manHeight')}
                   placeholder="175"
                   min="140"
                   max="220"
                 />
               </FormGroup>
 
+              {selectedStatus && (selectedStatus === 'Семейная пара(М+Ж)' || selectedStatus === 'Несемейная пара(М+Ж)') && (
+                <FormGroup>
+                  <Label>Рост (см) (Женщина)</Label>
+                  <Input
+                    type="number"
+                    {...register('womanHeight')}
+                    placeholder="165"
+                    min="140"
+                    max="200"
+                  />
+                </FormGroup>
+              )}
+            </FormRow>
+
+            <FormRow>
               <FormGroup>
-                <Label>Вес (кг)</Label>
+                <Label>Вес (кг) {selectedStatus && (selectedStatus === 'Семейная пара(М+Ж)' || selectedStatus === 'Несемейная пара(М+Ж)') ? '(Мужчина)' : ''}</Label>
                 <Input
                   type="number"
-                  {...register('weight')}
+                  {...register('manWeight')}
                   placeholder="70"
                   min="40"
                   max="200"
                 />
               </FormGroup>
+
+              {selectedStatus && (selectedStatus === 'Семейная пара(М+Ж)' || selectedStatus === 'Несемейная пара(М+Ж)') && (
+                <FormGroup>
+                  <Label>Вес (кг) (Женщина)</Label>
+                  <Input
+                    type="number"
+                    {...register('womanWeight')}
+                    placeholder="55"
+                    min="40"
+                    max="150"
+                  />
+                </FormGroup>
+              )}
             </FormRow>
 
             <FormRow>
               <FormGroup>
-                <Label>Отношение к курению</Label>
-                <Select {...register('smoking')}>
+                <Label>Отношение к курению {selectedStatus && (selectedStatus === 'Семейная пара(М+Ж)' || selectedStatus === 'Несемейная пара(М+Ж)') ? '(Мужчина)' : ''}</Label>
+                <Select {...register('manSmoking')}>
                   {smokingOptions.map(option => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -1092,9 +1221,24 @@ const Register = () => {
                 </Select>
               </FormGroup>
 
+              {selectedStatus && (selectedStatus === 'Семейная пара(М+Ж)' || selectedStatus === 'Несемейная пара(М+Ж)') && (
+                <FormGroup>
+                  <Label>Отношение к курению (Женщина)</Label>
+                  <Select {...register('womanSmoking')}>
+                    {smokingOptions.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
+                </FormGroup>
+              )}
+            </FormRow>
+
+            <FormRow>
               <FormGroup>
-                <Label>Отношение к алкоголю</Label>
-                <Select {...register('alko')}>
+                <Label>Отношение к алкоголю {selectedStatus && (selectedStatus === 'Семейная пара(М+Ж)' || selectedStatus === 'Несемейная пара(М+Ж)') ? '(Мужчина)' : ''}</Label>
+                <Select {...register('manAlko')}>
                   {alkoOptions.map(option => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -1102,6 +1246,19 @@ const Register = () => {
                   ))}
                 </Select>
               </FormGroup>
+
+              {selectedStatus && (selectedStatus === 'Семейная пара(М+Ж)' || selectedStatus === 'Несемейная пара(М+Ж)') && (
+                <FormGroup>
+                  <Label>Отношение к алкоголю (Женщина)</Label>
+                  <Select {...register('womanAlko')}>
+                    {alkoOptions.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
+                </FormGroup>
+              )}
             </FormRow>
 
             <FormGroup>

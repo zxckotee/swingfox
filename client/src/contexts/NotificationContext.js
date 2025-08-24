@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from 'react-query';
-import { notificationsAPI } from '../services/api';
+import { notificationsAPI, apiUtils } from '../services/api';
 import MatchPopup from '../components/MatchPopup';
 
 const NotificationContext = createContext();
@@ -21,9 +21,39 @@ export const NotificationProvider = ({ children }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isMounted, setIsMounted] = useState(false);
   const [isRouterReady, setIsRouterReady] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
+  }, []);
+
+  // Проверяем авторизацию
+  useEffect(() => {
+    const checkAuth = () => {
+      const authenticated = apiUtils.isAuthenticated();
+      setIsAuthenticated(authenticated);
+      
+      // Сбрасываем счетчик уведомлений при разлогине
+      if (!authenticated) {
+        setUnreadCount(0);
+        setActivePopups([]);
+      }
+    };
+
+    checkAuth();
+
+    // Слушаем события изменения авторизации
+    const handleAuthChange = () => {
+      checkAuth();
+    };
+
+    window.addEventListener('auth-logout', handleAuthChange);
+    window.addEventListener('storage', handleAuthChange);
+    
+    return () => {
+      window.removeEventListener('auth-logout', handleAuthChange);
+      window.removeEventListener('storage', handleAuthChange);
+    };
   }, []);
 
   // Проверяем, что Router контекст доступен
@@ -51,9 +81,17 @@ export const NotificationProvider = ({ children }) => {
     () => notificationsAPI.getUnreadCount(),
     {
       refetchInterval: 15000,
-      enabled: isRouterReady, // Не запускаем запросы пока роутер не готов
+      enabled: isRouterReady && isAuthenticated, // Не запускаем запросы пока роутер не готов И пользователь авторизован
       onSuccess: (data) => {
         setUnreadCount(data?.total_unread || 0);
+      },
+      onError: (error) => {
+        // Если получаем 401, сбрасываем авторизацию
+        if (error.response?.status === 401) {
+          console.log('Unauthorized in notifications query, resetting auth state');
+          setIsAuthenticated(false);
+          setUnreadCount(0);
+        }
       }
     }
   );
@@ -67,10 +105,17 @@ export const NotificationProvider = ({ children }) => {
     }),
     {
       refetchInterval: 10000,
-      enabled: isRouterReady, // Не запускаем запросы пока роутер не готов
+      enabled: isRouterReady && isAuthenticated, // Не запускаем запросы пока роутер не готов И пользователь авторизован
       onSuccess: (data) => {
         if (data?.notifications) {
           checkForNewMatchNotifications(data.notifications);
+        }
+      },
+      onError: (error) => {
+        // Если получаем 401, сбрасываем авторизацию
+        if (error.response?.status === 401) {
+          console.log('Unauthorized in latest notifications query, resetting auth state');
+          setIsAuthenticated(false);
         }
       }
     }
@@ -99,9 +144,9 @@ export const NotificationProvider = ({ children }) => {
   };
 
   const showMatchPopup = (notification) => {
-    // Не показываем попапы пока роутер не готов
-    if (!isRouterReady) {
-      console.log('Router not ready, skipping popup:', notification.id);
+    // Не показываем попапы пока роутер не готов или пользователь не авторизован
+    if (!isRouterReady || !isAuthenticated) {
+      console.log('Router not ready or user not authenticated, skipping popup:', notification.id);
       return;
     }
 
@@ -135,9 +180,9 @@ export const NotificationProvider = ({ children }) => {
   };
 
   const showCustomMatchPopup = (matchData) => {
-    // Не показываем попапы пока роутер не готов
-    if (!isRouterReady) {
-      console.log('Router not ready, skipping custom popup');
+    // Не показываем попапы пока роутер не готов или пользователь не авторизован
+    if (!isRouterReady || !isAuthenticated) {
+      console.log('Router not ready or user not authenticated, skipping custom popup');
       return;
     }
 
@@ -168,8 +213,8 @@ export const NotificationProvider = ({ children }) => {
     <NotificationContext.Provider value={contextValue}>
       {children}
       
-      {/* Рендерим активные попапы только после монтирования и готовности роутера */}
-      {isMounted && isRouterReady && activePopups.map(popup => (
+      {/* Рендерим активные попапы только после монтирования, готовности роутера и авторизации */}
+      {isMounted && isRouterReady && isAuthenticated && activePopups.map(popup => (
         <MatchPopup
           key={popup.id}
           notification={popup.notification}

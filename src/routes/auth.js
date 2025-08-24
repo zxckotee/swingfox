@@ -328,9 +328,18 @@ router.post('/register', async (req, res) => {
     }
 
     // Создание пользователя
-    logger.logBusinessLogic(2, 'Создание нового пользователя', { login, email }, req);
+    logger.logBusinessLogic(2, 'Создание нового пользователя', { login, email, status: about.status }, req);
     const userId = generateId();
     logger.logResult('Генерация ID пользователя', true, { user_id: userId }, req);
+    
+    // Валидация статуса
+    const validStatuses = ['Семейная пара(М+Ж)', 'Несемейная пара(М+Ж)', 'Мужчина', 'Женщина'];
+    if (!validStatuses.includes(about.status)) {
+      logger.logWarning('Неверный статус', { status: about.status }, req);
+      const errorData = { error: 'invalid_status', message: 'Неверный статус пользователя' };
+      logger.logError(req, new Error('Invalid status'), 400);
+      return res.status(400).json(errorData);
+    }
     
     logger.logDatabase('CREATE', 'users', {
       id: userId,
