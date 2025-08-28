@@ -462,77 +462,151 @@ router.post('/upload-avatar', authenticateToken, upload.single('avatar'), async 
 
 // POST /api/users/upload-images - Загрузка дополнительных фото
 router.post('/upload-images', authenticateToken, upload.array('images', 10), async (req, res) => {
+  const logger = new APILogger('USERS');
+  
   try {
+    logger.logRequest(req, 'POST /upload-images');
+    
+    logger.logBusinessLogic(1, 'Проверка загруженных файлов', {
+      files_uploaded: !!req.files,
+      files_count: req.files?.length || 0,
+      file_names: req.files?.map(f => f.originalname) || []
+    }, req);
+    
     if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ 
-        error: 'no_files',
-        message: 'Файлы не были загружены' 
-      });
+      const errorData = { error: 'no_files', message: 'Файлы не были загружены' };
+      logger.logError(req, new Error('No files uploaded'), 400);
+      return res.status(400).json(errorData);
     }
 
     const { type = 'images' } = req.body; // 'images' или 'locked_images'
     const userId = req.user.login;
 
+    logger.logBusinessLogic(2, 'Поиск пользователя', {
+      user_id: userId,
+      image_type: type
+    }, req);
+    
+    logger.logDatabase('SEARCH', 'users', { condition: 'login', value: userId }, req);
     const user = await User.findOne({ where: { login: userId } });
+    
     if (!user) {
-      return res.status(404).json({ 
-        error: 'user_not_found',
-        message: 'Пользователь не найден' 
-      });
+      logger.logWarning('Пользователь не найден', { login: userId }, req);
+      const errorData = { error: 'user_not_found', message: 'Пользователь не найден' };
+      logger.logError(req, new Error('User not found'), 404);
+      return res.status(404).json(errorData);
     }
 
     // Проверка прав для скрытых изображений
     if (type === 'locked_images' && user.viptype === 'FREE') {
+      logger.logWarning('Попытка загрузки скрытых изображений без прав', {
+        user_id: userId,
+        viptype: user.viptype
+      }, req);
+      
       // Удаляем загруженные файлы
       for (const file of req.files) {
         try {
           await fs.unlink(file.path);
         } catch (err) {
-          console.error('Error deleting file:', err);
+          logger.logWarning('Ошибка удаления файла', { error: err.message }, req);
         }
       }
       
-      return res.status(403).json({ 
+      const errorData = { 
         error: 'no_permission',
         message: 'Скрытые галереи доступны только VIP пользователям' 
-      });
+      };
+      logger.logError(req, new Error('No permission for locked images'), 403);
+      return res.status(403).json(errorData);
     }
+
+    logger.logProcess('Обработка изображений', {
+      files_count: req.files.length,
+      image_type: type
+    }, req);
 
     // Обработка изображений
     const processedFiles = [];
     for (const file of req.files) {
-      const processedFileName = `img_${generateId()}.jpg`;
-      const outputPath = path.join(__dirname, '../../public/uploads', processedFileName);
+      try {
+        const processedFileName = `img_${generateId()}.jpg`;
+        const outputPath = path.join(__dirname, '../../public/uploads', processedFileName);
 
-      await sharp(file.path)
-        .resize(800, 600, { fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 85 })
-        .toFile(outputPath);
+        logger.logProcess('Обработка файла', {
+          original_name: file.originalname,
+          processed_name: processedFileName,
+          size: file.size
+        }, req);
 
-      // Удаляем временный файл
-      await fs.unlink(file.path);
-      
-      processedFiles.push(processedFileName);
+        await sharp(file.path)
+          .rotate() // Автоповорот
+          .resize(800, 600, { fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality: 85 })
+          .toFile(outputPath);
+
+        // Удаляем временный файл
+        await fs.unlink(file.path);
+        
+        processedFiles.push(processedFileName);
+        
+        logger.logResult('Файл обработан успешно', true, {
+          original: file.originalname,
+          processed: processedFileName
+        }, req);
+        
+      } catch (fileError) {
+        logger.logError(req, fileError, 'Ошибка обработки файла');
+        
+        // Удаляем файл при ошибке
+        try {
+          await fs.unlink(file.path);
+        } catch (unlinkError) {
+          logger.logWarning('Не удалось удалить временный файл', { error: unlinkError.message }, req);
+        }
+      }
+    }
+
+    if (processedFiles.length === 0) {
+      const errorData = { error: 'processing_failed', message: 'Не удалось обработать ни одного файла' };
+      logger.logError(req, new Error('No files processed successfully'), 500);
+      return res.status(500).json(errorData);
     }
 
     // Обновляем список изображений пользователя
+    logger.logProcess('Обновление списка изображений пользователя', {
+      user_id: userId,
+      current_count: user[type] ? user[type].split('&&').filter(Boolean).length : 0,
+      new_count: processedFiles.length
+    }, req);
+    
     const currentImages = user[type] ? user[type].split('&&').filter(Boolean) : [];
     const updatedImages = [...currentImages, ...processedFiles];
+    
+    logger.logDatabase('UPDATE', 'users', {
+      user_id: user.id,
+      field: type,
+      old_value: user[type],
+      new_value: updatedImages.join('&&')
+    }, req);
     
     await user.update({ 
       [type]: updatedImages.join('&&'),
       updated_at: new Date()
     });
 
-    res.json({
+    const responseData = {
       success: true,
       message: 'Изображения успешно загружены',
       uploaded_files: processedFiles,
       urls: processedFiles.map(file => `/uploads/${file}`)
-    });
+    };
+
+    logger.logSuccess(req, 200, responseData);
+    res.json(responseData);
 
   } catch (error) {
-    console.error('Upload images error:', error);
+    logger.logError(req, error);
     
     // Удаляем загруженные файлы при ошибке
     if (req.files) {
@@ -540,7 +614,7 @@ router.post('/upload-images', authenticateToken, upload.array('images', 10), asy
         try {
           await fs.unlink(file.path);
         } catch (unlinkError) {
-          console.error('Error deleting uploaded file:', unlinkError);
+          logger.logWarning('Не удалось удалить файл при ошибке', { error: unlinkError.message }, req);
         }
       }
     }

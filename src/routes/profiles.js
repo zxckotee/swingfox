@@ -83,7 +83,7 @@ router.get('/:login', authenticateToken, async (req, res) => {
     if (targetUser.search_age) profileData.searchAge = targetUser.search_age;
     if (targetUser.location) profileData.location = targetUser.location;
     if (targetUser.mobile) profileData.mobile = targetUser.mobile;
-    if (targetUser.images) profileData.images = targetUser.images;
+    if (targetUser.images) profileData.images = targetUser.images.split('&&').filter(Boolean);
 
     // Получаем статистику лайков фото
     const photoLikes = await PhotoLike.findAll({

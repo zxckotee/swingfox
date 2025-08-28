@@ -4,6 +4,523 @@ const { Rating, User, Notifications } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { APILogger } = require('../utils/logger');
 
+// GET /api/rating/leaderboard - Лидерборд рейтинга
+router.get('/leaderboard', authenticateToken, async (req, res) => {
+  const logger = new APILogger('RATING');
+  
+  try {
+    logger.logRequest(req, 'GET /rating/leaderboard');
+    
+    const { period = 'month', category = 'overall', city = '', limit = 20 } = req.query;
+    const currentUser = req.user.login;
+
+    logger.logBusinessLogic(1, 'Получение лидерборда рейтинга', {
+      current_user: currentUser,
+      period,
+      category,
+      city,
+      limit: parseInt(limit)
+    }, req);
+
+    // Формируем условие для периода
+    let whereClause = {};
+    
+    if (period !== 'all') {
+      const now = new Date();
+      let startDate = new Date();
+      
+      switch (period) {
+        case 'week':
+          startDate.setDate(now.getDate() - 7);
+          break;
+        case 'month':
+          startDate.setMonth(now.getMonth() - 1);
+          break;
+        case 'year':
+          startDate.setFullYear(now.getFullYear() - 1);
+          break;
+      }
+      
+      whereClause.created_at = {
+        [Rating.sequelize.Sequelize.Op.gte]: startDate
+      };
+    }
+
+    // Условие для города, если указан
+    let userWhereClause = {};
+    if (city) {
+      userWhereClause.city = {
+        [Rating.sequelize.Sequelize.Op.like]: `%${city}%`
+      };
+    }
+    userWhereClause.status = { [Rating.sequelize.Sequelize.Op.ne]: 'BANNED' };
+
+    // Получаем лидерборд - используем подзапрос для избежания проблем с GROUP BY
+    const leaderboardQuery = `
+      SELECT 
+        r.to_user,
+        SUM(r.value) as rating_score,
+        COUNT(r.value) as total_votes,
+        SUM(CASE WHEN r.value = 1 THEN 1 ELSE 0 END) as positive_votes
+      FROM rating r
+      WHERE r.created_at >= :startDate
+      GROUP BY r.to_user
+      HAVING COUNT(r.value) >= 3
+      ORDER BY SUM(r.value) DESC, COUNT(r.value) DESC
+      LIMIT :limit
+    `;
+
+    const leaderboard = await Rating.sequelize.query(leaderboardQuery, {
+      replacements: {
+        startDate: whereClause.created_at ? whereClause.created_at[Rating.sequelize.Sequelize.Op.gte] : new Date(0),
+        limit: parseInt(limit)
+      },
+      type: Rating.sequelize.QueryTypes.SELECT
+    });
+
+    // Получаем информацию о пользователях для лидерборда
+    const userIds = leaderboard.map(item => item.to_user);
+    const userData = await User.findAll({
+      where: {
+        login: { [Rating.sequelize.Sequelize.Op.in]: userIds },
+        ...userWhereClause
+      },
+      attributes: ['login', 'ava', 'city', 'viptype', 'status']
+    });
+
+    // Создаем мапу пользователей для быстрого доступа
+    const userMap = {};
+    userData.forEach(user => {
+      userMap[user.login] = user;
+    });
+
+    // Форматируем результат
+    const formattedUsers = leaderboard.map((rating, index) => {
+      const ratingScore = parseInt(rating.rating_score) || 0;
+      const totalVotes = parseInt(rating.total_votes) || 0;
+      const positiveVotes = parseInt(rating.positive_votes) || 0;
+      const user = userMap[rating.to_user];
+      
+      return {
+        id: rating.to_user,
+        login: rating.to_user,
+        name: rating.to_user, // Using login instead of name since User model doesn't have name
+        avatar: user ? user.ava : null,
+        city: user ? user.city : null,
+        vip_level: user ? user.viptype : null,
+        rating_score: ratingScore,
+        total_votes: totalVotes,
+        positive_votes: positiveVotes,
+        negative_votes: totalVotes - positiveVotes,
+        percentage_positive: totalVotes > 0 ? Math.round((positiveVotes / totalVotes) * 100) : 0,
+        position: index + 1,
+        profile_views: 0, // TODO: Добавить когда будет статистика
+        likes_received: 0, // TODO: Добавить когда будет статистика
+        rating_change: 0 // TODO: Добавить расчет изменений
+      };
+    });
+
+    const responseData = {
+      users: formattedUsers,
+      period,
+      category,
+      city: city || null,
+      total_found: formattedUsers.length
+    };
+
+    logger.logSuccess(req, 200, {
+      period,
+      category,
+      users_count: formattedUsers.length
+    });
+    
+    res.json(responseData);
+
+  } catch (error) {
+    logger.logError(req, error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при получении лидерборда'
+    });
+  }
+});
+
+// GET /api/rating/top/users - Топ пользователей по рейтингу
+router.get('/top/users', authenticateToken, async (req, res) => {
+  const logger = new APILogger('RATING');
+  
+  try {
+    logger.logRequest(req, 'GET /rating/top/users');
+    
+    const { limit = 20, period = 'all' } = req.query;
+    const currentUser = req.user.login;
+
+    logger.logBusinessLogic(1, 'Получение топа пользователей по рейтингу', {
+      current_user: currentUser,
+      limit: parseInt(limit),
+      period
+    }, req);
+
+    // Формируем условие для периода
+    let whereClause = {};
+    
+    if (period !== 'all') {
+      const now = new Date();
+      let startDate = new Date();
+      
+      switch (period) {
+        case 'week':
+          startDate.setDate(now.getDate() - 7);
+          break;
+        case 'month':
+          startDate.setMonth(now.getMonth() - 1);
+          break;
+        case 'year':
+          startDate.setFullYear(now.getFullYear() - 1);
+          break;
+      }
+      
+      whereClause.created_at = {
+        [Rating.sequelize.Sequelize.Op.gte]: startDate
+      };
+    }
+
+    // Получаем топ пользователей - используем подзапрос для избежания проблем с GROUP BY
+    const topUsersQuery = `
+      SELECT 
+        r.to_user,
+        SUM(r.value) as total_rating,
+        COUNT(r.value) as total_votes,
+        SUM(CASE WHEN r.value = 1 THEN 1 ELSE 0 END) as positive_votes
+      FROM rating r
+      WHERE r.created_at >= :startDate
+      GROUP BY r.to_user
+      HAVING COUNT(r.value) >= 3
+      ORDER BY SUM(r.value) DESC, COUNT(r.value) DESC
+      LIMIT :limit
+    `;
+
+    const topUsers = await Rating.sequelize.query(topUsersQuery, {
+      replacements: {
+        startDate: whereClause.created_at ? whereClause.created_at[Rating.sequelize.Sequelize.Op.gte] : new Date(0),
+        limit: parseInt(limit)
+      },
+      type: Rating.sequelize.QueryTypes.SELECT
+    });
+
+    // Получаем информацию о пользователях для топа
+    const userIds = topUsers.map(item => item.to_user);
+    const userData = await User.findAll({
+      where: {
+        login: { [Rating.sequelize.Sequelize.Op.in]: userIds },
+        status: { [Rating.sequelize.Sequelize.Op.ne]: 'BANNED' }
+      },
+      attributes: ['login', 'ava', 'city', 'viptype', 'status']
+    });
+
+    // Создаем мапу пользователей для быстрого доступа
+    const userMap = {};
+    userData.forEach(user => {
+      userMap[user.login] = user;
+    });
+
+    // Форматируем результат
+    const formattedTop = topUsers.map((rating, index) => {
+      const totalRating = parseInt(rating.total_rating) || 0;
+      const totalVotes = parseInt(rating.total_votes) || 0;
+      const positiveVotes = parseInt(rating.positive_votes) || 0;
+      const user = userMap[rating.to_user];
+      
+      return {
+        position: index + 1,
+        user: {
+          login: rating.to_user,
+          name: rating.to_user, // Using login instead of name since User model doesn't have name
+          avatar: user ? user.ava : null,
+          city: user ? user.city : null,
+          vip_type: user ? user.viptype : null
+        },
+        rating: {
+          total_rating: totalRating,
+          total_votes: totalVotes,
+          positive_votes: positiveVotes,
+          negative_votes: totalVotes - positiveVotes,
+          average_rating: totalVotes > 0 ? (totalRating / totalVotes).toFixed(1) : 0,
+          percentage_positive: totalVotes > 0 ? Math.round((positiveVotes / totalVotes) * 100) : 0
+        }
+      };
+    });
+
+    const responseData = {
+      period,
+      top_users: formattedTop,
+      total_found: formattedTop.length
+    };
+
+    logger.logSuccess(req, 200, {
+      period,
+      users_count: formattedTop.length
+    });
+    
+    res.json(responseData);
+
+  } catch (error) {
+    logger.logError(req, error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при получении топа пользователей'
+    });
+  }
+});
+
+// GET /api/rating/my/given - Получение оценок, которые поставил текущий пользователь
+router.get('/my/given', authenticateToken, async (req, res) => {
+  const logger = new APILogger('RATING');
+  
+  try {
+    logger.logRequest(req, 'GET /rating/my/given');
+    
+    const { limit = 20, offset = 0 } = req.query;
+    const currentUser = req.user.login;
+
+    logger.logBusinessLogic(1, 'Получение оценок, поставленных пользователем', {
+      current_user: currentUser,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    }, req);
+
+    // Получаем оценки, поставленные текущим пользователем
+    const givenRatings = await Rating.findAll({
+      where: { from_user: currentUser },
+      include: [
+        {
+          model: User,
+          as: 'rated',
+          attributes: ['login', 'ava', 'city', 'viptype', 'status']
+        }
+      ],
+      order: [['created_at', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    // Форматируем результат
+    const formattedRatings = givenRatings.map(rating => ({
+      id: rating.id,
+      to_user: rating.to_user,
+      value: rating.value,
+      created_at: rating.created_at,
+      rated_user: {
+        login: rating.rated.login,
+        name: rating.rated.login, // Using login instead of name since User model doesn't have name
+        avatar: rating.rated.ava,
+        city: rating.rated.city,
+        vip_type: rating.rated.viptype
+      }
+    }));
+
+    const responseData = {
+      ratings: formattedRatings,
+      total_found: formattedRatings.length,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    };
+
+    logger.logSuccess(req, 200, {
+      ratings_count: formattedRatings.length
+    });
+    
+    res.json(responseData);
+
+  } catch (error) {
+    logger.logError(req, error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при получении поставленных оценок'
+    });
+  }
+});
+
+// GET /api/rating/my/received - Получение оценок, полученных текущим пользователем
+router.get('/my/received', authenticateToken, async (req, res) => {
+  const logger = new APILogger('RATING');
+  
+  try {
+    logger.logRequest(req, 'GET /rating/my/received');
+    
+    const { limit = 20, offset = 0 } = req.query;
+    const currentUser = req.user.login;
+
+    logger.logBusinessLogic(1, 'Получение оценок, полученных пользователем', {
+      current_user: currentUser,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    }, req);
+
+    // Получаем оценки, полученные текущим пользователем
+    const receivedRatings = await Rating.findAll({
+      where: { to_user: currentUser },
+      include: [
+        {
+          model: User,
+          as: 'rater',
+          attributes: ['login', 'ava', 'city', 'viptype', 'status']
+        }
+      ],
+      order: [['created_at', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    // Форматируем результат
+    const formattedRatings = receivedRatings.map(rating => ({
+      id: rating.id,
+      from_user: rating.from_user,
+      value: rating.value,
+      created_at: rating.created_at,
+      rater_user: {
+        login: rating.rater.login,
+        name: rating.rater.login, // Using login instead of name since User model doesn't have name
+        avatar: rating.rater.ava,
+        city: rating.rater.city,
+        vip_type: rating.rater.viptype
+      }
+    }));
+
+    const responseData = {
+      ratings: formattedRatings,
+      total_found: formattedRatings.length,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    };
+
+    logger.logSuccess(req, 200, {
+      ratings_count: formattedRatings.length
+    });
+    
+    res.json(responseData);
+
+  } catch (error) {
+    logger.logError(req, error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при получении полученных оценок'
+    });
+  }
+});
+
+// GET /api/rating/my/stats - Статистика рейтинга текущего пользователя
+router.get('/my/stats', authenticateToken, async (req, res) => {
+  const logger = new APILogger('RATING');
+  
+  try {
+    logger.logRequest(req, 'GET /rating/my/stats');
+    
+    const currentUser = req.user.login;
+
+    logger.logBusinessLogic(1, 'Получение статистики рейтинга пользователя', {
+      current_user: currentUser
+    }, req);
+
+    // Получаем текущий рейтинг
+    const currentRating = await Rating.getUserRating(currentUser);
+
+    // Получаем позицию в общем рейтинге
+    const higherRatedUsers = await Rating.findAll({
+      attributes: [
+        'to_user',
+        [Rating.sequelize.fn('SUM', Rating.sequelize.col('value')), 'total_rating']
+      ],
+      include: [
+        {
+          model: User,
+          as: 'rated',
+          attributes: ['login'],
+          where: {
+            status: { [Rating.sequelize.Sequelize.Op.ne]: 'BANNED' }
+          }
+        }
+      ],
+      group: ['to_user', 'rated.login'],
+      having: Rating.sequelize.literal(`SUM(value) > ${currentRating.total_rating} AND COUNT(value) >= 3`),
+      raw: true
+    });
+
+    const currentPosition = higherRatedUsers.length + 1;
+
+    // Получаем изменение за месяц
+    const monthAgo = new Date();
+    monthAgo.setMonth(monthAgo.getMonth() - 1);
+
+    const monthlyRatings = await Rating.findAll({
+      where: {
+        to_user: currentUser,
+        created_at: {
+          [Rating.sequelize.Sequelize.Op.gte]: monthAgo
+        }
+      },
+      attributes: [
+        [Rating.sequelize.fn('SUM', Rating.sequelize.col('value')), 'month_change']
+      ],
+      raw: true
+    });
+
+    const monthChange = parseInt(monthlyRatings[0]?.month_change) || 0;
+
+    // Получаем историю изменений (последние 10 оценок)
+    const ratingHistory = await Rating.findAll({
+      where: { to_user: currentUser },
+      include: [
+        {
+          model: User,
+          as: 'rater',
+          attributes: ['login']
+        }
+      ],
+      order: [['created_at', 'DESC']],
+      limit: 10
+    });
+
+    const history = ratingHistory.map(rating => ({
+      id: rating.id,
+      change: rating.value,
+      reason: `Оценка от ${rating.rater?.login || rating.from_user}`,
+      created_at: rating.created_at,
+      from_user: rating.from_user
+    }));
+
+    // Получаем максимальный рейтинг (исторический)
+    const maxRating = Math.max(currentRating.total_rating, 0);
+
+    const responseData = {
+      current_rating: currentRating.total_rating,
+      current_position: currentPosition,
+      rating_change: monthChange,
+      max_rating: maxRating,
+      total_votes: currentRating.total_votes,
+      positive_votes: currentRating.positive_votes,
+      negative_votes: currentRating.negative_votes,
+      percentage_positive: currentRating.percentage_positive,
+      rating_history: history
+    };
+
+    logger.logSuccess(req, 200, {
+      current_rating: currentRating.total_rating,
+      current_position: currentPosition,
+      history_count: history.length
+    });
+    
+    res.json(responseData);
+
+  } catch (error) {
+    logger.logError(req, error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при получении статистики рейтинга'
+    });
+  }
+});
+
 // GET /api/rating/:username - Получение рейтинга пользователя
 router.get('/:username', authenticateToken, async (req, res) => {
   const logger = new APILogger('RATING');
@@ -45,7 +562,7 @@ router.get('/:username', authenticateToken, async (req, res) => {
     const responseData = {
       user: {
         login: targetUser.login,
-        name: targetUser.name,
+        name: targetUser.login, // Using login instead of name since User model doesn't have name
         avatar: targetUser.ava,
         vip_type: targetUser.viptype
       },
@@ -246,522 +763,6 @@ router.delete('/:username', authenticateToken, async (req, res) => {
     res.status(500).json({
       error: 'server_error',
       message: 'Ошибка при удалении оценки'
-    });
-  }
-});
-
-// GET /api/rating/top/users - Топ пользователей по рейтингу
-router.get('/top/users', authenticateToken, async (req, res) => {
-  const logger = new APILogger('RATING');
-  
-  try {
-    logger.logRequest(req, 'GET /rating/top/users');
-    
-    const { limit = 20, period = 'all' } = req.query;
-    const currentUser = req.user.login;
-
-    logger.logBusinessLogic(1, 'Получение топа пользователей по рейтингу', {
-      current_user: currentUser,
-      limit: parseInt(limit),
-      period
-    }, req);
-
-    // Формируем условие для периода
-    let whereClause = {};
-    
-    if (period !== 'all') {
-      const now = new Date();
-      let startDate = new Date();
-      
-      switch (period) {
-        case 'week':
-          startDate.setDate(now.getDate() - 7);
-          break;
-        case 'month':
-          startDate.setMonth(now.getMonth() - 1);
-          break;
-        case 'year':
-          startDate.setFullYear(now.getFullYear() - 1);
-          break;
-      }
-      
-      whereClause.created_at = {
-        [Rating.sequelize.Sequelize.Op.gte]: startDate
-      };
-    }
-
-    // Получаем топ пользователей
-    const topUsers = await Rating.findAll({
-      where: whereClause,
-      attributes: [
-        'to_user',
-        [Rating.sequelize.fn('SUM', Rating.sequelize.col('value')), 'total_rating'],
-        [Rating.sequelize.fn('COUNT', Rating.sequelize.col('value')), 'total_votes'],
-        [Rating.sequelize.fn('SUM', Rating.sequelize.literal('CASE WHEN value = 1 THEN 1 ELSE 0 END')), 'positive_votes']
-      ],
-      include: [
-        {
-          model: User,
-          as: 'rated',
-          attributes: ['login', 'name', 'ava', 'city', 'viptype', 'status'],
-          where: { status: { [Rating.sequelize.Sequelize.Op.ne]: 'BANNED' } }
-        }
-      ],
-      group: ['to_user', 'rated.login', 'rated.name', 'rated.ava', 'rated.city', 'rated.viptype', 'rated.status'],
-      having: Rating.sequelize.literal('COUNT(value) >= 3'), // Минимум 3 оценки
-      order: [
-        [Rating.sequelize.fn('SUM', Rating.sequelize.col('value')), 'DESC'],
-        [Rating.sequelize.fn('COUNT', Rating.sequelize.col('value')), 'DESC']
-      ],
-      limit: parseInt(limit)
-    });
-
-    // Форматируем результат
-    const formattedTop = topUsers.map((rating, index) => {
-      const totalRating = parseInt(rating.get('total_rating')) || 0;
-      const totalVotes = parseInt(rating.get('total_votes')) || 0;
-      const positiveVotes = parseInt(rating.get('positive_votes')) || 0;
-      
-      return {
-        position: index + 1,
-        user: {
-          login: rating.rated.login,
-          name: rating.rated.name,
-          avatar: rating.rated.ava,
-          city: rating.rated.city,
-          vip_type: rating.rated.viptype
-        },
-        rating: {
-          total_rating: totalRating,
-          total_votes: totalVotes,
-          positive_votes: positiveVotes,
-          negative_votes: totalVotes - positiveVotes,
-          average_rating: totalVotes > 0 ? (totalRating / totalVotes).toFixed(1) : 0,
-          percentage_positive: totalVotes > 0 ? Math.round((positiveVotes / totalVotes) * 100) : 0
-        }
-      };
-    });
-
-    const responseData = {
-      period,
-      top_users: formattedTop,
-      total_found: formattedTop.length
-    };
-
-    logger.logSuccess(req, 200, {
-      period,
-      users_count: formattedTop.length
-    });
-    
-    res.json(responseData);
-
-  } catch (error) {
-    logger.logError(req, error);
-    res.status(500).json({
-      error: 'server_error',
-      message: 'Ошибка при получении топа пользователей'
-    });
-  }
-});
-
-// GET /api/rating/my/given - Получение оценок, поставленных текущим пользователем
-router.get('/my/given', authenticateToken, async (req, res) => {
-  const logger = new APILogger('RATING');
-  
-  try {
-    logger.logRequest(req, 'GET /rating/my/given');
-    
-    const { page = 1, limit = 20 } = req.query;
-    const currentUser = req.user.login;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-
-    logger.logBusinessLogic(1, 'Получение поставленных оценок', {
-      current_user: currentUser,
-      page: parseInt(page),
-      limit: parseInt(limit)
-    }, req);
-
-    // Получаем оценки, поставленные пользователем
-    const givenRatings = await Rating.findAll({
-      where: { from_user: currentUser },
-      include: [
-        {
-          model: User,
-          as: 'rated',
-          attributes: ['login', 'name', 'ava', 'city', 'viptype']
-        }
-      ],
-      order: [['created_at', 'DESC']],
-      limit: parseInt(limit),
-      offset
-    });
-
-    // Подсчитываем общее количество
-    const totalCount = await Rating.count({
-      where: { from_user: currentUser }
-    });
-
-    // Форматируем результат
-    const formattedRatings = givenRatings.map(rating => ({
-      id: rating.id,
-      to_user: rating.to_user,
-      user_info: rating.rated ? {
-        login: rating.rated.login,
-        name: rating.rated.name,
-        avatar: rating.rated.ava,
-        city: rating.rated.city,
-        vip_type: rating.rated.viptype
-      } : null,
-      value: rating.value,
-      date: rating.date,
-      created_at: rating.created_at
-    }));
-
-    const responseData = {
-      given_ratings: formattedRatings,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: totalCount,
-        pages: Math.ceil(totalCount / parseInt(limit))
-      }
-    };
-
-    logger.logSuccess(req, 200, {
-      ratings_count: formattedRatings.length,
-      total_count: totalCount
-    });
-    
-    res.json(responseData);
-
-  } catch (error) {
-    logger.logError(req, error);
-    res.status(500).json({
-      error: 'server_error',
-      message: 'Ошибка при получении поставленных оценок'
-    });
-  }
-});
-
-// GET /api/rating/my/received - Получение полученных оценок
-router.get('/my/received', authenticateToken, async (req, res) => {
-  const logger = new APILogger('RATING');
-  
-  try {
-    logger.logRequest(req, 'GET /rating/my/received');
-    
-    const { page = 1, limit = 20 } = req.query;
-    const currentUser = req.user.login;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-
-    logger.logBusinessLogic(1, 'Получение полученных оценок', {
-      current_user: currentUser,
-      page: parseInt(page),
-      limit: parseInt(limit)
-    }, req);
-
-    // Получаем оценки, полученные пользователем
-    const receivedRatings = await Rating.findAll({
-      where: { to_user: currentUser },
-      include: [
-        {
-          model: User,
-          as: 'rater',
-          attributes: ['login', 'name', 'ava', 'city', 'viptype']
-        }
-      ],
-      order: [['created_at', 'DESC']],
-      limit: parseInt(limit),
-      offset
-    });
-
-    // Подсчитываем общее количество
-    const totalCount = await Rating.count({
-      where: { to_user: currentUser }
-    });
-
-    // Получаем общий рейтинг
-    const overallRating = await Rating.getUserRating(currentUser);
-
-    // Форматируем результат
-    const formattedRatings = receivedRatings.map(rating => ({
-      id: rating.id,
-      from_user: rating.from_user,
-      rater_info: rating.rater ? {
-        login: rating.rater.login,
-        name: rating.rater.name,
-        avatar: rating.rater.ava,
-        city: rating.rater.city,
-        vip_type: rating.rater.viptype
-      } : null,
-      value: rating.value,
-      date: rating.date,
-      created_at: rating.created_at
-    }));
-
-    const responseData = {
-      overall_rating: overallRating,
-      received_ratings: formattedRatings,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: totalCount,
-        pages: Math.ceil(totalCount / parseInt(limit))
-      }
-    };
-
-    logger.logSuccess(req, 200, {
-      ratings_count: formattedRatings.length,
-      total_count: totalCount,
-      overall_rating: overallRating.total_rating
-    });
-    
-    res.json(responseData);
-
-  } catch (error) {
-    logger.logError(req, error);
-    res.status(500).json({
-      error: 'server_error',
-      message: 'Ошибка при получении полученных оценок'
-    });
-  }
-});
-
-// GET /api/rating/leaderboard - Лидерборд рейтинга
-router.get('/leaderboard', authenticateToken, async (req, res) => {
-  const logger = new APILogger('RATING');
-  
-  try {
-    logger.logRequest(req, 'GET /rating/leaderboard');
-    
-    const { period = 'month', category = 'overall', city = '', limit = 20 } = req.query;
-    const currentUser = req.user.login;
-
-    logger.logBusinessLogic(1, 'Получение лидерборда рейтинга', {
-      current_user: currentUser,
-      period,
-      category,
-      city,
-      limit: parseInt(limit)
-    }, req);
-
-    // Формируем условие для периода
-    let whereClause = {};
-    
-    if (period !== 'all') {
-      const now = new Date();
-      let startDate = new Date();
-      
-      switch (period) {
-        case 'week':
-          startDate.setDate(now.getDate() - 7);
-          break;
-        case 'month':
-          startDate.setMonth(now.getMonth() - 1);
-          break;
-        case 'year':
-          startDate.setFullYear(now.getFullYear() - 1);
-          break;
-      }
-      
-      whereClause.created_at = {
-        [Rating.sequelize.Sequelize.Op.gte]: startDate
-      };
-    }
-
-    // Условие для города, если указан
-    let userWhereClause = {};
-    if (city) {
-      userWhereClause.city = {
-        [Rating.sequelize.Sequelize.Op.like]: `%${city}%`
-      };
-    }
-    userWhereClause.status = { [Rating.sequelize.Sequelize.Op.ne]: 'BANNED' };
-
-    // Получаем лидерборд
-    const leaderboard = await Rating.findAll({
-      where: whereClause,
-      attributes: [
-        'to_user',
-        [Rating.sequelize.fn('SUM', Rating.sequelize.col('value')), 'rating_score'],
-        [Rating.sequelize.fn('COUNT', Rating.sequelize.col('value')), 'total_votes'],
-        [Rating.sequelize.fn('SUM', Rating.sequelize.literal('CASE WHEN value = 1 THEN 1 ELSE 0 END')), 'positive_votes']
-      ],
-      include: [
-        {
-          model: User,
-          as: 'rated',
-          attributes: ['login', 'name', 'ava', 'city', 'viptype', 'status'],
-          where: userWhereClause
-        }
-      ],
-      group: ['to_user', 'rated.login', 'rated.name', 'rated.ava', 'rated.city', 'rated.viptype', 'rated.status'],
-      having: Rating.sequelize.literal('COUNT(value) >= 3'), // Минимум 3 оценки
-      order: [
-        [Rating.sequelize.fn('SUM', Rating.sequelize.col('value')), 'DESC'],
-        [Rating.sequelize.fn('COUNT', Rating.sequelize.col('value')), 'DESC']
-      ],
-      limit: parseInt(limit)
-    });
-
-    // Форматируем результат
-    const users = leaderboard.map((rating, index) => {
-      const ratingScore = parseInt(rating.get('rating_score')) || 0;
-      const totalVotes = parseInt(rating.get('total_votes')) || 0;
-      const positiveVotes = parseInt(rating.get('positive_votes')) || 0;
-      
-      return {
-        id: rating.rated.login,
-        login: rating.rated.login,
-        name: rating.rated.name,
-        avatar: rating.rated.ava,
-        city: rating.rated.city,
-        vip_level: rating.rated.viptype,
-        rating_score: ratingScore,
-        total_votes: totalVotes,
-        positive_votes: positiveVotes,
-        negative_votes: totalVotes - positiveVotes,
-        percentage_positive: totalVotes > 0 ? Math.round((positiveVotes / totalVotes) * 100) : 0,
-        position: index + 1,
-        profile_views: 0, // TODO: Добавить когда будет статистика
-        likes_received: 0, // TODO: Добавить когда будет статистика
-        rating_change: 0 // TODO: Добавить расчет изменений
-      };
-    });
-
-    const responseData = {
-      users,
-      period,
-      category,
-      city: city || null,
-      total_found: users.length
-    };
-
-    logger.logSuccess(req, 200, {
-      period,
-      category,
-      users_count: users.length
-    });
-    
-    res.json(responseData);
-
-  } catch (error) {
-    logger.logError(req, error);
-    res.status(500).json({
-      error: 'server_error',
-      message: 'Ошибка при получении лидерборда'
-    });
-  }
-});
-
-// GET /api/rating/my/stats - Статистика рейтинга текущего пользователя
-router.get('/my/stats', authenticateToken, async (req, res) => {
-  const logger = new APILogger('RATING');
-  
-  try {
-    logger.logRequest(req, 'GET /rating/my/stats');
-    
-    const currentUser = req.user.login;
-
-    logger.logBusinessLogic(1, 'Получение статистики рейтинга пользователя', {
-      current_user: currentUser
-    }, req);
-
-    // Получаем текущий рейтинг
-    const currentRating = await Rating.getUserRating(currentUser);
-
-    // Получаем позицию в общем рейтинге
-    const higherRatedUsers = await Rating.findAll({
-      attributes: [
-        'to_user',
-        [Rating.sequelize.fn('SUM', Rating.sequelize.col('value')), 'total_rating']
-      ],
-      include: [
-        {
-          model: User,
-          as: 'rated',
-          attributes: ['login'],
-          where: {
-            status: { [Rating.sequelize.Sequelize.Op.ne]: 'BANNED' }
-          }
-        }
-      ],
-      group: ['to_user', 'rated.login'],
-      having: Rating.sequelize.literal(`SUM(value) > ${currentRating.total_rating} AND COUNT(value) >= 3`),
-      raw: true
-    });
-
-    const currentPosition = higherRatedUsers.length + 1;
-
-    // Получаем изменение за месяц
-    const monthAgo = new Date();
-    monthAgo.setMonth(monthAgo.getMonth() - 1);
-
-    const monthlyRatings = await Rating.findAll({
-      where: {
-        to_user: currentUser,
-        created_at: {
-          [Rating.sequelize.Sequelize.Op.gte]: monthAgo
-        }
-      },
-      attributes: [
-        [Rating.sequelize.fn('SUM', Rating.sequelize.col('value')), 'month_change']
-      ],
-      raw: true
-    });
-
-    const monthChange = parseInt(monthlyRatings[0]?.month_change) || 0;
-
-    // Получаем историю изменений (последние 10 оценок)
-    const ratingHistory = await Rating.findAll({
-      where: { to_user: currentUser },
-      include: [
-        {
-          model: User,
-          as: 'rater',
-          attributes: ['login', 'name']
-        }
-      ],
-      order: [['created_at', 'DESC']],
-      limit: 10
-    });
-
-    const history = ratingHistory.map(rating => ({
-      id: rating.id,
-      change: rating.value,
-      reason: `Оценка от ${rating.rater?.name || rating.from_user}`,
-      created_at: rating.created_at,
-      from_user: rating.from_user
-    }));
-
-    // Получаем максимальный рейтинг (исторический)
-    const maxRating = Math.max(currentRating.total_rating, 0);
-
-    const responseData = {
-      current_rating: currentRating.total_rating,
-      current_position: currentPosition,
-      rating_change: monthChange,
-      max_rating: maxRating,
-      total_votes: currentRating.total_votes,
-      positive_votes: currentRating.positive_votes,
-      negative_votes: currentRating.negative_votes,
-      percentage_positive: currentRating.percentage_positive,
-      rating_history: history
-    };
-
-    logger.logSuccess(req, 200, {
-      current_rating: currentRating.total_rating,
-      current_position: currentPosition,
-      history_count: history.length
-    });
-    
-    res.json(responseData);
-
-  } catch (error) {
-    logger.logError(req, error);
-    res.status(500).json({
-      error: 'server_error',
-      message: 'Ошибка при получении статистики рейтинга'
     });
   }
 });

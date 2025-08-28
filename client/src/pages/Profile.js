@@ -506,14 +506,20 @@ const Profile = () => {
   });
 
   const uploadImageMutation = useMutation(usersAPI.uploadImages, {
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Upload success:', data);
       toast.success('Фото добавлено!');
       queryClient.invalidateQueries(['profile']);
       if (targetLogin) {
         queryClient.invalidateQueries(['profile', targetLogin]);
       }
+      // Принудительно обновляем профиль
+      if (isOwnProfile) {
+        queryClient.invalidateQueries(['profile', currentUser?.login]);
+      }
     },
     onError: (error) => {
+      console.error('Upload error:', error);
       toast.error(apiUtils.handleError(error));
     }
   });
@@ -617,6 +623,9 @@ const Profile = () => {
         formData.append('images', file);
       });
       uploadImageMutation.mutate(formData);
+      
+      // Очищаем input после загрузки
+      event.target.value = '';
     }
   };
 
@@ -841,8 +850,8 @@ const Profile = () => {
                   </FormGroup>
 
                   <LocationSelector
-                    countryValue={watch('country') || ''}
-                    cityValue={watch('city') || ''}
+                    countryValue={watch('country')}
+                    cityValue={watch('city')}
                     onCountryChange={(value) => {
                       setValue('country', value);
                       clearErrors('country');
@@ -1024,8 +1033,10 @@ const Profile = () => {
                 </>
               )}
 
+
+
               <ImageGallery $columns="repeat(auto-fill, minmax(200px, 1fr))" $gap="20px">
-                {profile?.images?.map((image, index) => (
+                {profile?.images && Array.isArray(profile.images) && profile.images.map((image, index) => (
                   <ImageCard key={index} onClick={() => handleImageClick(image)}>
                     <Image src={`/uploads/${image}`} alt={`Фото ${index + 1}`} />
                     {isOwnProfile && (
@@ -1046,7 +1057,7 @@ const Profile = () => {
               </ImageGallery>
               
               {/* Комментарии к фотографиям */}
-              {profile?.images?.length > 0 && (
+              {profile?.images && Array.isArray(profile.images) && profile.images.length > 0 && (
                 <div style={{ marginTop: '30px' }}>
                   <h3 style={{ marginBottom: '20px', color: '#2d3748' }}>
                     Комментарии к фотографиям

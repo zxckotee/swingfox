@@ -15,7 +15,8 @@ module.exports = {
         WHEN status = 'open_relationship' THEN 'Несемейная пара(М+Ж)'
         ELSE status
       END
-      WHERE status IN ('single_man', 'single_woman', 'couple_mf', 'couple_mm', 'couple_ff', 'open_relationship')
+      WHERE status IN ('single_man', 'single_woman', 'couple_mf', 'open_relationship')
+        AND status NOT IN ('couple_mm', 'couple_ff')
     `);
 
     // Обновляем search_status на русские названия
@@ -25,12 +26,12 @@ module.exports = {
         WHEN search_status LIKE '%single_man%' THEN REPLACE(search_status, 'single_man', 'Мужчина')
         WHEN search_status LIKE '%single_woman%' THEN REPLACE(search_status, 'single_woman', 'Женщина')
         WHEN search_status LIKE '%couple_mf%' THEN REPLACE(search_status, 'couple_mf', 'Семейная пара(М+Ж)')
-        WHEN search_status LIKE '%couple_mm%' THEN REPLACE(search_status, 'couple_mm', 'Мужчина')
-        WHEN search_status LIKE '%couple_ff%' THEN REPLACE(search_status, 'couple_ff', 'Женщина')
         WHEN search_status LIKE '%open_relationship%' THEN REPLACE(search_status, 'open_relationship', 'Несемейная пара(М+Ж)')
         ELSE search_status
       END
       WHERE search_status IS NOT NULL
+        AND search_status NOT LIKE '%couple_mm%'
+        AND search_status NOT LIKE '%couple_ff%'
     `);
   },
 
@@ -58,6 +59,8 @@ module.exports = {
         ELSE search_status
       END
       WHERE search_status IS NOT NULL
+        AND search_status NOT LIKE '%couple_mm%'
+        AND search_status NOT LIKE '%couple_ff%'
     `);
   }
 };

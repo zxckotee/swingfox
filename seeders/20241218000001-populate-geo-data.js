@@ -20,8 +20,8 @@ module.exports = {
         return;
       }
 
-      // Путь к SQL файлу PHP версии
-      const sqlFilePath = path.join(__dirname, '../public_html/kolomigs_swing.sql');
+      // Путь к SQL файлу
+      const sqlFilePath = '../kolomigs_swing.sql';
       
       if (!fs.existsSync(sqlFilePath)) {
         console.warn(`⚠️  SQL файл не найден: ${sqlFilePath}`);

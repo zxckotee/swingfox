@@ -1127,7 +1127,7 @@ const Chat = () => {
                         {message.message && (
                           <div className="message-text">{message.message}</div>
                         )}
-                        {message.images && message.images.length > 0 && (
+                        {message.images && Array.isArray(message.images) && message.images.length > 0 && (
                           <div className="message-file">
                             {message.images.map((image, idx) => (
                               <img

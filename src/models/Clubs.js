@@ -22,80 +22,46 @@ module.exports = (sequelize) => {
       allowNull: false,
       comment: 'Владелец клуба'
     },
-    type: {
-      type: DataTypes.ENUM('public', 'private', 'invite_only'),
-      defaultValue: 'public',
-      comment: 'Тип клуба'
-    },
-    location: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-      comment: 'Местоположение клуба'
-    },
-    geo: {
-      type: DataTypes.STRING(100),
-      allowNull: true,
-      comment: 'Координаты клуба (lat&&lng)'
-    },
-    max_members: {
-      type: DataTypes.INTEGER,
-      defaultValue: 100,
-      comment: 'Максимальное количество участников'
-    },
-    current_members: {
-      type: DataTypes.INTEGER,
-      defaultValue: 1,
-      comment: 'Текущее количество участников'
-    },
-    rules: {
+    admins: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: 'Правила клуба'
+      comment: 'Администраторы через &&'
     },
-    tags: {
-      type: DataTypes.STRING(500),
+    links: {
+      type: DataTypes.TEXT,
       allowNull: true,
-      comment: 'Теги клуба (разделенные запятыми)'
+      comment: 'Ссылки на соцсети и сайты'
+    },
+
+    country: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+      comment: 'Страна клуба'
+    },
+    city: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+      comment: 'Город клуба'
+    },
+    address: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+      comment: 'Адрес клуба'
     },
     avatar: {
       type: DataTypes.STRING(255),
-      defaultValue: 'default_club.jpg',
+      defaultValue: 'no_photo.jpg',
       comment: 'Аватар клуба'
-    },
-    cover_image: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-      comment: 'Обложка клуба'
-    },
-    is_verified: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-      comment: 'Верифицирован ли клуб'
     },
     is_active: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
       comment: 'Активен ли клуб'
     },
-    membership_fee: {
-      type: DataTypes.DECIMAL(10, 2),
-      defaultValue: 0.00,
-      comment: 'Взнос за членство'
-    },
-    age_restriction: {
-      type: DataTypes.STRING(20),
-      allowNull: true,
-      comment: 'Ограничения по возрасту'
-    },
-    contact_info: {
-      type: DataTypes.JSONB,
-      allowNull: true,
-      comment: 'Контактная информация'
-    },
-    social_links: {
-      type: DataTypes.JSONB,
-      allowNull: true,
-      comment: 'Ссылки на социальные сети'
+    date_created: {
+      type: DataTypes.DATEONLY,
+      allowNull: false,
+      comment: 'Дата создания клуба'
     },
     created_at: {
       type: DataTypes.DATE,
@@ -116,14 +82,15 @@ module.exports = (sequelize) => {
       {
         fields: ['owner']
       },
+
       {
-        fields: ['type']
-      },
-      {
-        fields: ['location']
+        fields: ['country', 'city']
       },
       {
         fields: ['is_active']
+      },
+      {
+        fields: ['date_created']
       },
       {
         fields: ['created_at']
@@ -131,28 +98,10 @@ module.exports = (sequelize) => {
     ]
   });
 
-  // Методы модели
-  Clubs.prototype.addMember = async function() {
-    this.current_members = parseInt(this.current_members) + 1;
-    return await this.save();
-  };
 
-  Clubs.prototype.removeMember = async function() {
-    if (this.current_members > 1) {
-      this.current_members = parseInt(this.current_members) - 1;
-      return await this.save();
-    }
-    return this;
-  };
-
-  Clubs.prototype.isFull = function() {
-    return parseInt(this.current_members) >= parseInt(this.max_members);
-  };
 
   Clubs.prototype.canJoin = function(userVipType = 'FREE') {
     if (!this.is_active) return false;
-    if (this.isFull()) return false;
-    if (this.type === 'private' && userVipType === 'FREE') return false;
     return true;
   };
 
@@ -161,22 +110,19 @@ module.exports = (sequelize) => {
     const {
       limit = 20,
       offset = 0,
-      location = null,
-      type = null,
+      city = null,
       search = null
     } = options;
 
     const whereClause = { is_active: true };
     
-    if (location) {
-      whereClause.location = {
-        [sequelize.Sequelize.Op.iLike]: `%${location}%`
+    if (city) {
+      whereClause.city = {
+        [sequelize.Sequelize.Op.iLike]: `%${city}%`
       };
     }
     
-    if (type && type !== 'all') {
-      whereClause.type = type;
-    }
+
     
     if (search) {
       whereClause[sequelize.Sequelize.Op.or] = [
@@ -254,7 +200,6 @@ module.exports = (sequelize) => {
           }
         ],
         order: [
-          ['current_members', 'DESC'],
           ['created_at', 'DESC']
         ],
         limit

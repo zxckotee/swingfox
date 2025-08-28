@@ -373,7 +373,12 @@ const Ads = () => {
     clearErrors,
     formState: { errors },
     reset
-  } = useForm();
+  } = useForm({
+    defaultValues: {
+      country: '',
+      city: ''
+    }
+  });
 
   // Получение объявлений
   const { data: adsResponse, isLoading } = useQuery(
@@ -724,8 +729,8 @@ const Ads = () => {
               </FormGroup>
 
               <LocationSelector
-                countryValue={watch('country') || ''}
-                cityValue={watch('city') || ''}
+                countryValue={watch('country')}
+                cityValue={watch('city')}
                 onCountryChange={(value) => {
                   setValue('country', value);
                   clearErrors('country');

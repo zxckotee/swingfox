@@ -275,6 +275,29 @@ export const usersAPI = {
     const response = await apiClient.post('/users/upload-images', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
+    
+    // Обновляем кэш после успешной загрузки изображений
+    if (response.data.success) {
+      // Получаем актуальные данные пользователя для обновления кэша
+      try {
+        const currentUser = authAPI.getCurrentUser();
+        if (currentUser && currentUser.login) {
+          const userResponse = await apiClient.get(`/users/profile/${currentUser.login}`);
+          if (userResponse.data.success) {
+            authAPI.updateUserCache({
+              ava: userResponse.data.user.ava,
+              status: userResponse.data.user.status,
+              city: userResponse.data.user.city,
+              country: userResponse.data.user.country,
+              viptype: userResponse.data.user.viptype
+            });
+          }
+        }
+      } catch (error) {
+        console.warn('Ошибка обновления кэша после загрузки изображений:', error);
+      }
+    }
+    
     return response.data;
   },
 

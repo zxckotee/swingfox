@@ -121,7 +121,6 @@ const importFromSQLFile = async () => {
     // Проверяем несколько возможных путей к файлу
     const possiblePaths = [
       path.join(__dirname, '..', 'kolomigs_swing.sql'),
-      path.join(__dirname, '..', 'public_html', 'kolomigs_swing.sql'),
       path.join(__dirname, '..', 'swingfox_kolomigs.sql')
     ];
     

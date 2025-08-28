@@ -16,7 +16,7 @@ async function importGeoData() {
     console.log('✅ Подключение к БД установлено');
 
     // Путь к SQL файлу PHP версии
-    const sqlFilePath = path.join(__dirname, '../public_html/kolomigs_swing.sql');
+    const sqlFilePath = path.join(__dirname, '../kolomigs_swing.sql');
     
     if (!fs.existsSync(sqlFilePath)) {
       throw new Error(`❌ SQL файл не найден: ${sqlFilePath}`);
@@ -196,7 +196,7 @@ if (forceImport) {
   console.log('📖 Скрипт импорта географических данных');
   console.log('💡 Использование: node scripts/import-geo-data.js --force');
   console.log('⚠️  Убедитесь, что:');
-  console.log('   1. SQL файл находится в public_html/kolomigs_swing.sql');
+  console.log('   1. SQL файл находится в kolomigs_swing.sql');
   console.log('   2. База данных настроена и доступна');
   console.log('   3. Выполнены все миграции');
   console.log('\n🚀 Для запуска импорта добавьте флаг --force');

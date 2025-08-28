@@ -605,7 +605,12 @@ const Register = () => {
     setValue,
     clearErrors,
     formState: { errors }
-  } = useForm();
+  } = useForm({
+    defaultValues: {
+      country: 'Россия',
+      city: ''
+    }
+  });
 
   const password = watch('password');
   const email = watch('email');
@@ -1091,8 +1096,8 @@ const Register = () => {
               )}
 
               <LocationSelector
-                countryValue={watch('country') || 'Россия'}
-                cityValue={watch('city') || ''}
+                countryValue={watch('country')}
+                cityValue={watch('city')}
                 onCountryChange={(value) => {
                   setValue('country', value);
                   clearErrors('country');

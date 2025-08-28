@@ -309,7 +309,7 @@ const LocationSelector = ({
 
 ### Этап 4: Миграция данных
 
-#### 4.1 Скрипт импорта данных из PHP версии
+#### 4.1 Скрипт импорта данных
 ```javascript
 // scripts/import-geo-data.js
 const fs = require('fs');
@@ -317,8 +317,8 @@ const { Geo } = require('../src/models');
 
 async function importGeoData() {
   try {
-    // Читаем SQL файл PHP версии
-    const sqlData = fs.readFileSync('./public_html/kolomigs_swing.sql', 'utf8');
+    // Читаем SQL файл 
+    const sqlData = fs.readFileSync('./kolomigs_swing.sql', 'utf8');
     
     // Извлекаем данные geo таблицы (строки 206-11193)
     const geoMatches = sqlData.match(/INSERT INTO `geo` VALUES \((.*?)\);/g);

@@ -54,3 +54,5 @@ console.log('\n📝 Тест 5: Разные уровни логирования
 console.log('Текущий уровень логирования:', Object.keys(LOG_LEVELS).find(key => LOG_LEVELS[key] === require('./src/utils/logger').CURRENT_LOG_LEVEL));
 
 console.log('\n✅ Тестирование завершено!');
+
+

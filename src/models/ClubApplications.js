@@ -7,10 +7,15 @@ module.exports = (sequelize) => {
       primaryKey: true,
       autoIncrement: true
     },
-    club_id: {
-      type: DataTypes.INTEGER,
+    date: {
+      type: DataTypes.DATEONLY,
       allowNull: false,
-      comment: 'ID клуба'
+      comment: 'Дата подачи заявки'
+    },
+    info: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      comment: 'Информация о клубе через &&'
     },
     applicant: {
       type: DataTypes.STRING(50),
@@ -18,20 +23,16 @@ module.exports = (sequelize) => {
       comment: 'Пользователь, подающий заявку'
     },
     status: {
-      type: DataTypes.ENUM('pending', 'approved', 'rejected', 'withdrawn'),
-      defaultValue: 'pending',
-      comment: 'Статус заявки'
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      comment: '0 - на рассмотрении, 1 - одобрено, 2 - отклонено'
     },
-    application_message: {
+    rejection_reason: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: 'Сообщение к заявке'
+      comment: 'Причина отклонения заявки'
     },
-    admin_response: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-      comment: 'Ответ администратора'
-    },
+
     reviewed_by: {
       type: DataTypes.STRING(50),
       allowNull: true,
@@ -42,11 +43,7 @@ module.exports = (sequelize) => {
       allowNull: true,
       comment: 'Дата рассмотрения'
     },
-    expires_at: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      comment: 'Дата истечения заявки'
-    },
+
     created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
@@ -63,9 +60,7 @@ module.exports = (sequelize) => {
     createdAt: 'created_at',
     updatedAt: 'updated_at',
     indexes: [
-      {
-        fields: ['club_id']
-      },
+
       {
         fields: ['applicant']
       },
@@ -76,69 +71,53 @@ module.exports = (sequelize) => {
         fields: ['created_at']
       },
       {
-        unique: true,
-        fields: ['club_id', 'applicant'],
-        name: 'unique_club_applicant'
-      }
+        fields: ['date']
+      },
+
     ]
   });
 
   // Методы модели
   ClubApplications.prototype.approve = async function(reviewerId, response = null) {
-    this.status = 'approved';
+    this.status = 1; // 1 - одобрено
     this.reviewed_by = reviewerId;
     this.reviewed_at = new Date();
-    this.admin_response = response;
     
     await this.save();
-    
-    // Увеличиваем количество участников клуба
-    const club = await sequelize.models.Clubs.findByPk(this.club_id);
-    if (club) {
-      await club.addMember();
-    }
     
     return this;
   };
 
-  ClubApplications.prototype.reject = async function(reviewerId, response = null) {
-    this.status = 'rejected';
+  ClubApplications.prototype.reject = async function(reviewerId, reason = null) {
+    this.status = 2; // 2 - отклонено
     this.reviewed_by = reviewerId;
     this.reviewed_at = new Date();
-    this.admin_response = response;
+    this.rejection_reason = reason;
     
     return await this.save();
   };
 
   ClubApplications.prototype.withdraw = async function() {
-    this.status = 'withdrawn';
+    this.status = 3; // 3 - отозвано
     this.reviewed_at = new Date();
     
     return await this.save();
   };
 
-  ClubApplications.prototype.isExpired = function() {
-    return this.expires_at && new Date() > this.expires_at;
-  };
+
 
   // Статические методы
-  ClubApplications.getPendingApplications = async function(clubId) {
+  ClubApplications.getPendingApplications = async function() {
     try {
       const applications = await this.findAll({
         where: {
-          club_id: clubId,
-          status: 'pending'
+          status: 0 // 0 - на рассмотрении
         },
         include: [
           {
             model: sequelize.models.User,
             as: 'ApplicantUser',
             attributes: ['login', 'name', 'ava', 'city', 'viptype']
-          },
-          {
-            model: sequelize.models.Clubs,
-            as: 'Club',
-            attributes: ['id', 'name', 'type', 'owner']
           }
         ],
         order: [['created_at', 'ASC']]
@@ -154,20 +133,13 @@ module.exports = (sequelize) => {
   ClubApplications.getUserApplications = async function(userId, status = null) {
     const whereClause = { applicant: userId };
     
-    if (status) {
+    if (status !== null) {
       whereClause.status = status;
     }
 
     try {
       const applications = await this.findAll({
         where: whereClause,
-        include: [
-          {
-            model: sequelize.models.Clubs,
-            as: 'Club',
-            attributes: ['id', 'name', 'type', 'owner', 'avatar', 'current_members', 'max_members']
-          }
-        ],
         order: [['created_at', 'DESC']]
       });
 
@@ -178,29 +150,18 @@ module.exports = (sequelize) => {
     }
   };
 
-  ClubApplications.createApplication = async function(clubId, applicantId, message = null) {
+  ClubApplications.createApplication = async function(clubInfo, applicantId) {
     try {
       // Проверяем, нет ли уже заявки
       const existingApplication = await this.findOne({
         where: {
-          club_id: clubId,
           applicant: applicantId,
-          status: ['pending', 'approved']
+          status: [0, 1] // 0 - на рассмотрении, 1 - одобрено
         }
       });
 
       if (existingApplication) {
         throw new Error('Заявка уже существует или пользователь уже в клубе');
-      }
-
-      // Проверяем клуб
-      const club = await sequelize.models.Clubs.findByPk(clubId);
-      if (!club || !club.is_active) {
-        throw new Error('Клуб не найден или неактивен');
-      }
-
-      if (club.isFull()) {
-        throw new Error('Клуб заполнен');
       }
 
       // Получаем данные пользователя
@@ -212,20 +173,10 @@ module.exports = (sequelize) => {
         throw new Error('Пользователь не найден');
       }
 
-      // Проверяем возможность вступления
-      if (!club.canJoin(user.viptype)) {
-        throw new Error('Нет доступа к данному клубу');
-      }
-
-      // Устанавливаем срок истечения заявки (30 дней)
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 30);
-
       const application = await this.create({
-        club_id: clubId,
-        applicant: applicantId,
-        application_message: message,
-        expires_at: expiresAt
+        date: new Date(),
+        info: clubInfo,
+        applicant: applicantId
       });
 
       return application;
@@ -235,31 +186,11 @@ module.exports = (sequelize) => {
     }
   };
 
-  ClubApplications.cleanupExpired = async function() {
-    try {
-      const expiredCount = await this.update(
-        { status: 'expired' },
-        {
-          where: {
-            status: 'pending',
-            expires_at: {
-              [sequelize.Sequelize.Op.lt]: new Date()
-            }
-          }
-        }
-      );
-      
-      return expiredCount[0];
-    } catch (error) {
-      console.error('Error cleaning up expired applications:', error);
-      throw error;
-    }
-  };
 
-  ClubApplications.getApplicationStats = async function(clubId) {
+
+  ClubApplications.getApplicationStats = async function() {
     try {
       const stats = await this.findAll({
-        where: { club_id: clubId },
         attributes: [
           'status',
           [sequelize.fn('COUNT', sequelize.col('id')), 'count']
@@ -269,15 +200,19 @@ module.exports = (sequelize) => {
       });
 
       const result = {
-        pending: 0,
-        approved: 0,
-        rejected: 0,
-        withdrawn: 0,
-        expired: 0
+        pending: 0,    // status = 0
+        approved: 0,   // status = 1
+        rejected: 0,   // status = 2
+        withdrawn: 0   // status = 3
       };
 
       stats.forEach(stat => {
-        result[stat.status] = parseInt(stat.count);
+        switch(stat.status) {
+          case 0: result.pending = parseInt(stat.count); break;
+          case 1: result.approved = parseInt(stat.count); break;
+          case 2: result.rejected = parseInt(stat.count); break;
+          case 3: result.withdrawn = parseInt(stat.count); break;
+        }
       });
 
       return result;
@@ -294,13 +229,6 @@ module.exports = (sequelize) => {
       foreignKey: 'applicant',
       targetKey: 'login',
       as: 'ApplicantUser'
-    });
-
-    // Заявка принадлежит клубу
-    ClubApplications.belongsTo(models.Clubs, {
-      foreignKey: 'club_id',
-      targetKey: 'id',
-      as: 'Club'
     });
 
     // Заявка рассмотрена пользователем

@@ -286,15 +286,13 @@ const Catalog = () => {
     }));
   };
 
+
+
   // Функция для преобразования фильтров перед отправкой на сервер
   const getServerFilters = () => {
     const serverFilters = { ...filters };
     
-    // Преобразуем отображаемые названия статусов в значения базы данных
-    if (serverFilters.status && serverFilters.status.length > 0) {
-      serverFilters.status = serverFilters.status.map(status => getStatusDbValue(status));
-    }
-    
+    // Статусы уже на русском языке, преобразование не нужно
     return serverFilters;
   };
 
@@ -355,13 +353,22 @@ const Catalog = () => {
       <Header>
         <HeaderContent>
           <h1>Поиск анкет</h1>
-          <p>Найдите интересных людей с помощью фильтров</p>
+          <p>Система показывает только тех, кто соответствует вашим критериям И кому вы соответствуете</p>
+          <p style={{ fontSize: '14px', marginTop: '5px', opacity: 0.8 }}>
+            Учитываются: статус, возрастные ограничения, взаимные предпочтения
+          </p>
         </HeaderContent>
       </Header>
 
       <FiltersContainer>
         <FilterSection>
           <FilterLabel>С кем хотите познакомиться?</FilterLabel>
+          <p style={{ fontSize: '14px', color: '#666', marginBottom: '15px', fontStyle: 'italic' }}>
+            Система покажет только тех, кто соответствует вашим критериям И кому вы соответствуете
+          </p>
+          <p style={{ fontSize: '12px', color: '#888', marginBottom: '15px', fontStyle: 'italic' }}>
+            Учитываются: статус, возрастные ограничения, взаимные предпочтения
+          </p>
           <CheckboxGroup>
             {availableFilters.statuses.map(status => (
               <CheckboxItem key={status}>
@@ -376,8 +383,13 @@ const Catalog = () => {
           </CheckboxGroup>
         </FilterSection>
 
+
+
         <FilterSection>
           <FilterLabel>Местоположение</FilterLabel>
+          <p style={{ fontSize: '14px', color: '#666', marginBottom: '15px', fontStyle: 'italic' }}>
+            Варианты загружаются из базы географических данных
+          </p>
           <InputGroup>
             <InputField>
               <label>Страна</label>
@@ -468,6 +480,30 @@ const Catalog = () => {
                         {user.height && <span>📏 {user.height}см </span>}
                         {user.smoking && <span>🚬 {user.smoking.length > 20 ? user.smoking.substring(0, 20) + '...' : user.smoking} </span>}
                       </div>
+                      
+                      {/* Показываем кого ищет пользователь */}
+                      {user.searchStatus && (
+                        <div className="search-info" style={{ 
+                          fontSize: '11px', 
+                          marginTop: '5px', 
+                          padding: '5px', 
+                          background: 'rgba(34, 197, 94, 0.1)', 
+                          borderRadius: '5px',
+                          border: '1px solid rgba(34, 197, 94, 0.2)',
+                          color: '#166534'
+                        }}>
+                          <div style={{ fontWeight: 'bold', marginBottom: '3px' }}>🔍 Ищет:</div>
+                          <div>{user.searchStatus}</div>
+                          {user.searchAge && (
+                            <div style={{ fontSize: '10px', marginTop: '3px', opacity: 0.8 }}>
+                              Возраст: {user.searchAge}
+                            </div>
+                          )}
+                          <div style={{ fontSize: '10px', marginTop: '3px', opacity: 0.7, fontStyle: 'italic' }}>
+                            ✅ Взаимно совместимы
+                          </div>
+                        </div>
+                      )}
                       
                       <Link
                         to={`/profile/${user.login}`}

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
-const { User } = require('../models');
+const { User, Geo } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { calculateDistance, formatAge, parseGeo } = require('../utils/helpers');
 
@@ -17,7 +17,7 @@ router.get('/', authenticateToken, async (req, res) => {
       offset = 0 
     } = req.query;
 
-    // Получаем данные текущего пользователя для расчета расстояния
+    // Получаем данные текущего пользователя для расчета расстояния и проверки совместимости
     const currentUser = await User.findOne({ where: { login: userId } });
     if (!currentUser) {
       return res.status(404).json({ 
@@ -31,7 +31,7 @@ router.get('/', authenticateToken, async (req, res) => {
       login: { [Op.ne]: userId } // Исключаем себя
     };
 
-    // Фильтр по семейному статусу
+    // Фильтр по семейному статусу (только те, кого я ищу)
     if (status && status.length > 0) {
       const statusArray = Array.isArray(status) ? status : [status];
       whereConditions.status = { [Op.in]: statusArray };
@@ -47,23 +47,63 @@ router.get('/', authenticateToken, async (req, res) => {
       }
     }
 
-    // Получаем пользователей с фильтрами
-    const users = await User.findAll({
+    // ДОПОЛНИТЕЛЬНАЯ ФИЛЬТРАЦИЯ ПО ВЗАИМНОЙ СОВМЕСТИМОСТИ
+    // 1. Проверяем, что я ищу людей с их статусом
+    // 2. Проверяем, что они ищут людей с моим статусом
+    
+    // Получаем пользователей с базовыми фильтрами
+    let users = await User.findAll({
       where: whereConditions,
       attributes: [
         'id', 'login', 'ava', 'status', 'country', 'city', 
-        'geo', 'date', 'registration', 'info', 'online', 'viptype'
+        'geo', 'date', 'registration', 'info', 'online', 'viptype',
+        'search_status', 'search_age', 'height', 'weight', 'smoking', 'alko'
       ],
       order: User.sequelize.random(),
-      limit: parseInt(limit),
+      limit: parseInt(limit) * 2, // Берем больше для фильтрации по совместимости
       offset: parseInt(offset)
     });
+
+    // Фильтруем по взаимной совместимости
+    const compatibleUsers = users.filter(user => {
+      // Проверяем, что я ищу людей с их статусом
+      const iAmLookingForTheirStatus = currentUser.search_status && 
+        currentUser.search_status.includes(user.status);
+      
+      // Проверяем, что они ищут людей с моим статусом
+      const theyAreLookingForMyStatus = user.search_status && 
+        user.search_status.includes(currentUser.status);
+      
+      // Проверяем возрастные ограничения (если указаны)
+      let ageCompatible = true;
+      if (currentUser.search_age && user.date) {
+        const userAge = formatAge(user.date);
+        const [minAge, maxAge] = currentUser.search_age.split('_').map(Number);
+        if (!isNaN(minAge) && !isNaN(maxAge)) {
+          ageCompatible = userAge >= minAge && userAge <= maxAge;
+        }
+      }
+      
+      // Проверяем их возрастные ограничения
+      if (user.search_age && currentUser.date) {
+        const myAge = formatAge(currentUser.date);
+        const [minAge, maxAge] = user.search_age.split('_').map(Number);
+        if (!isNaN(minAge) && !isNaN(maxAge)) {
+          ageCompatible = ageCompatible && (myAge >= minAge && myAge <= maxAge);
+        }
+      }
+      
+      return iAmLookingForTheirStatus && theyAreLookingForMyStatus && ageCompatible;
+    });
+
+    // Ограничиваем результат до нужного количества
+    const finalUsers = compatibleUsers.slice(0, parseInt(limit));
 
     // Подготавливаем геоданные текущего пользователя
     const currentGeo = parseGeo(currentUser.geo);
 
     // Форматируем результаты
-    const formattedUsers = users.map(user => {
+    const formattedUsers = finalUsers.map(user => {
       // Вычисляем расстояние
       const userGeo = parseGeo(user.geo);
       let distance = 0;
@@ -108,7 +148,7 @@ router.get('/', authenticateToken, async (req, res) => {
       if (user.height) userData.height = user.height;
       if (user.weight) userData.weight = user.weight;
       if (user.smoking) userData.smoking = user.smoking;
-      if (user.alko) user.alko = user.alko;
+      if (user.alko) userData.alko = user.alko;
       if (user.search_status) userData.searchStatus = user.search_status;
       if (user.search_age) userData.searchAge = user.search_age;
       if (user.location) userData.location = user.location;
@@ -116,16 +156,24 @@ router.get('/', authenticateToken, async (req, res) => {
       return userData;
     });
 
-    // Получаем общее количество для пагинации
-    const totalCount = await User.count({ where: whereConditions });
+    // Получаем общее количество для пагинации (с учетом совместимости)
+    const totalCompatibleCount = await User.count({
+      where: {
+        ...whereConditions,
+        // Добавляем базовые условия совместимости для подсчета
+        search_status: {
+          [Op.like]: `%${currentUser.status}%`
+        }
+      }
+    });
 
     res.json({
       users: formattedUsers,
       pagination: {
-        total: totalCount,
+        total: totalCompatibleCount,
         limit: parseInt(limit),
         offset: parseInt(offset),
-        hasMore: (parseInt(offset) + parseInt(limit)) < totalCount
+        hasMore: (parseInt(offset) + parseInt(limit)) < totalCompatibleCount
       },
       filters: {
         status: Array.isArray(status) ? status : (status ? [status] : []),
@@ -146,7 +194,19 @@ router.get('/', authenticateToken, async (req, res) => {
 // GET /api/catalog/filters - Получение доступных фильтров
 router.get('/filters', authenticateToken, async (req, res) => {
   try {
+    const userId = req.user.login;
+    
+    // Получаем данные текущего пользователя для установки значений по умолчанию
+    const currentUser = await User.findOne({ where: { login: userId } });
+    if (!currentUser) {
+      return res.status(404).json({ 
+        error: 'user_not_found',
+        message: 'Пользователь не найден' 
+      });
+    }
+
     // Получаем доступные статусы из базы данных
+    // Примечание: берем из базы, но не используем, так как нужно принудительно задать русские названия
     const statuses = await User.findAll({
       attributes: ['status'],
       where: {
@@ -157,23 +217,16 @@ router.get('/filters', authenticateToken, async (req, res) => {
       order: [['status', 'ASC']]
     });
 
-    // Получаем доступные страны и города
-    const countries = await User.findAll({
+    // Получаем доступные страны из таблицы geo (все возможные варианты)
+    const countries = await Geo.findAll({
       attributes: ['country'],
-      where: {
-        country: { [Op.ne]: null },
-        country: { [Op.ne]: '' }
-      },
       group: ['country'],
       order: [['country', 'ASC']]
     });
 
-    const cities = await User.findAll({
+    // Получаем города по странам из таблицы geo
+    const cities = await Geo.findAll({
       attributes: ['country', 'city'],
-      where: {
-        city: { [Op.ne]: null },
-        city: { [Op.ne]: '' }
-      },
       group: ['country', 'city'],
       order: [['country', 'ASC'], ['city', 'ASC']]
     });
@@ -187,10 +240,25 @@ router.get('/filters', authenticateToken, async (req, res) => {
       citiesByCountry[item.country].push(item.city);
     });
 
+    // Принудительно задаем ВСЕ 4 типа статусов на русском языке
+    // независимо от того, есть ли такие в базе
+    const correctStatuses = [
+      'Мужчина',
+      'Женщина', 
+      'Семейная пара(М+Ж)',
+      'Несемейная пара(М+Ж)'
+    ];
+
     res.json({
-      statuses: statuses.map(s => s.status),
+      statuses: correctStatuses,
       countries: countries.map(c => c.country),
-      cities: citiesByCountry
+      cities: citiesByCountry,
+      // Добавляем текущие данные пользователя для установки значений по умолчанию
+      currentUser: {
+        country: currentUser.country,
+        city: currentUser.city,
+        search_status: currentUser.search_status
+      }
     });
 
   } catch (error) {
