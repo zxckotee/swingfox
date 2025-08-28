@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { useForm } from 'react-hook-form';
 import styled from 'styled-components';
@@ -353,9 +353,107 @@ const StatsCard = styled(Card)`
   }
 `;
 
+// Компонент для загрузки изображения
+const ImageUpload = ({ image, onImageChange, error }) => {
+  const fileInputRef = useRef(null);
+  const [preview, setPreview] = useState(image ? `/uploads/${image}` : null);
+
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      // Создаем превью
+      const reader = new FileReader();
+      reader.onload = (e) => setPreview(e.target.result);
+      reader.readAsDataURL(file);
+      
+      onImageChange(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setPreview(null);
+    onImageChange(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  return (
+    <FormGroup>
+      <Label>Изображение объявления</Label>
+      <div style={{ marginBottom: '10px' }}>
+        {preview && (
+          <div style={{ 
+            position: 'relative', 
+            display: 'inline-block',
+            marginBottom: '10px'
+          }}>
+            <img 
+              src={preview} 
+              alt="Превью" 
+              style={{ 
+                maxWidth: '200px', 
+                maxHeight: '200px', 
+                borderRadius: '8px',
+                border: '2px solid #e2e8f0'
+              }} 
+            />
+            <Button
+              type="button"
+              $variant="danger"
+              $size="small"
+              onClick={handleRemoveImage}
+              style={{
+                position: 'absolute',
+                top: '-8px',
+                right: '-8px',
+                borderRadius: '50%',
+                width: '24px',
+                height: '24px',
+                padding: '0',
+                fontSize: '12px'
+              }}
+            >
+              ×
+            </Button>
+          </div>
+        )}
+      </div>
+      
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        style={{ display: 'none' }}
+      />
+      
+      <Button
+        type="button"
+        $variant="secondary"
+        onClick={() => fileInputRef.current?.click()}
+        style={{ width: '100%' }}
+      >
+        {preview ? 'Изменить изображение' : 'Выбрать изображение'}
+      </Button>
+      
+      {error && <ErrorText>{error}</ErrorText>}
+      
+      <div style={{ 
+        fontSize: '12px', 
+        color: '#718096', 
+        marginTop: '5px' 
+      }}>
+        Поддерживаемые форматы: JPEG, PNG, WebP. Максимальный размер: 5MB.
+      </div>
+    </FormGroup>
+  );
+};
+
 const Ads = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingAd, setEditingAd] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
   const [filters, setFilters] = useState({
     type: '',
     country: '',
@@ -380,6 +478,24 @@ const Ads = () => {
     }
   });
 
+  // Валидация изображения
+  const validateImage = (file) => {
+    if (!file) return true;
+    
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    
+    if (file.size > maxSize) {
+      return 'Размер файла не должен превышать 5MB';
+    }
+    
+    if (!allowedTypes.includes(file.type)) {
+      return 'Поддерживаются только форматы: JPEG, PNG, WebP';
+    }
+    
+    return true;
+  };
+
   // Получение объявлений
   const { data: adsResponse, isLoading } = useQuery(
     ['ads', filters],
@@ -396,9 +512,9 @@ const Ads = () => {
     return adsResponse.ads.map(ad => ({
       ...ad,
       // Трансформируем поля для соответствия ожиданиям компонента
-      author: ad.author?.login || ad.login,
+      author: ad.author?.login || ad.author,
       author_avatar: ad.author?.ava || null,
-      title: ad.description || ad.type, // Используем description как title
+      title: ad.title || ad.description, // Используем title если есть, иначе description
       created_at: ad.created_at
     }));
   }, [adsResponse]);
@@ -444,15 +560,29 @@ const Ads = () => {
 
   // Обработчики
   const onSubmit = (data) => {
+    // Валидируем изображение
+    const imageValidation = validateImage(selectedImage);
+    if (imageValidation !== true) {
+      toast.error(imageValidation);
+      return;
+    }
+
+    // Добавляем изображение к данным
+    const formData = {
+      ...data,
+      image: selectedImage
+    };
+
     if (editingAd) {
-      updateAdMutation.mutate({ id: editingAd.id, data });
+      updateAdMutation.mutate({ id: editingAd.id, data: formData });
     } else {
-      createAdMutation.mutate(data);
+      createAdMutation.mutate(formData);
     }
   };
 
   const handleEdit = (ad) => {
     setEditingAd(ad);
+    setSelectedImage(null); // Сбрасываем выбранное изображение
     reset(ad);
     setShowModal(true);
   };
@@ -470,15 +600,21 @@ const Ads = () => {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingAd(null);
+    setSelectedImage(null);
     reset();
   };
 
+  const handleImageChange = (file) => {
+    setSelectedImage(file);
+  };
+
   const adTypes = [
-    { value: 'party', label: 'Вечеринка', icon: '🎉' },
-    { value: 'meeting', label: 'Встреча', icon: '👥' },
-    { value: 'event', label: 'Мероприятие', icon: '🎪' },
-    { value: 'service', label: 'Услуга', icon: '🛠️' },
-    { value: 'other', label: 'Другое', icon: '📋' }
+    { value: 'Встречи', label: 'Встречи', icon: '👥' },
+    { value: 'Знакомства', label: 'Знакомства', icon: '💕' },
+    { value: 'Вечеринки', label: 'Вечеринки', icon: '🎉' },
+    { value: 'Мероприятия', label: 'Мероприятия', icon: '🎪' },
+    { value: 'Общение', label: 'Общение', icon: '💬' },
+    { value: 'Все', label: 'Все', icon: '📋' }
   ];
 
   const formatDate = (dateString) => {
@@ -502,8 +638,8 @@ const Ads = () => {
   const stats = {
     total: ads.length,
     myAds: ads.filter(ad => ad.author === currentUser?.login).length,
-    parties: ads.filter(ad => ad.type === 'party').length,
-    meetings: ads.filter(ad => ad.type === 'meeting').length
+    parties: ads.filter(ad => ad.type === 'Вечеринки').length,
+    meetings: ads.filter(ad => ad.type === 'Встречи').length
   };
 
   if (isLoading) {
@@ -694,7 +830,11 @@ const Ads = () => {
               <FormGroup>
                 <Label>Заголовок <span className="required">*</span></Label>
                 <Input
-                  {...register('title', { required: 'Заголовок обязателен' })}
+                  {...register('title', { 
+                    required: 'Заголовок обязателен',
+                    minLength: { value: 5, message: 'Заголовок должен содержать минимум 5 символов' },
+                    maxLength: { value: 200, message: 'Заголовок не должен превышать 200 символов' }
+                  })}
                   className={errors.title ? 'error' : ''}
                   placeholder="Введите заголовок объявления"
                 />
@@ -720,12 +860,45 @@ const Ads = () => {
               <FormGroup>
                 <Label>Описание <span className="required">*</span></Label>
                 <TextArea
-                  {...register('description', { required: 'Описание обязательно' })}
+                  {...register('description', { 
+                    required: 'Описание обязательно',
+                    minLength: { value: 20, message: 'Описание должно содержать минимум 20 символов' },
+                    maxLength: { value: 5000, message: 'Описание не должно превышать 5000 символов' }
+                  })}
                   className={errors.description ? 'error' : ''}
                   placeholder="Подробно опишите ваше объявление..."
                   $minHeight="120px"
                 />
                 {errors.description && <ErrorText>{errors.description.message}</ErrorText>}
+              </FormGroup>
+
+              <FormGroup>
+                <Label>Цена (необязательно)</Label>
+                <Input
+                  {...register('price', {
+                    min: { value: 0, message: 'Цена не может быть отрицательной' },
+                    pattern: { value: /^\d+(\.\d{1,2})?$/, message: 'Введите корректную цену (например: 100 или 100.50)' }
+                  })}
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  className={errors.price ? 'error' : ''}
+                />
+                {errors.price && <ErrorText>{errors.price.message}</ErrorText>}
+              </FormGroup>
+
+              <FormGroup>
+                <Label>Контактная информация (необязательно)</Label>
+                <TextArea
+                  {...register('contact_info', {
+                    maxLength: { value: 1000, message: 'Контактная информация не должна превышать 1000 символов' }
+                  })}
+                  placeholder="Телефон, email или другие способы связи..."
+                  $minHeight="80px"
+                  className={errors.contact_info ? 'error' : ''}
+                />
+                {errors.contact_info && <ErrorText>{errors.contact_info.message}</ErrorText>}
               </FormGroup>
 
               <LocationSelector
@@ -751,6 +924,10 @@ const Ads = () => {
                 layout="side-by-side"
               />
               
+              {/* Отображение ошибок для полей страны и города */}
+              {errors.country && <ErrorText style={{ marginTop: '-15px', marginBottom: '15px' }}>{errors.country.message}</ErrorText>}
+              {errors.city && <ErrorText style={{ marginTop: '-15px', marginBottom: '15px' }}>{errors.city.message}</ErrorText>}
+              
               {/* Скрытые поля для react-hook-form валидации */}
               <input
                 type="hidden"
@@ -759,6 +936,13 @@ const Ads = () => {
               <input
                 type="hidden"
                 {...register('city', { required: 'Город обязателен' })}
+              />
+
+              {/* Компонент загрузки изображения */}
+              <ImageUpload
+                image={editingAd?.image}
+                onImageChange={handleImageChange}
+                error={errors.image?.message}
               />
 
               <FlexContainer $gap="15px" style={{ marginTop: '30px' }}>

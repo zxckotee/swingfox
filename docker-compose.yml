@@ -100,7 +100,6 @@ services:
       timeout: 10s
       retries: 3
 
-
 # Persistent volumes
 volumes:
   postgres_data:

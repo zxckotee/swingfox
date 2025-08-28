@@ -1,48 +1,57 @@
 const express = require('express');
 const router = express.Router();
-const { User } = require('../models');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs').promises;
+const { User, Ads } = require('../models');
 const { authenticateToken, requireVip } = require('../middleware/auth');
 const { generateId } = require('../utils/helpers');
 const { sequelize } = require('../config/database');
 
-// Создаем модель Ads динамически
-const { DataTypes } = require('sequelize');
-
-const Ads = sequelize.define('Ads', {
-  id: {
-    type: DataTypes.BIGINT,
-    primaryKey: true,
-    allowNull: false
+// Настройка multer для загрузки изображений объявлений
+const storage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const uploadPath = path.join(__dirname, '../../public/uploads');
+    try {
+      await fs.mkdir(uploadPath, { recursive: true });
+      cb(null, uploadPath);
+    } catch (error) {
+      cb(error);
+    }
   },
-  login: {
-    type: DataTypes.TEXT,
-    allowNull: false
-  },
-  type: {
-    type: DataTypes.TEXT,
-    allowNull: false
-  },
-  description: {
-    type: DataTypes.TEXT,
-    allowNull: false
-  },
-  country: {
-    type: DataTypes.TEXT,
-    allowNull: false
-  },
-  city: {
-    type: DataTypes.TEXT,
-    allowNull: false
+  filename: (req, file, cb) => {
+    const uniqueId = generateId();
+    const extension = path.extname(file.originalname).toLowerCase();
+    cb(null, `ad_${uniqueId}${extension}`);
   }
-}, {
-  tableName: 'ads',
-  timestamps: true,
-  underscored: true
+});
+
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Неподдерживаемый тип файла. Разрешены: JPEG, PNG, WebP'), false);
+  }
+};
+
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+    files: 1 // Одно изображение для объявления
+  }
 });
 
 // GET /api/ads - Получение объявлений с фильтрацией
 router.get('/', async (req, res) => {
   try {
+    console.log('GET /api/ads - Запрос получен');
+    console.log('Headers:', req.headers);
+    console.log('User:', req.user);
+    console.log('Query params:', req.query);
+    
     const { 
       type, 
       country, 
@@ -65,8 +74,13 @@ router.get('/', async (req, res) => {
       whereClause.city = city;
     }
     if (author) {
-      whereClause.login = author;
+      whereClause.author = author;
     }
+
+    // Показываем все объявления (убираем фильтр по статусу)
+    // whereClause.status = 'approved';
+
+    console.log('Where clause:', whereClause);
 
     const ads = await Ads.findAll({
       where: whereClause,
@@ -75,25 +89,37 @@ router.get('/', async (req, res) => {
       offset: parseInt(offset)
     });
 
+    console.log('Найдено объявлений:', ads.length);
+
     // Получаем информацию об авторах объявлений
-    const authorLogins = [...new Set(ads.map(ad => ad.login))];
+    const authorLogins = [...new Set(ads.map(ad => ad.author))];
     const authors = await User.findAll({
       where: { login: authorLogins },
       attributes: ['login', 'ava', 'status', 'city', 'viptype', 'online']
     });
 
+    console.log('Найдено авторов:', authors.length);
+
     // Формируем ответ с дополнительной информацией
     const adsWithAuthors = ads.map(ad => {
-      const author = authors.find(u => u.login === ad.login);
+      const author = authors.find(u => u.login === ad.author);
       return {
         id: ad.id,
+        title: ad.title || ad.description, // Используем title если есть, иначе description
         type: ad.type,
         description: ad.description,
         country: ad.country,
         city: ad.city,
+        price: ad.price,
+        contact_info: ad.contact_info,
+        image: ad.image,
+        status: ad.status,
         created_at: ad.created_at,
+        expires_at: ad.expires_at,
+        views_count: ad.views_count,
+        is_featured: ad.is_featured,
         author: {
-          login: ad.login,
+          login: ad.author,
           ava: author?.ava || 'no_photo.jpg',
           status: author?.status || 'Пользователь',
           city: author?.city || ad.city,
@@ -105,6 +131,8 @@ router.get('/', async (req, res) => {
 
     // Получаем общее количество
     const totalCount = await Ads.count({ where: whereClause });
+
+    console.log('Отправляем ответ:', { total: totalCount, ads_count: adsWithAuthors.length });
 
     res.json({
       success: true,
@@ -128,6 +156,10 @@ router.get('/', async (req, res) => {
 
 // GET /api/ads/types - Получение доступных типов объявлений
 router.get('/types', (req, res) => {
+  console.log('GET /api/ads/types - Запрос получен');
+  console.log('Headers:', req.headers);
+  console.log('User:', req.user);
+  
   const adTypes = [
     'Все',
     'Встречи',
@@ -137,36 +169,61 @@ router.get('/types', (req, res) => {
     'Общение'
   ];
 
+  console.log('Отправляем типы объявлений:', adTypes);
+
   res.json({
     success: true,
     types: adTypes
   });
 });
 
-// POST /api/ads/create - Создание объявления
-router.post('/create', authenticateToken, async (req, res) => {
+// POST /api/ads/create - Создание объявления с изображением
+router.post('/create', authenticateToken, upload.single('image'), async (req, res) => {
   try {
-    const { type, description } = req.body;
+    console.log('POST /api/ads/create - Запрос получен');
+    console.log('Body:', req.body);
+    console.log('File:', req.file);
+    
+    const { title, type, description, country, city, price, contact_info } = req.body;
     const userLogin = req.user.login;
+    const imageFile = req.file;
 
-    if (!type || !description) {
+    console.log('User login:', userLogin);
+    console.log('Data:', { title, type, description, country, city, price, contact_info });
+
+    if (!title || !type || !description || !country || !city) {
+      console.log('Ошибка валидации: недостающие поля');
       return res.status(400).json({ 
         error: 'missing_data',
-        message: 'Тип и описание объявления обязательны' 
+        message: 'Заголовок, тип, описание, страна и город обязательны' 
       });
     }
 
-    if (description.length < 10) {
+    if (title.length < 5) {
+      return res.status(400).json({ 
+        error: 'title_too_short',
+        message: 'Заголовок должен содержать минимум 5 символов' 
+      });
+    }
+
+    if (title.length > 200) {
+      return res.status(400).json({ 
+        error: 'title_too_long',
+        message: 'Заголовок не должен превышать 200 символов' 
+      });
+    }
+
+    if (description.length < 20) {
       return res.status(400).json({ 
         error: 'description_too_short',
-        message: 'Описание должно содержать минимум 10 символов' 
+        message: 'Описание должно содержать минимум 20 символов' 
       });
     }
 
-    if (description.length > 1000) {
+    if (description.length > 5000) {
       return res.status(400).json({ 
         error: 'description_too_long',
-        message: 'Описание не должно превышать 1000 символов' 
+        message: 'Описание не должно превышать 5000 символов' 
       });
     }
 
@@ -181,7 +238,12 @@ router.post('/create', authenticateToken, async (req, res) => {
 
     // Проверяем лимиты для бесплатных пользователей
     if (user.viptype === 'FREE') {
-      const existingAds = await Ads.findAll({ where: { login: userLogin } });
+      const existingAds = await Ads.findAll({ 
+        where: { 
+          author: userLogin,
+          status: ['pending', 'approved']
+        } 
+      });
       if (existingAds.length >= 1) {
         return res.status(403).json({ 
           error: 'ad_limit_reached',
@@ -192,24 +254,38 @@ router.post('/create', authenticateToken, async (req, res) => {
 
     // Создаем объявление
     const adId = generateId();
+    console.log('Создаем объявление с ID:', adId);
+    
     const newAd = await Ads.create({
       id: adId,
-      login: userLogin,
-      type,
+      title,
       description,
-      country: user.country,
-      city: user.city
+      author: userLogin,
+      type,
+      country,
+      city,
+      price: price ? parseFloat(price) : 0,
+      contact_info: contact_info || null,
+      image: imageFile ? imageFile.filename : null,
+      status: 'pending'
     });
+
+    console.log('Объявление создано:', newAd.id);
 
     res.json({
       success: true,
       message: 'Объявление успешно создано',
       ad: {
         id: newAd.id,
+        title: newAd.title,
         type: newAd.type,
         description: newAd.description,
         country: newAd.country,
         city: newAd.city,
+        price: newAd.price,
+        contact_info: newAd.contact_info,
+        image: newAd.image,
+        status: newAd.status,
         created_at: newAd.created_at,
         author: {
           login: user.login,
@@ -223,6 +299,16 @@ router.post('/create', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('Create ad error:', error);
+    
+    // Удаляем загруженный файл при ошибке
+    if (req.file) {
+      try {
+        await fs.unlink(req.file.path);
+      } catch (unlinkError) {
+        console.error('Error deleting uploaded file:', unlinkError);
+      }
+    }
+    
     res.status(500).json({ 
       error: 'server_error',
       message: 'Ошибка при создании объявления' 
@@ -230,17 +316,18 @@ router.post('/create', authenticateToken, async (req, res) => {
   }
 });
 
-// PUT /api/ads/:id - Редактирование объявления
-router.put('/:id', authenticateToken, async (req, res) => {
+// PUT /api/ads/:id - Редактирование объявления с возможностью обновления изображения
+router.put('/:id', authenticateToken, upload.single('image'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { type, description } = req.body;
+    const { title, type, description, country, city, price, contact_info } = req.body;
     const userLogin = req.user.login;
+    const imageFile = req.file;
 
-    if (!type || !description) {
+    if (!title || !type || !description || !country || !city) {
       return res.status(400).json({ 
         error: 'missing_data',
-        message: 'Тип и описание объявления обязательны' 
+        message: 'Заголовок, тип, описание, страна и город обязательны' 
       });
     }
 
@@ -253,29 +340,69 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 
     // Проверяем права на редактирование
-    if (ad.login !== userLogin) {
+    if (ad.author !== userLogin) {
       return res.status(403).json({ 
         error: 'no_permission',
         message: 'Вы можете редактировать только свои объявления' 
       });
     }
 
+    // Проверяем, можно ли редактировать (только в статусе pending)
+    if (ad.status !== 'pending') {
+      return res.status(403).json({ 
+        error: 'cannot_edit',
+        message: 'Можно редактировать только объявления на модерации' 
+      });
+    }
+
+    // Удаляем старое изображение если загружается новое
+    let oldImagePath = null;
+    if (imageFile && ad.image) {
+      oldImagePath = path.join(__dirname, '../../public/uploads', ad.image);
+    }
+
     // Обновляем объявление
-    await ad.update({
+    const updateData = {
+      title,
       type,
       description,
+      country,
+      city,
+      price: price ? parseFloat(price) : 0,
+      contact_info: contact_info || null,
       updated_at: new Date()
-    });
+    };
+
+    // Добавляем новое изображение если оно загружено
+    if (imageFile) {
+      updateData.image = imageFile.filename;
+    }
+
+    await ad.update(updateData);
+
+    // Удаляем старое изображение
+    if (oldImagePath) {
+      try {
+        await fs.unlink(oldImagePath);
+      } catch (unlinkError) {
+        console.error('Error deleting old image:', unlinkError);
+      }
+    }
 
     res.json({
       success: true,
       message: 'Объявление успешно обновлено',
       ad: {
         id: ad.id,
+        title: ad.title,
         type: ad.type,
         description: ad.description,
         country: ad.country,
         city: ad.city,
+        price: ad.price,
+        contact_info: ad.contact_info,
+        image: ad.image,
+        status: ad.status,
         created_at: ad.created_at,
         updated_at: ad.updated_at
       }
@@ -283,6 +410,16 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('Update ad error:', error);
+    
+    // Удаляем загруженный файл при ошибке
+    if (req.file) {
+      try {
+        await fs.unlink(req.file.path);
+      } catch (unlinkError) {
+        console.error('Error deleting uploaded file:', unlinkError);
+      }
+    }
+    
     res.status(500).json({ 
       error: 'server_error',
       message: 'Ошибка при обновлении объявления' 
@@ -305,10 +442,18 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     }
 
     // Проверяем права на удаление
-    if (ad.login !== userLogin) {
+    if (ad.author !== userLogin) {
       return res.status(403).json({ 
         error: 'no_permission',
         message: 'Вы можете удалять только свои объявления' 
+      });
+    }
+
+    // Проверяем статус объявления (только для удаления)
+    if (ad.status !== 'pending') {
+      return res.status(403).json({ 
+        error: 'cannot_delete',
+        message: 'Можно удалять только объявления на модерации' 
       });
     }
 
@@ -335,13 +480,21 @@ router.get('/my', authenticateToken, async (req, res) => {
     const { limit = 10, offset = 0 } = req.query;
 
     const myAds = await Ads.findAll({
-      where: { login: userLogin },
+      where: { 
+        author: userLogin,
+        status: ['pending', 'approved', 'rejected']
+      },
       order: [['created_at', 'DESC']],
       limit: parseInt(limit),
       offset: parseInt(offset)
     });
 
-    const totalCount = await Ads.count({ where: { login: userLogin } });
+    const totalCount = await Ads.count({ 
+      where: { 
+        author: userLogin,
+        status: ['pending', 'approved', 'rejected']
+      } 
+    });
 
     res.json({
       success: true,
@@ -386,7 +539,7 @@ router.post('/:id/respond', authenticateToken, async (req, res) => {
     }
 
     // Нельзя отвечать на свое объявление
-    if (ad.login === userLogin) {
+    if (ad.author === userLogin) {
       return res.status(400).json({ 
         error: 'self_response',
         message: 'Нельзя отвечать на собственное объявление' 
@@ -402,7 +555,7 @@ router.post('/:id/respond', authenticateToken, async (req, res) => {
     await Chat.create({
       id: messageId,
       by_user: userLogin,
-      to_user: ad.login,
+      to_user: ad.author,
       message: responseMessage,
       images: null,
       date: new Date(),

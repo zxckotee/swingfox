@@ -576,12 +576,68 @@ export const adsAPI = {
   },
 
   createAd: async (adData) => {
-    const response = await apiClient.post('/ads/create', adData);
+    // Создаем FormData для загрузки изображения
+    const formData = new FormData();
+    
+    // Добавляем текстовые поля
+    formData.append('title', adData.title);
+    formData.append('type', adData.type);
+    formData.append('description', adData.description);
+    formData.append('country', adData.country);
+    formData.append('city', adData.city);
+    
+    if (adData.price) {
+      formData.append('price', adData.price);
+    }
+    
+    if (adData.contact_info) {
+      formData.append('contact_info', adData.contact_info);
+    }
+    
+    // Добавляем изображение если оно есть
+    if (adData.image && adData.image instanceof File) {
+      formData.append('image', adData.image);
+    }
+    
+    // Отправляем как multipart/form-data
+    const response = await apiClient.post('/ads/create', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 
   updateAd: async (id, adData) => {
-    const response = await apiClient.put(`/ads/${id}`, adData);
+    // Создаем FormData для загрузки изображения
+    const formData = new FormData();
+    
+    // Добавляем текстовые поля
+    formData.append('title', adData.title);
+    formData.append('type', adData.type);
+    formData.append('description', adData.description);
+    formData.append('country', adData.country);
+    formData.append('city', adData.city);
+    
+    if (adData.price) {
+      formData.append('price', adData.price);
+    }
+    
+    if (adData.contact_info) {
+      formData.append('contact_info', adData.contact_info);
+    }
+    
+    // Добавляем изображение если оно есть
+    if (adData.image && adData.image instanceof File) {
+      formData.append('image', adData.image);
+    }
+    
+    // Отправляем как multipart/form-data
+    const response = await apiClient.put(`/ads/${id}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 

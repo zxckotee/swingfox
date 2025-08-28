@@ -3,9 +3,10 @@ const { sequelize } = require('../config/database');
 
 const Ads = sequelize.define('Ads', {
   id: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.BIGINT,
     primaryKey: true,
-    autoIncrement: true
+    allowNull: false
+    // Убираем autoIncrement, так как в базе данных это не настроено
   },
   title: {
     type: DataTypes.STRING(200),
@@ -31,9 +32,19 @@ const Ads = sequelize.define('Ads', {
     }
   },
   type: {
-    type: DataTypes.ENUM('party', 'meeting', 'event', 'service', 'other'),
+    type: DataTypes.STRING(50),
     allowNull: false,
-    defaultValue: 'other'
+    validate: {
+      notEmpty: true
+    }
+  },
+  country: {
+    type: DataTypes.STRING(100),
+    allowNull: false,
+    validate: {
+      notEmpty: true,
+      len: [2, 100]
+    }
   },
   city: {
     type: DataTypes.STRING(100),
@@ -60,9 +71,12 @@ const Ads = sequelize.define('Ads', {
     allowNull: true
   },
   status: {
-    type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+    type: DataTypes.STRING(20),
     allowNull: false,
-    defaultValue: 'pending'
+    defaultValue: 'pending',
+    validate: {
+      notEmpty: true
+    }
   },
   approved_by: {
     type: DataTypes.STRING(50),
@@ -115,17 +129,18 @@ const Ads = sequelize.define('Ads', {
 
 // Статические методы
 Ads.getTypeLabels = () => ({
-  party: 'Вечеринка',
-  meeting: 'Встреча',
-  event: 'Мероприятие',
-  service: 'Услуга',
-  other: 'Другое'
+  'Встречи': 'Встречи',
+  'Знакомства': 'Знакомства',
+  'Вечеринки': 'Вечеринки',
+  'Мероприятия': 'Мероприятия',
+  'Общение': 'Общение',
+  'Все': 'Все'
 });
 
 Ads.getStatusLabels = () => ({
-  pending: 'На модерации',
-  approved: 'Одобрено',
-  rejected: 'Отклонено'
+  'pending': 'На модерации',
+  'approved': 'Одобрено',
+  'rejected': 'Отклонено'
 });
 
 // Методы экземпляра
