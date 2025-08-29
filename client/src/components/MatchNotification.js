@@ -97,6 +97,12 @@ const UserName = styled.div`
   font-weight: 600;
   margin-top: 10px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+  
+  &:hover {
+    transform: scale(1.05);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
   
   @media (max-width: 768px) {
     font-size: 16px;
@@ -165,7 +171,8 @@ const TimeStamp = styled.div`
 const MatchNotification = ({ 
   notification, 
   onDismiss, 
-  onStartChat 
+  onStartChat,
+  isAnimatingOut = false
 }) => {
   const navigate = useNavigate();
   
@@ -181,7 +188,7 @@ const MatchNotification = ({
   };
 
   const handleViewProfile = () => {
-    navigate(`/profiles/${matchUser}`);
+    navigate(`/profile/${matchUser}`);
   };
 
   const formatTime = (dateString) => {
@@ -198,12 +205,16 @@ const MatchNotification = ({
   return (
     <MatchContainer
       initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
+      animate={{ 
+        scale: isAnimatingOut ? 0.8 : 1, 
+        opacity: isAnimatingOut ? 0 : 1,
+        y: isAnimatingOut ? -20 : 0
+      }}
       exit={{ scale: 0.8, opacity: 0 }}
       transition={{ 
         type: "spring", 
-        duration: 0.6,
-        bounce: 0.4 
+        duration: isAnimatingOut ? 0.3 : 0.6,
+        bounce: isAnimatingOut ? 0 : 0.4 
       }}
     >
       <MatchHeader>
@@ -236,7 +247,13 @@ const MatchNotification = ({
           >
             {!userData?.avatar && (matchUser ? matchUser.charAt(0).toUpperCase() : '?')}
           </Avatar>
-          <UserName>@{matchUser || 'Пользователь'}</UserName>
+          <UserName 
+            style={{ cursor: 'pointer' }}
+            onClick={() => handleViewProfile()}
+            title="Кликните, чтобы перейти в профиль"
+          >
+            @{matchUser || 'Пользователь'}
+          </UserName>
         </UserInfo>
       </MatchContent>
 

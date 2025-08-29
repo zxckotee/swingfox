@@ -151,7 +151,7 @@ const SwipeContainer = styled.div`
 const ProfileCard = styled(motion.div)`
   width: 100%;
   max-width: 400px;
-  height: 600px;
+  height: 650px;
   background: white;
   border-radius: 25px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
@@ -164,18 +164,18 @@ const ProfileCard = styled(motion.div)`
   }
   
   @media (max-width: 768px) {
-    height: 550px;
+    height: 600px;
     max-width: 100%;
   }
   
   @media (max-width: 480px) {
-    height: 500px;
+    height: 550px;
   }
 `;
 
 const ProfileImage = styled.div`
   width: 100%;
-  height: 70%;
+  height: 65%;
   background-image: url(${props => props.$src});
   background-size: cover;
   background-position: center;
@@ -218,14 +218,14 @@ const ProfileOverlay = styled.div`
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 25px;
+  padding: 20px;
   color: white;
   z-index: 2;
   
   .username {
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 700;
-    margin: 0 0 8px 0;
+    margin: 0 0 6px 0;
     text-shadow: 0 2px 4px rgba(0,0,0,0.3);
   }
   
@@ -233,35 +233,36 @@ const ProfileOverlay = styled.div`
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 16px;
+    font-size: 14px;
     opacity: 0.9;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
   }
   
   .age {
-    font-size: 16px;
+    font-size: 14px;
     opacity: 0.9;
   }
   
   @media (max-width: 768px) {
-    padding: 20px;
+    padding: 16px;
     
     .username {
-      font-size: 24px;
+      font-size: 20px;
     }
     
     .location, .age {
-      font-size: 14px;
+      font-size: 12px;
     }
   }
 `;
 
 const ProfileDetails = styled.div`
-  padding: 25px;
-  height: 30%;
+  padding: 20px;
+  height: 35%;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
+  overflow-y: auto;
   
   .status-badge {
     display: inline-flex;
@@ -269,18 +270,18 @@ const ProfileDetails = styled.div`
     gap: 6px;
     background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
     color: white;
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 14px;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 12px;
     font-weight: 600;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     align-self: flex-start;
   }
   
   .info {
     color: #4a5568;
-    font-size: 15px;
-    line-height: 1.5;
+    font-size: 13px;
+    line-height: 1.4;
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 3;
@@ -288,15 +289,15 @@ const ProfileDetails = styled.div`
   }
   
   @media (max-width: 768px) {
-    padding: 20px;
+    padding: 16px;
     
     .status-badge {
-      font-size: 13px;
-      padding: 6px 12px;
+      font-size: 11px;
+      padding: 5px 10px;
     }
     
     .info {
-      font-size: 14px;
+      font-size: 12px;
       -webkit-line-clamp: 2;
     }
   }
@@ -328,6 +329,10 @@ const ActionButton = styled(IconButton)`
       transform: scale(1.15) translateY(-3px);
       box-shadow: 0 12px 35px rgba(245, 101, 101, 0.4);
     }
+    
+    &:active {
+      transform: scale(0.95);
+    }
   }
   
   &.like {
@@ -337,6 +342,10 @@ const ActionButton = styled(IconButton)`
       background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
       transform: scale(1.15) translateY(-3px);
       box-shadow: 0 12px 35px rgba(72, 187, 120, 0.4);
+    }
+    
+    &:active {
+      transform: scale(0.95);
     }
   }
   
@@ -348,6 +357,10 @@ const ActionButton = styled(IconButton)`
       transform: scale(1.15) translateY(-3px);
       box-shadow: 0 12px 35px rgba(237, 137, 54, 0.4);
     }
+    
+    &:active {
+      transform: scale(0.95);
+    }
   }
   
   &.back {
@@ -357,6 +370,10 @@ const ActionButton = styled(IconButton)`
       background: linear-gradient(135deg, #718096 0%, #4a5568 100%);
       transform: scale(1.15) translateY(-3px);
       box-shadow: 0 12px 35px rgba(160, 174, 192, 0.4);
+    }
+    
+    &:active {
+      transform: scale(0.95);
     }
   }
   
@@ -441,6 +458,9 @@ const Home = () => {
   const [showHint, setShowHint] = useState(false);
   const [showSuperlikeModal, setShowSuperlikeModal] = useState(false);
   const [superlikeMessage, setSuperlikeMessage] = useState('');
+  const [swipeDirection, setSwipeDirection] = useState(null); // 'left' для дизлайка, 'right' для лайка
+  const [profileQueue, setProfileQueue] = useState([]); // Очередь предзагруженных профилей
+  const [isPreloading, setIsPreloading] = useState(false); // Флаг предзагрузки
   const queryClient = useQueryClient();
   const currentUser = apiUtils.getCurrentUser();
   const { showMatchPopup } = useNotifications();
@@ -465,6 +485,60 @@ const Home = () => {
     }
   };
 
+  // Функция предзагрузки профилей
+  const preloadProfiles = async (count = 3) => {
+    if (isPreloading) return;
+    
+    setIsPreloading(true);
+    
+    // Запускаем предзагрузку в фоне
+    setTimeout(async () => {
+      try {
+        const profiles = [];
+        for (let i = 0; i < count; i++) {
+          try {
+            const profile = await swipeAPI.getProfiles('forward');
+            if (profile) {
+              profiles.push(profile);
+            }
+          } catch (error) {
+            // Игнорируем ошибки при предзагрузке
+            break;
+          }
+        }
+        
+        if (profiles.length > 0) {
+          setProfileQueue(prev => [...prev, ...profiles]);
+        }
+      } catch (error) {
+        // Игнорируем ошибки предзагрузки
+      } finally {
+        setIsPreloading(false);
+      }
+    }, 100); // Небольшая задержка для неблокирующей работы
+  };
+
+  // Функция получения следующего профиля
+  const getNextProfile = () => {
+    if (profileQueue.length > 0) {
+      // Берем профиль из очереди
+      const nextProfile = profileQueue[0];
+      setProfileQueue(prev => prev.slice(1));
+      setCurrentProfile(nextProfile);
+      
+      // Если в очереди осталось 2 профиля, подгружаем еще 3
+      if (profileQueue.length <= 2) {
+        preloadProfiles(3);
+      }
+      
+      return nextProfile;
+    } else {
+      // Если очередь пуста, делаем обычный refetch
+      refetch();
+      return null;
+    }
+  };
+
   // Получение профилей
   const { data: profile, isLoading, refetch } = useQuery(
     'current-profile',
@@ -472,6 +546,12 @@ const Home = () => {
     {
       onSuccess: (data) => {
         setCurrentProfile(data);
+        setSwipeDirection(null);
+        
+        // Запускаем предзагрузку после получения первого профиля
+        if (profileQueue.length === 0) {
+          preloadProfiles(5);
+        }
       },
       onError: (error) => {
         if (error.response?.data?.error === 'no_profiles') {
@@ -479,6 +559,7 @@ const Home = () => {
         } else {
           toast.error(apiUtils.handleError(error));
         }
+        setSwipeDirection(null);
       }
     }
   );
@@ -503,13 +584,15 @@ const Home = () => {
         } else {
           toast.success('Лайк отправлен! 💖');
         }
-        // Принудительно получаем следующий профиль
+        // Получаем следующий профиль после завершения анимации
         setTimeout(() => {
-          refetch();
-        }, 100);
+          setSwipeDirection(null); // Сбрасываем направление
+          getNextProfile();
+        }, 400);
       },
       onError: (error) => {
         toast.error(apiUtils.handleError(error));
+        setSwipeDirection(null); // Сбрасываем направление при ошибке
       }
     }
   );
@@ -518,10 +601,15 @@ const Home = () => {
     ({ targetUser, source }) => swipeAPI.dislike(targetUser, source),
     {
       onSuccess: () => {
-        refetch();
+        // Получаем следующий профиль после завершения анимации
+        setTimeout(() => {
+          setSwipeDirection(null); // Сбрасываем направление
+          getNextProfile();
+        }, 400);
       },
       onError: (error) => {
         toast.error(apiUtils.handleError(error));
+        setSwipeDirection(null); // Сбрасываем направление при ошибке
       }
     }
   );
@@ -548,8 +636,9 @@ const Home = () => {
         }
         
         setTimeout(() => {
-          refetch();
-        }, 100);
+          setSwipeDirection(null); // Сбрасываем направление
+          getNextProfile();
+        }, 400);
       },
       onError: (error) => {
         toast.error(apiUtils.handleError(error));
@@ -569,22 +658,43 @@ const Home = () => {
     }
   }, [currentProfile]);
 
+  // Автоматическая предзагрузка при инициализации
+  useEffect(() => {
+    if (currentProfile && profileQueue.length === 0) {
+      preloadProfiles(5);
+    }
+  }, [currentProfile]);
+
   // Обработчики действий
   const handleLike = () => {
     if (currentProfile) {
-      likeMutation.mutate({
-        targetUser: currentProfile.login,
-        source: 'button'
-      });
+      // Небольшая задержка для визуального отклика кнопки
+      setTimeout(() => {
+        setSwipeDirection('right');
+        // Запускаем анимацию свайпа вправо
+        setTimeout(() => {
+          likeMutation.mutate({
+            targetUser: currentProfile.login,
+            source: 'button'
+          });
+        }, 300); // Задержка для завершения анимации
+      }, 100);
     }
   };
 
   const handleDislike = () => {
     if (currentProfile) {
-      dislikeMutation.mutate({
-        targetUser: currentProfile.login,
-        source: 'button'
-      });
+      // Небольшая задержка для визуального отклика кнопки
+      setTimeout(() => {
+        setSwipeDirection('left');
+        // Запускаем анимацию свайпа влево
+        setTimeout(() => {
+          dislikeMutation.mutate({
+            targetUser: currentProfile.login,
+            source: 'button'
+          });
+        }, 300); // Задержка для завершения анимации
+      }, 100);
     }
   };
 
@@ -612,6 +722,10 @@ const Home = () => {
     try {
       const data = await swipeAPI.getProfiles('back');
       setCurrentProfile(data);
+      // При возврате назад также запускаем предзагрузку
+      if (profileQueue.length <= 2) {
+        preloadProfiles(3);
+      }
     } catch (error) {
       toast.error(apiUtils.handleError(error));
     }
@@ -624,18 +738,24 @@ const Home = () => {
     if (info.offset.x > threshold) {
       // Свайп вправо - лайк
       if (currentProfile) {
-        likeMutation.mutate({
-          targetUser: currentProfile.login,
-          source: 'gesture'
-        });
+        setSwipeDirection('right');
+        setTimeout(() => {
+          likeMutation.mutate({
+            targetUser: currentProfile.login,
+            source: 'gesture'
+          });
+        }, 300);
       }
     } else if (info.offset.x < -threshold) {
       // Свайп влево - дизлайк
       if (currentProfile) {
-        dislikeMutation.mutate({
-          targetUser: currentProfile.login,
-          source: 'gesture'
-        });
+        setSwipeDirection('left');
+        setTimeout(() => {
+          dislikeMutation.mutate({
+            targetUser: currentProfile.login,
+            source: 'gesture'
+          });
+        }, 300);
       }
     }
   };
@@ -685,6 +805,23 @@ const Home = () => {
           Свайпайте влево/вправо или используйте кнопки ниже
         </SwipeHint>
         
+        {/* Отладочная информация о предзагрузке */}
+        {process.env.NODE_ENV === 'development' && (
+          <div style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+            background: 'rgba(0,0,0,0.7)',
+            color: 'white',
+            padding: '5px 10px',
+            borderRadius: '15px',
+            fontSize: '12px',
+            zIndex: 10
+          }}>
+            Очередь: {profileQueue.length} | Загрузка: {isPreloading ? 'Да' : 'Нет'}
+          </div>
+        )}
+        
         <AnimatePresence mode="wait">
           {currentProfile ? (
             <ProfileCard
@@ -693,12 +830,24 @@ const Home = () => {
               dragConstraints={{ left: 0, right: 0 }}
               onDragEnd={handleDragEnd}
               initial={{ scale: 0, opacity: 0, rotateY: 90 }}
-              animate={{ scale: 1, opacity: 1, rotateY: 0 }}
-              exit={{ scale: 0, opacity: 0, rotateY: -90 }}
+              animate={{ 
+                scale: 1, 
+                opacity: 1, 
+                rotateY: 0,
+                x: swipeDirection === 'left' ? -400 : swipeDirection === 'right' ? 400 : 0,
+                rotate: swipeDirection === 'left' ? -20 : swipeDirection === 'right' ? 20 : 0
+              }}
+              exit={{ 
+                scale: 0, 
+                opacity: 0, 
+                rotateY: swipeDirection === 'left' ? -90 : 90,
+                x: swipeDirection === 'left' ? -400 : 400,
+                rotate: swipeDirection === 'left' ? -20 : 20
+              }}
               transition={{ 
-                duration: 0.5,
-                type: "spring",
-                stiffness: 100
+                duration: swipeDirection ? 0.3 : 0.5,
+                type: swipeDirection ? "tween" : "spring",
+                stiffness: swipeDirection ? undefined : 100
               }}
               whileDrag={{ scale: 1.05, rotate: 5 }}
             >
@@ -721,48 +870,64 @@ const Home = () => {
                     {currentProfile.status}
                   </div>
                   
-                  {/* Показываем данные партнера для пар */}
+                  {/* Компактная информация о паре */}
                   {currentProfile.isCouple && currentProfile.partnerData && (
                     <div className="partner-info" style={{ 
-                      margin: '10px 0', 
-                      padding: '10px', 
-                      background: 'rgba(255,255,255,0.1)', 
-                      borderRadius: '8px' 
+                      margin: '8px 0', 
+                      padding: '8px 12px', 
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      borderRadius: '12px',
+                      color: 'white',
+                      fontSize: '12px'
                     }}>
-                      <div style={{ fontSize: '14px', marginBottom: '8px', fontWeight: 'bold' }}>
-                        👫 Данные пары:
-                      </div>
-                      <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
-                        <div>👨 Мужчина: {formatPartnerAge(currentProfile.partnerData.manDate)} лет</div>
-                        <div>👩 Женщина: {formatPartnerAge(currentProfile.partnerData.womanDate)} лет</div>
-                        {currentProfile.partnerData.manHeight && currentProfile.partnerData.womanHeight && (
-                          <div>📏 Рост: {currentProfile.partnerData.manHeight}см / {currentProfile.partnerData.womanHeight}см</div>
-                        )}
-                        {currentProfile.partnerData.manWeight && currentProfile.partnerData.womanWeight && (
-                          <div>⚖️ Вес: {currentProfile.partnerData.manWeight}кг / {currentProfile.partnerData.womanWeight}кг</div>
-                        )}
+                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>👫 Пара</div>
+                      <div style={{ opacity: 0.9 }}>
+                        {formatPartnerAge(currentProfile.partnerData.manDate)}/{formatPartnerAge(currentProfile.partnerData.womanDate)} лет
                       </div>
                     </div>
                   )}
                   
-                  {/* Дополнительная информация */}
-                  <div className="additional-info" style={{ fontSize: '12px', marginTop: '10px' }}>
+                  {/* Компактная дополнительная информация */}
+                  <div className="additional-info" style={{ 
+                    fontSize: '11px', 
+                    marginTop: '8px',
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '4px'
+                  }}>
                     {currentProfile.height && (
-                      <div>📏 Рост: {currentProfile.height}см</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        📏 {currentProfile.height}см
+                      </div>
                     )}
                     {currentProfile.weight && (
-                      <div>⚖️ Вес: {currentProfile.weight}кг</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        ⚖️ {currentProfile.weight}кг
+                      </div>
                     )}
                     {currentProfile.smoking && (
-                      <div>🚬 {currentProfile.smoking}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        🚬 {currentProfile.smoking.length > 15 ? currentProfile.smoking.substring(0, 15) + '...' : currentProfile.smoking}
+                      </div>
                     )}
                     {currentProfile.alko && (
-                      <div>🍷 {currentProfile.alko}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        🍷 {currentProfile.alko.length > 15 ? currentProfile.alko.substring(0, 15) + '...' : currentProfile.alko}
+                      </div>
                     )}
                   </div>
                   
-                  <div className="info" style={{ marginTop: '15px' }}>
-                    {currentProfile.info || 'Информация не указана'}
+                  {/* Основная информация */}
+                  <div className="info" style={{ 
+                    marginTop: '12px',
+                    fontSize: '13px',
+                    lineHeight: '1.4',
+                    color: '#4a5568'
+                  }}>
+                    {currentProfile.info ? 
+                      (currentProfile.info.length > 120 ? currentProfile.info.substring(0, 120) + '...' : currentProfile.info) 
+                      : 'Информация не указана'
+                    }
                   </div>
                 </div>
               </ProfileDetails>

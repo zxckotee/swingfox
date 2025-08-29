@@ -4,6 +4,7 @@ const { Op } = require('sequelize');
 const { User, Geo } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { calculateDistance, formatAge, parseGeo } = require('../utils/helpers');
+const compatibilityCalculator = require('../utils/compatibilityCalculator');
 
 // GET /api/catalog - Получение каталога анкет с фильтрами
 router.get('/', authenticateToken, async (req, res) => {
@@ -51,59 +52,32 @@ router.get('/', authenticateToken, async (req, res) => {
     // 1. Проверяем, что я ищу людей с их статусом
     // 2. Проверяем, что они ищут людей с моим статусом
     
-    // Получаем пользователей с базовыми фильтрами
+    // Получаем пользователей с базовыми фильтрами (увеличиваем лимит для лучших рекомендаций)
     let users = await User.findAll({
       where: whereConditions,
       attributes: [
         'id', 'login', 'ava', 'status', 'country', 'city', 
         'geo', 'date', 'registration', 'info', 'online', 'viptype',
-        'search_status', 'search_age', 'height', 'weight', 'smoking', 'alko'
+        'search_status', 'search_age', 'height', 'weight', 'smoking', 'alko',
+        'location'
       ],
-      order: User.sequelize.random(),
-      limit: parseInt(limit) * 2, // Берем больше для фильтрации по совместимости
-      offset: parseInt(offset)
+      limit: parseInt(limit) * 3 // Увеличиваем для лучшего выбора
     });
 
-    // Фильтруем по взаимной совместимости
-    const compatibleUsers = users.filter(user => {
-      // Проверяем, что я ищу людей с их статусом
-      const iAmLookingForTheirStatus = currentUser.search_status && 
-        currentUser.search_status.includes(user.status);
-      
-      // Проверяем, что они ищут людей с моим статусом
-      const theyAreLookingForMyStatus = user.search_status && 
-        user.search_status.includes(currentUser.status);
-      
-      // Проверяем возрастные ограничения (если указаны)
-      let ageCompatible = true;
-      if (currentUser.search_age && user.date) {
-        const userAge = formatAge(user.date);
-        const [minAge, maxAge] = currentUser.search_age.split('_').map(Number);
-        if (!isNaN(minAge) && !isNaN(maxAge)) {
-          ageCompatible = userAge >= minAge && userAge <= maxAge;
-        }
-      }
-      
-      // Проверяем их возрастные ограничения
-      if (user.search_age && currentUser.date) {
-        const myAge = formatAge(currentUser.date);
-        const [minAge, maxAge] = user.search_age.split('_').map(Number);
-        if (!isNaN(minAge) && !isNaN(maxAge)) {
-          ageCompatible = ageCompatible && (myAge >= minAge && myAge <= maxAge);
-        }
-      }
-      
-      return iAmLookingForTheirStatus && theyAreLookingForMyStatus && ageCompatible;
-    });
+    // Применяем систему рекомендаций вместо жесткой фильтрации
+    const usersWithCompatibility = compatibilityCalculator.sortByCompatibility(users, currentUser);
+    
+    // Получаем топ рекомендации с рандомизацией
+    const recommendedUsers = compatibilityCalculator.getTopRecommendations(users, currentUser, parseInt(limit));
 
     // Ограничиваем результат до нужного количества
-    const finalUsers = compatibleUsers.slice(0, parseInt(limit));
+    const finalUsers = recommendedUsers.map(item => item.user);
 
     // Подготавливаем геоданные текущего пользователя
     const currentGeo = parseGeo(currentUser.geo);
 
-    // Форматируем результаты
-    const formattedUsers = finalUsers.map(user => {
+    // Форматируем результаты с информацией о совместимости
+    const formattedUsers = finalUsers.map((user, index) => {
       // Вычисляем расстояние
       const userGeo = parseGeo(user.geo);
       let distance = 0;
@@ -116,6 +90,9 @@ router.get('/', authenticateToken, async (req, res) => {
 
       // Форматируем возраст
       const age = formatAge(user.date);
+
+      // Получаем данные о совместимости
+      const compatibility = recommendedUsers[index]?.compatibility || { totalScore: 0 };
 
       // Базовые данные пользователя
       let userData = {
@@ -130,7 +107,13 @@ router.get('/', authenticateToken, async (req, res) => {
         registration: user.registration,
         info: user.info,
         online: user.online,
-        viptype: user.viptype
+        viptype: user.viptype,
+        // Добавляем информацию о совместимости
+        compatibility: {
+          score: compatibility.totalScore,
+          percentage: Math.round(compatibility.totalScore * 100),
+          recommendations: compatibility.recommendations || []
+        }
       };
 
       // Добавляем данные партнера для пар

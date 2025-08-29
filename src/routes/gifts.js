@@ -4,6 +4,7 @@ const { Gifts, User, Notifications } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { generateId } = require('../utils/helpers');
 const { APILogger } = require('../utils/logger');
+const sequelize = require('../models/index').sequelize; // Added for direct query
 
 // GET /api/gifts - Получение подарков пользователя
 router.get('/', authenticateToken, async (req, res) => {
@@ -49,13 +50,12 @@ router.get('/', authenticateToken, async (req, res) => {
     // Форматируем подарки
     const formattedGifts = gifts.map(gift => ({
       id: gift.id,
-      type: gift.gift_type,
+      gift_type: gift.gift_type,
       type_name: gift.getTypeName(),
       cost: gift.getCost(),
       from_user: gift.from_user,
       sender_info: gift.sender ? {
         login: gift.sender.login,
-        name: gift.sender.name,
         avatar: gift.sender.ava
       } : null,
       date: gift.date,
@@ -612,7 +612,6 @@ router.get('/stats', authenticateToken, async (req, res) => {
       top_senders: topSenders.map(gift => ({
         user: gift.sender ? {
           login: gift.sender.login,
-          name: gift.sender.name,
           avatar: gift.sender.ava
         } : null,
         gift_type: gift.getTypeName(),
@@ -628,6 +627,122 @@ router.get('/stats', authenticateToken, async (req, res) => {
     res.status(500).json({
       error: 'server_error',
       message: 'Ошибка при получении статистики подарков'
+    });
+  }
+});
+
+// GET /api/gifts/received/:username - Получение подарков конкретного пользователя
+router.get('/received/:username', authenticateToken, async (req, res) => {
+  const logger = new APILogger('GIFTS');
+  
+  try {
+    logger.logRequest(req, 'GET /gifts/received/:username');
+    
+    const { username } = req.params;
+    const { limit = 50, offset = 0 } = req.query;
+
+    console.log('Gifts route called with:', { username, limit, offset });
+
+    // Прямой SQL запрос для отладки
+    const directQuery = await sequelize.query(
+      'SELECT * FROM gifts WHERE owner = :username AND is_valid = true LIMIT 5',
+      {
+        replacements: { username },
+        type: sequelize.QueryTypes.SELECT
+      }
+    );
+    console.log('Direct SQL query result:', directQuery);
+
+    logger.logBusinessLogic(1, 'Получение подарков пользователя', {
+      target_user: username,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    }, req);
+
+    // Получаем подарки пользователя
+    const whereCondition = { 
+      owner: username,
+      is_valid: true 
+    };
+    console.log('Sequelize where condition:', whereCondition);
+    
+    // Проверяем структуру модели
+    console.log('Gifts model attributes:', Object.keys(Gifts.rawAttributes));
+    console.log('Gifts model associations:', Object.keys(Gifts.associations || {}));
+    
+    const gifts = await Gifts.findAll({
+      where: whereCondition,
+      include: [{
+        model: User,
+        as: 'sender',
+        attributes: ['login', 'ava']
+      }],
+      order: [['created_at', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    console.log('Found gifts:', gifts.length);
+    console.log('Gifts data:', gifts.map(g => ({ id: g.id, owner: g.owner, from_user: g.from_user, gift_type: g.gift_type })));
+
+    // Подсчитываем общее количество
+    const totalCount = await Gifts.count({
+      where: { 
+        owner: username,
+        is_valid: true 
+      }
+    });
+
+    console.log('Total count:', totalCount);
+
+    // Форматируем подарки
+    const formattedGifts = gifts.map(gift => ({
+      id: gift.id,
+      gift_type: gift.gift_type,
+      type_name: gift.getTypeName(),
+      cost: gift.getCost(),
+      from_user: gift.from_user,
+      sender_login: gift.from_user,
+      sender_info: gift.sender ? {
+        login: gift.sender.login,
+        name: gift.sender.name,
+        avatar: gift.sender.ava
+      } : null,
+      recipient_info: gift.recipient ? {
+        login: gift.recipient.login,
+        avatar: gift.recipient.ava
+      } : null,
+      message: gift.message || '',
+      date: gift.date,
+      created_at: gift.created_at
+    }));
+
+    console.log('Formatted gifts:', formattedGifts);
+
+    const responseData = {
+      gifts: formattedGifts,
+      pagination: {
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        total: totalCount,
+        hasMore: (parseInt(offset) + parseInt(limit)) < totalCount
+      }
+    };
+
+    logger.logSuccess(req, 200, {
+      target_user: username,
+      gifts_count: gifts.length,
+      total_count: totalCount
+    });
+    
+    res.json(responseData);
+
+  } catch (error) {
+    console.error('Error in gifts route:', error);
+    logger.logError(req, error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при получении подарков пользователя'
     });
   }
 });

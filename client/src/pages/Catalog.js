@@ -352,10 +352,10 @@ const Catalog = () => {
     <CatalogContainer>
       <Header>
         <HeaderContent>
-          <h1>Поиск анкет</h1>
-          <p>Система показывает только тех, кто соответствует вашим критериям И кому вы соответствуете</p>
+          <h1>Каталог анкет</h1>
+          <p>Умная система рекомендаций на основе совместимости</p>
           <p style={{ fontSize: '14px', marginTop: '5px', opacity: 0.8 }}>
-            Учитываются: статус, возрастные ограничения, взаимные предпочтения
+            Показываем всех, но сортируем по вероятности совместимости
           </p>
         </HeaderContent>
       </Header>
@@ -364,10 +364,10 @@ const Catalog = () => {
         <FilterSection>
           <FilterLabel>С кем хотите познакомиться?</FilterLabel>
           <p style={{ fontSize: '14px', color: '#666', marginBottom: '15px', fontStyle: 'italic' }}>
-            Система покажет только тех, кто соответствует вашим критериям И кому вы соответствуете
+            Фильтры помогают сузить поиск, но система покажет всех подходящих
           </p>
           <p style={{ fontSize: '12px', color: '#888', marginBottom: '15px', fontStyle: 'italic' }}>
-            Учитываются: статус, возрастные ограничения, взаимные предпочтения
+            Сортировка по совместимости: статус, возраст, география, образ жизни
           </p>
           <CheckboxGroup>
             {availableFilters.statuses.map(status => (
@@ -452,8 +452,22 @@ const Catalog = () => {
                     </ProfileAvatar>
                     
                     <ProfileInfo>
-                      <div className="status">{user.status}</div>
-                      <div className="age">{user.age}</div>
+                                    <div className="status">{user.status}</div>
+              <div className="age">{user.age}</div>
+              {user.compatibility && (
+                <div className="compatibility" style={{ 
+                  background: `linear-gradient(90deg, #4CAF50 ${user.compatibility.percentage}%, #e0e0e0 ${user.compatibility.percentage}%)`,
+                  color: 'white',
+                  padding: '4px 8px',
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  textAlign: 'center',
+                  marginTop: '5px'
+                }}>
+                  Совместимость: {user.compatibility.percentage}%
+                </div>
+              )}
                       
                       {/* Показываем данные партнера для пар */}
                       {user.isCouple && user.partnerData && (

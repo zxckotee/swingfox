@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import styled, { css } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import { notificationsAPI, apiUtils } from '../services/api';
 import MatchNotification from '../components/MatchNotification';
 import {
@@ -295,6 +296,25 @@ const NotificationActions = styled.div`
   align-items: center;
 `;
 
+// Кнопка для перехода в профиль
+const ProfileButton = styled(IconButton)`
+  background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+  color: white;
+  border: 2px solid #3182ce;
+  transition: all 0.3s ease;
+  
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #3182ce 0%, #2c5aa0 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(66, 153, 225, 0.4);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
+
 const EmptyState = styled.div`
   text-align: center;
   padding: 60px 20px;
@@ -337,7 +357,10 @@ const EmptyState = styled.div`
 const Notifications = () => {
   const [filter, setFilter] = useState('all');
   const [selectedNotifications, setSelectedNotifications] = useState([]);
+  const [localNotifications, setLocalNotifications] = useState([]);
+  const [animatingOut, setAnimatingOut] = useState(new Set());
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Получение уведомлений
   const { data: notificationsData, isLoading, refetch } = useQuery(
@@ -359,10 +382,55 @@ const Notifications = () => {
   const notifications = notificationsData?.notifications || [];
   const unreadCount = notificationsData?.unread_count || 0;
 
+  // Обновляем локальное состояние при изменении данных
+  useEffect(() => {
+    setLocalNotifications(notifications);
+  }, [notifications]);
+
+  // Фильтруем уведомления в зависимости от выбранного фильтра
+  const filteredNotifications = useMemo(() => {
+    if (filter === 'unread') {
+      return localNotifications.filter(notif => !notif.is_read);
+    } else if (filter !== 'all') {
+      return localNotifications.filter(notif => notif.type === filter);
+    }
+    return localNotifications;
+  }, [localNotifications, filter]);
+
+  // Подсчитаем количество по типам для фильтров
+  const countByType = useMemo(() => {
+    return localNotifications.reduce((acc, notif) => {
+      acc[notif.type] = (acc[notif.type] || 0) + 1;
+      return acc;
+    }, {});
+  }, [localNotifications]);
+
+  // Подсчитаем количество непрочитанных
+  const currentUnreadCount = useMemo(() => {
+    return localNotifications.filter(notif => !notif.is_read).length;
+  }, [localNotifications]);
+
   // Мутации
   const markAsReadMutation = useMutation(notificationsAPI.markAsRead, {
-    onSuccess: () => {
-      queryClient.invalidateQueries(['notifications']);
+    onSuccess: (data, variables) => {
+      // Обновляем локальное состояние
+      setLocalNotifications(prev => 
+        prev.map(notif => 
+          notif.id === variables 
+            ? { ...notif, is_read: true }
+            : notif
+        )
+      );
+      
+      // Обновляем счетчик непрочитанных
+      queryClient.setQueryData(['notifications', filter], (oldData) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          unread_count: Math.max(0, (oldData.unread_count || 0) - 1)
+        };
+      });
+      
       toast.success('Уведомление отмечено как прочитанное');
     },
     onError: (error) => {
@@ -372,7 +440,20 @@ const Notifications = () => {
 
   const markAllAsReadMutation = useMutation(notificationsAPI.markAllAsRead, {
     onSuccess: () => {
-      queryClient.invalidateQueries(['notifications']);
+      // Обновляем локальное состояние
+      setLocalNotifications(prev => 
+        prev.map(notif => ({ ...notif, is_read: true }))
+      );
+      
+      // Обновляем счетчик непрочитанных
+      queryClient.setQueryData(['notifications', filter], (oldData) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          unread_count: 0
+        };
+      });
+      
       toast.success('Все уведомления отмечены как прочитанные');
     },
     onError: (error) => {
@@ -381,8 +462,12 @@ const Notifications = () => {
   });
 
   const deleteNotificationMutation = useMutation(notificationsAPI.deleteNotification, {
-    onSuccess: () => {
-      queryClient.invalidateQueries(['notifications']);
+    onSuccess: (data, variables) => {
+      // Удаляем уведомление из локального состояния
+      setLocalNotifications(prev => 
+        prev.filter(notif => notif.id !== variables)
+      );
+      
       toast.success('Уведомление удалено');
     },
     onError: (error) => {
@@ -392,7 +477,11 @@ const Notifications = () => {
 
   const deleteReadNotificationsMutation = useMutation(notificationsAPI.deleteReadNotifications, {
     onSuccess: () => {
-      queryClient.invalidateQueries(['notifications']);
+      // Удаляем прочитанные уведомления из локального состояния
+      setLocalNotifications(prev => 
+        prev.filter(notif => !notif.is_read)
+      );
+      
       toast.success('Прочитанные уведомления удалены');
     },
     onError: (error) => {
@@ -400,9 +489,41 @@ const Notifications = () => {
     }
   });
 
+  // Функция для перехода в профиль пользователя
+  const handleViewProfile = (username) => {
+    if (username) {
+      navigate(`/profile/${username}`);
+    }
+  };
+
+  // Функция для определения, можно ли перейти в профиль
+  const canViewProfile = (notification) => {
+    // Можно перейти в профиль для уведомлений, где есть информация о пользователе
+    return notification.from_user && 
+           ['like', 'superlike', 'gift', 'profile_visit', 'image_like', 'rating', 'comment'].includes(notification.type);
+  };
+
   // Обработчики
   const handleMarkAsRead = (id) => {
+    // Добавляем ID в множество анимирующих уведомлений
+    setAnimatingOut(prev => new Set(prev).add(id));
+    
+    // Запускаем мутацию
     markAsReadMutation.mutate(id);
+    
+    // Если фильтр "Непрочитанные", то скрываем уведомление через анимацию
+    if (filter === 'unread') {
+      setTimeout(() => {
+        setLocalNotifications(prev => 
+          prev.filter(notif => notif.id !== id)
+        );
+        setAnimatingOut(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(id);
+          return newSet;
+        });
+      }, 300); // Время анимации
+    }
   };
 
   const handleDelete = (id) => {
@@ -423,16 +544,10 @@ const Notifications = () => {
     }
   };
 
-  // Подсчитаем количество по типам
-  const countByType = notifications.reduce((acc, notif) => {
-    acc[notif.type] = (acc[notif.type] || 0) + 1;
-    return acc;
-  }, {});
-
   // Фильтры
   const filterTabs = [
-    { key: 'all', label: 'Все', count: notifications.length },
-    { key: 'unread', label: 'Непрочитанные', count: unreadCount },
+    { key: 'all', label: 'Все', count: localNotifications.length },
+    { key: 'unread', label: 'Непрочитанные', count: currentUnreadCount },
     { key: 'match', label: '💕 Мэтчи', count: countByType.match || 0 },
     { key: 'message', label: 'Сообщения', count: countByType.message || 0 },
     { key: 'like', label: 'Лайки', count: countByType.like || 0 },
@@ -478,7 +593,7 @@ const Notifications = () => {
           </FilterTabs>
 
           <BulkActions>
-            {unreadCount > 0 && (
+            {currentUnreadCount > 0 && (
               <Button
                 $size="small"
                 $variant="secondary"
@@ -502,7 +617,7 @@ const Notifications = () => {
           </BulkActions>
         </NotificationsHeader>
 
-        {notifications.length === 0 ? (
+        {filteredNotifications.length === 0 ? (
           <EmptyState>
             <div className="icon">🔔</div>
             <h3>Нет уведомлений</h3>
@@ -516,7 +631,7 @@ const Notifications = () => {
         ) : (
           <NotificationsList>
             <AnimatePresence>
-              {notifications.map((notification) => {
+              {filteredNotifications.map((notification) => {
                 // Специальная обработка для мэтч-уведомлений
                 if (notification.type === 'match') {
                   return (
@@ -528,6 +643,7 @@ const Notifications = () => {
                         // Перенаправляем в чат
                         window.location.href = `/chat/${username}`;
                       }}
+                      isAnimatingOut={animatingOut.has(notification.id)}
                     />
                   );
                 }
@@ -539,9 +655,13 @@ const Notifications = () => {
                     $color={getNotificationColor(notification.type)}
                     $isRead={notification.is_read}
                     initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    animate={{ 
+                      opacity: animatingOut.has(notification.id) ? 0 : 1, 
+                      y: animatingOut.has(notification.id) ? -20 : 0,
+                      scale: animatingOut.has(notification.id) ? 0.8 : 1
+                    }}
                     exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.2 }}
+                    transition={{ duration: 0.3 }}
                   >
                     <NotificationContent>
                       <NotificationIcon $color={getNotificationColor(notification.type)}>
@@ -554,7 +674,176 @@ const Notifications = () => {
                         </NotificationTitle>
                         
                         <NotificationMessage>
-                          {notification.message}
+                          {notification.type === 'like' && (
+                            <span>
+                              <strong 
+                                style={{ 
+                                  color: '#dc3522', 
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onClick={() => handleViewProfile(notification.from_user)}
+                                title="Кликните, чтобы перейти в профиль"
+                                onMouseEnter={(e) => {
+                                  e.target.style.transform = 'scale(1.05)';
+                                  e.target.style.color = '#ff6b58';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.target.style.transform = 'scale(1)';
+                                  e.target.style.color = '#dc3522';
+                                }}
+                              >
+                                {notification.from_user}
+                              </strong> лайкнул вашу анкету!
+                            </span>
+                          )}
+                          {notification.type === 'superlike' && (
+                            <span>
+                              <strong 
+                                style={{ 
+                                  color: '#dc3522', 
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onClick={() => handleViewProfile(notification.from_user)}
+                                title="Кликните, чтобы перейти в профиль"
+                                onMouseEnter={(e) => {
+                                  e.target.style.transform = 'scale(1.05)';
+                                  e.target.style.color = '#ff6b58';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.target.style.transform = 'scale(1)';
+                                  e.target.style.color = '#dc3522';
+                                }}
+                              >
+                                {notification.from_user}
+                              </strong> отправил вам суперлайк
+                              {notification.data?.message && (
+                                <span>: <i>«{notification.data.message}»</i></span>
+                              )}
+                            </span>
+                          )}
+                          {notification.type === 'gift' && (
+                            <span>
+                              <strong 
+                                style={{ 
+                                  color: '#dc3522', 
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onClick={() => handleViewProfile(notification.from_user)}
+                                title="Кликните, чтобы перейти в профиль"
+                                onMouseEnter={(e) => {
+                                  e.target.style.transform = 'scale(1.05)';
+                                  e.target.style.color = '#ff6b58';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.target.style.transform = 'scale(1)';
+                                  e.target.style.color = '#dc3522';
+                                }}
+                              >
+                                {notification.from_user}
+                              </strong> отправил вам подарок
+                              {notification.data?.gift_type && (
+                                <span>: {notification.data.gift_type}</span>
+                              )}
+                            </span>
+                          )}
+                          {notification.type === 'profile_visit' && (
+                            <span>
+                              <strong 
+                                style={{ 
+                                  color: '#dc3522', 
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onClick={() => handleViewProfile(notification.from_user)}
+                                title="Кликните, чтобы перейти в профиль"
+                                onMouseEnter={(e) => {
+                                  e.target.style.transform = 'scale(1.05)';
+                                  e.target.style.color = '#ff6b58';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.target.style.transform = 'scale(1)';
+                                  e.target.style.color = '#dc3522';
+                                }}
+                              >
+                                {notification.from_user}
+                              </strong> посмотрел ваш профиль
+                            </span>
+                          )}
+                          {notification.type === 'image_like' && (
+                            <span>
+                              <strong 
+                                style={{ 
+                                  color: '#dc3522', 
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onClick={() => handleViewProfile(notification.from_user)}
+                                title="Кликните, чтобы перейти в профиль"
+                                onMouseEnter={(e) => {
+                                  e.target.style.transform = 'scale(1.05)';
+                                  e.target.style.color = '#ff6b58';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.target.style.transform = 'scale(1)';
+                                  e.target.style.color = '#dc3522';
+                                }}
+                              >
+                                {notification.from_user}
+                              </strong> лайкнул ваше фото
+                            </span>
+                          )}
+                          {notification.type === 'rating' && (
+                            <span>
+                              <strong 
+                                style={{ 
+                                  color: '#dc3522', 
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onClick={() => handleViewProfile(notification.from_user)}
+                                title="Кликните, чтобы перейти в профиль"
+                                onMouseEnter={(e) => {
+                                  e.target.style.transform = 'scale(1.05)';
+                                  e.target.style.color = '#ff6b58';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.target.style.transform = 'scale(1)';
+                                  e.target.style.color = '#dc3522';
+                                }}
+                              >
+                                {notification.from_user}
+                              </strong> оценил ваш профиль
+                            </span>
+                          )}
+                          {notification.type === 'comment' && (
+                            <span>
+                              <strong 
+                                style={{ 
+                                  color: '#dc3522', 
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onClick={() => handleViewProfile(notification.from_user)}
+                                title="Кликните, чтобы перейти в профиль"
+                                onMouseEnter={(e) => {
+                                  e.target.style.transform = 'scale(1.05)';
+                                  e.target.style.color = '#ff6b58';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.target.style.transform = 'scale(1)';
+                                  e.target.style.color = '#dc3522';
+                                }}
+                              >
+                                {notification.from_user}
+                              </strong> оставил комментарий
+                            </span>
+                          )}
+                          {!['like', 'superlike', 'gift', 'profile_visit', 'image_like', 'rating', 'comment'].includes(notification.type) && (
+                            notification.message
+                          )}
                         </NotificationMessage>
                         
                         <NotificationMeta>
@@ -567,7 +856,26 @@ const Notifications = () => {
                           </NotificationPriority>
                           
                           {notification.from_user && (
-                            <span style={{ fontSize: '12px', color: '#718096' }}>
+                            <span 
+                              style={{ 
+                                fontSize: '12px', 
+                                color: '#dc3522', 
+                                cursor: 'pointer',
+                                textDecoration: 'underline',
+                                fontWeight: '500',
+                                transition: 'all 0.2s ease'
+                              }}
+                              onClick={() => handleViewProfile(notification.from_user)}
+                              title="Кликните, чтобы перейти в профиль"
+                              onMouseEnter={(e) => {
+                                e.target.style.transform = 'scale(1.05)';
+                                e.target.style.color = '#ff6b58';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.transform = 'scale(1)';
+                                e.target.style.color = '#dc3522';
+                              }}
+                            >
                               от {notification.from_user}
                             </span>
                           )}
@@ -575,6 +883,18 @@ const Notifications = () => {
                       </NotificationDetails>
                       
                       <NotificationActions>
+                        {/* Кнопка для перехода в профиль */}
+                        {canViewProfile(notification) && (
+                          <ProfileButton
+                            $size="35px"
+                            $variant="secondary"
+                            onClick={() => handleViewProfile(notification.from_user)}
+                            title="Посмотреть профиль"
+                          >
+                            👤
+                          </ProfileButton>
+                        )}
+                        
                         {!notification.is_read && (
                           <IconButton
                             $size="35px"

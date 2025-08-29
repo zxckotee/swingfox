@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
-const { User, Ads } = require('../models');
+const { User, Ads, Clubs } = require('../models');
 const { authenticateToken, requireVip } = require('../middleware/auth');
 const { generateId } = require('../utils/helpers');
 const { sequelize } = require('../config/database');
@@ -43,6 +43,25 @@ const upload = multer({
     files: 1 // Одно изображение для объявления
   }
 });
+
+// Функция проверки прав на создание мероприятий
+const validateEventCreationRights = async (userLogin, adType) => {
+  if (adType === 'Мероприятия') {
+    const userClub = await Clubs.findOne({
+      where: {
+        owner: userLogin,
+        is_active: true
+      }
+    });
+    
+    if (!userClub) {
+      throw new Error('Только владельцы активных клубов могут создавать мероприятия');
+    }
+    
+    return userClub;
+  }
+  return null;
+};
 
 // GET /api/ads - Получение объявлений с фильтрацией
 router.get('/', async (req, res) => {
@@ -252,6 +271,17 @@ router.post('/create', authenticateToken, upload.single('image'), async (req, re
       }
     }
 
+    // Проверка прав на создание мероприятий
+    try {
+      const club = await validateEventCreationRights(userLogin, type);
+      console.log('Club validation passed:', club?.name || 'not a club');
+    } catch (error) {
+      return res.status(403).json({
+        error: 'club_required',
+        message: error.message
+      });
+    }
+
     // Создаем объявление
     const adId = generateId();
     console.log('Создаем объявление с ID:', adId);
@@ -353,6 +383,18 @@ router.put('/:id', authenticateToken, upload.single('image'), async (req, res) =
         error: 'cannot_edit',
         message: 'Можно редактировать только объявления на модерации' 
       });
+    }
+
+    // Проверка при смене типа на "Мероприятия"
+    if (type === 'Мероприятия' && ad.type !== 'Мероприятия') {
+      try {
+        await validateEventCreationRights(userLogin, type);
+      } catch (error) {
+        return res.status(403).json({
+          error: 'club_required',
+          message: error.message
+        });
+      }
     }
 
     // Удаляем старое изображение если загружается новое

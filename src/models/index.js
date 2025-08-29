@@ -24,7 +24,7 @@ const Reactions = require('./Reactions');
 
 // User ассоциации
 User.hasMany(Chat, { 
-  foreignKey: 'from_user', 
+  foreignKey: 'by_user', 
   sourceKey: 'login',
   as: 'SentMessages',
   onDelete: 'CASCADE'
@@ -38,14 +38,14 @@ User.hasMany(Chat, {
 });
 
 User.hasMany(Likes, { 
-  foreignKey: 'from_user', 
+  foreignKey: 'like_from', 
   sourceKey: 'login',
   as: 'GivenLikes',
   onDelete: 'CASCADE'
 });
 
 User.hasMany(Likes, { 
-  foreignKey: 'target_user', 
+  foreignKey: 'like_to', 
   sourceKey: 'login',
   as: 'ReceivedLikes',
   onDelete: 'CASCADE'
@@ -95,7 +95,7 @@ User.hasMany(Events, {
 
 // Chat ассоциации
 Chat.belongsTo(User, { 
-  foreignKey: 'from_user', 
+  foreignKey: 'by_user', 
   targetKey: 'login',
   as: 'FromUser'
 });

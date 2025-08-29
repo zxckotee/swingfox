@@ -35,7 +35,8 @@ import {
   GiftIcon,
   StarIcon,
   MessageIcon,
-  SendIcon
+  SendIcon,
+  CrownIcon
 } from '../components/UI';
 
 // Дополнительные иконки
@@ -388,6 +389,148 @@ const GiftOption = styled(motion.div)`
   }
 `;
 
+const GiftCard = styled(Card)`
+  background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+  border: 2px solid #fed7d7;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(220, 53, 34, 0.15);
+    border-color: #dc3522;
+  }
+`;
+
+const BalanceSection = styled.div`
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 15px;
+  padding: 25px;
+  margin: 20px 40px;
+  color: white;
+  text-align: center;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+  
+  @media (max-width: 768px) {
+    margin: 20px 20px;
+    padding: 20px;
+  }
+`;
+
+const BalanceTitle = styled.h3`
+  margin: 0 0 15px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: white;
+`;
+
+const BalanceAmount = styled.div`
+  font-size: 32px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+`;
+
+const BalanceButton = styled(Button)`
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+  color: #2d3748;
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 25px;
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 215, 0, 0.6);
+  }
+`;
+
+const VipAdSection = styled.div`
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+  border-radius: 15px;
+  padding: 25px;
+  margin: 20px 40px;
+  text-align: center;
+  box-shadow: 0 8px 25px rgba(255, 215, 0, 0.3);
+  border: 2px solid #ffd700;
+  
+  @media (max-width: 768px) {
+    margin: 20px 20px;
+    padding: 20px;
+  }
+`;
+
+const VipAdTitle = styled.h3`
+  margin: 0 0 15px 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #2d3748;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+`;
+
+const VipAdText = styled.p`
+  margin: 0 0 20px 0;
+  font-size: 16px;
+  color: #4a5568;
+  line-height: 1.6;
+`;
+
+const VipAdButton = styled(Button)`
+  background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+  color: white;
+  font-weight: 600;
+  padding: 12px 30px;
+  border-radius: 25px;
+  box-shadow: 0 4px 15px rgba(45, 55, 72, 0.4);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(45, 55, 72, 0.6);
+  }
+`;
+
+const GiftEmoji = styled.div`
+  font-size: 48px;
+  margin-bottom: 15px;
+  text-align: center;
+`;
+
+const GiftSender = styled.div`
+  background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 10px 0;
+  display: inline-block;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 15px rgba(220, 53, 34, 0.3);
+  }
+`;
+
+const GiftMessage = styled.div`
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px;
+  margin: 10px 0;
+  font-style: italic;
+  color: #4a5568;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
 const Profile = () => {
   const { login } = useParams();
   const navigate = useNavigate();
@@ -407,9 +550,38 @@ const Profile = () => {
   const [selectedGift, setSelectedGift] = useState(null);
   const [giftMessage, setGiftMessage] = useState('');
   const [superlikeMessage, setSuperlikeMessage] = useState('');
+
+  // Получение полученных подарков
+  const { data: receivedGiftsData } = useQuery(
+    ['received-gifts', targetLogin],
+    () => giftsAPI.getReceivedGifts(50, 0, targetLogin),
+    {
+      enabled: !!targetLogin,
+      onError: (error) => {
+        console.warn('Failed to fetch received gifts:', error);
+      }
+    }
+  );
+
+  const receivedGifts = receivedGiftsData?.gifts || [];
   
+  // Отладочная информация
+  useEffect(() => {
+    if (receivedGiftsData) {
+      console.log('Received gifts data:', receivedGiftsData);
+      console.log('Received gifts:', receivedGifts);
+    }
+  }, [receivedGiftsData, receivedGifts]);
+
   const avatarInputRef = useRef();
   const imagesInputRef = useRef();
+
+  // Функция для перехода в профиль отправителя подарка
+  const handleGiftSenderClick = (senderLogin) => {
+    if (senderLogin && senderLogin !== currentUser?.login) {
+      navigate(`/profile/${senderLogin}`);
+    }
+  };
 
   // Проверка авторизации
   if (!currentUser) {
@@ -757,6 +929,33 @@ const Profile = () => {
           </UserInfo>
         </ProfileHeader>
 
+        {/* Секция баланса и реклама VIP (только для своего профиля) */}
+        {isOwnProfile && (
+          <>
+            <BalanceSection>
+              <BalanceTitle>💰 Ваш баланс</BalanceTitle>
+              <BalanceAmount>{profile.balance || 0} ₽</BalanceAmount>
+              <BalanceButton onClick={() => navigate('/subscriptions')}>
+                Пополнить баланс
+              </BalanceButton>
+            </BalanceSection>
+            
+            <VipAdSection>
+              <VipAdTitle>
+                👑 <CrownIcon />
+                Переходите на VIP!
+              </VipAdTitle>
+              <VipAdText>
+                Получите эксклюзивные возможности: больше лайков, 
+                приоритет в поиске, расширенная статистика и многое другое!
+              </VipAdText>
+              <VipAdButton onClick={() => navigate('/subscriptions')}>
+                Перейти к VIP
+              </VipAdButton>
+            </VipAdSection>
+          </>
+        )}
+
         {/* Кнопки действий (только для чужих профилей) */}
         {!isOwnProfile && (
           <ActionsContainer>
@@ -825,6 +1024,12 @@ const Profile = () => {
             onClick={() => setActiveTab('photos')}
           >
             Фотографии
+          </Tab>
+          <Tab
+            $active={activeTab === 'gifts'}
+            onClick={() => setActiveTab('gifts')}
+          >
+            🎁 Подарки {receivedGifts.length > 0 && `(${receivedGifts.length})`}
           </Tab>
           {isOwnProfile && (
             <Tab
@@ -988,6 +1193,75 @@ const Profile = () => {
                       <InfoItem>{profile.info}</InfoItem>
                     </InfoSection>
                   )}
+
+                  {/* Подарки (для всех профилей) */}
+                  {receivedGifts.length > 0 && (
+                    <InfoSection>
+                      <h3>🎁 Полученные подарки</h3>
+                      <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+                        gap: '15px',
+                        marginTop: '15px'
+                      }}>
+                        {receivedGifts.slice(0, 6).map((gift, index) => (
+                          <div key={index} style={{
+                            background: 'linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%)',
+                            border: '2px solid #fed7d7',
+                            borderRadius: '12px',
+                            padding: '15px',
+                            textAlign: 'center',
+                            transition: 'all 0.3s ease'
+                          }}>
+                            <div style={{ fontSize: '32px', marginBottom: '8px' }}>
+                              {GIFT_CONFIG[gift.gift_type]?.emoji || '🎁'}
+                            </div>
+                            <div style={{ 
+                              fontSize: '12px', 
+                              color: '#dc3522', 
+                              fontWeight: '600',
+                              marginBottom: '5px'
+                            }}>
+                              {GIFT_CONFIG[gift.gift_type]?.name || 'Подарок'}
+                            </div>
+                            {gift.message && (
+                              <div style={{ 
+                                fontSize: '11px', 
+                                color: '#4a5568', 
+                                fontStyle: 'italic',
+                                marginBottom: '5px'
+                              }}>
+                                "{gift.message}"
+                              </div>
+                            )}
+                            <div style={{ 
+                              fontSize: '10px', 
+                              color: '#718096'
+                            }}>
+                              {new Date(gift.created_at).toLocaleDateString('ru-RU')}
+                            </div>
+                          </div>
+                        ))}
+                        {receivedGifts.length > 6 && (
+                          <div style={{
+                            background: 'rgba(220, 53, 34, 0.1)',
+                            border: '2px dashed #dc3522',
+                            borderRadius: '12px',
+                            padding: '15px',
+                            textAlign: 'center',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer'
+                          }} onClick={() => setActiveTab('gifts')}>
+                            <div style={{ color: '#dc3522', fontSize: '14px', fontWeight: '600' }}>
+                              +{receivedGifts.length - 6} еще
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </InfoSection>
+                  )}
                   
                   {/* Комментарии к профилю */}
                   <div style={{ marginTop: '30px' }}>
@@ -1110,6 +1384,88 @@ const Profile = () => {
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'gifts' && (
+            <div>
+              <h3 style={{ marginBottom: '20px', color: '#2d3748' }}>
+                🎁 Подарки
+              </h3>
+              
+              {receivedGifts.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#718096' }}>
+                  <div style={{ fontSize: '64px', marginBottom: '20px', opacity: 0.5 }}>🎁</div>
+                  <h4 style={{ margin: '0 0 10px 0', color: '#2d3748' }}>
+                    {isOwnProfile ? 'Вы пока не получили подарков' : 'Пользователь пока не получил подарков'}
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '14px' }}>
+                    {isOwnProfile 
+                      ? 'Подарки появятся здесь, когда кто-то отправит их вам'
+                      : 'Подарки появятся здесь, когда кто-то отправит их пользователю'
+                    }
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* Статистика подарков */}
+                  <div style={{ 
+                    background: 'linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%)',
+                    border: '2px solid #fed7d7',
+                    borderRadius: '15px',
+                    padding: '20px',
+                    marginBottom: '25px',
+                    textAlign: 'center'
+                  }}>
+                    <h4 style={{ margin: '0 0 15px 0', color: '#dc3522' }}>
+                      📊 Статистика подарков
+                    </h4>
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', 
+                      gap: '15px'
+                    }}>
+                      <div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc3522' }}>
+                          {receivedGifts.length}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#4a5568' }}>Всего получено</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc3522' }}>
+                          {receivedGifts.filter(g => g.message).length}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#4a5568' }}>С сообщениями</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc3522' }}>
+                          {new Set(receivedGifts.map(g => g.from_user)).size}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#4a5568' }}>Отправителей</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Список подарков */}
+                  <Grid $columns="repeat(auto-fill, minmax(280px, 1fr))" $gap="20px">
+                    {receivedGifts.map((gift, index) => (
+                      <GiftCard key={index}>
+                        <GiftEmoji>{GIFT_CONFIG[gift.gift_type]?.emoji || '🎁'}</GiftEmoji>
+                        <GiftSender onClick={() => handleGiftSenderClick(gift.from_user)}>
+                          {gift.from_user}
+                        </GiftSender>
+                        <GiftMessage>{gift.message || 'Нет сообщения'}</GiftMessage>
+                        <p style={{ margin: '0 0 10px 0', color: '#4a5568', fontSize: '14px' }}>
+                          Тип: {GIFT_CONFIG[gift.gift_type]?.name || 'Неизвестный подарок'}
+                        </p>
+                        <p style={{ margin: '0 0 10px 0', color: '#4a5568', fontSize: '14px' }}>
+                          Дата: {new Date(gift.created_at).toLocaleDateString('ru-RU')}
+                        </p>
+                      </GiftCard>
+                    ))}
+                  </Grid>
+                </>
               )}
             </div>
           )}

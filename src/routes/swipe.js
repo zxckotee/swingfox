@@ -6,63 +6,68 @@ const { authenticateToken, requireVip } = require('../middleware/auth');
 const { generateId, calculateDistance, formatAge, parseGeo, formatOnlineTime } = require('../utils/helpers');
 const MatchChecker = require('../utils/matchChecker');
 const { APILogger } = require('../utils/logger');
+const compatibilityCalculator = require('../utils/compatibilityCalculator');
 const axios = require('axios');
 
 // Хранилище для истории слайдов пользователей (в продакшене использовать Redis)
 const userSlideHistory = new Map();
 
-// Умный алгоритм рекомендаций на основе рейтинга
+// Умный алгоритм рекомендаций на основе совместимости
 const getRecommendedProfile = async (currentUserId) => {
   const logger = new APILogger('SWIPE_RECOMMENDATIONS');
   
   try {
-    logger.logBusinessLogic(1, 'Запуск алгоритма рекомендаций', {
+    logger.logBusinessLogic(1, 'Запуск алгоритма рекомендаций на основе совместимости', {
       current_user: currentUserId
     });
 
-    // Получаем пользователей с высоким рейтингом (приоритет)
-    const highRatedUsers = await Rating.findAll({
-      attributes: [
-        'to_user',
-        [Rating.sequelize.fn('SUM', Rating.sequelize.col('value')), 'total_rating'],
-        [Rating.sequelize.fn('COUNT', Rating.sequelize.col('value')), 'total_votes']
-      ],
-      include: [
-        {
-          model: User,
-          as: 'rated',
-          attributes: ['login', 'ava', 'status', 'city', 'country', 'date', 'info', 'registration', 'online', 'viptype', 'geo'],
-          where: {
-            login: { [Op.ne]: currentUserId },
-            status: { [Op.ne]: 'BANNED' },
-            viptype: { [Op.ne]: 'FREE' }
-          }
-        }
-      ],
-      group: ['to_user', 'rated.login', 'rated.ava', 'rated.status', 'rated.city', 'rated.country', 'rated.date', 'rated.info', 'rated.registration', 'rated.online', 'rated.viptype', 'rated.geo'],
-      having: Rating.sequelize.literal('SUM(value) >= 3 AND COUNT(value) >= 3'), // Высокий рейтинг
-      order: [
-        [Rating.sequelize.fn('SUM', Rating.sequelize.col('value')), 'DESC']
-      ],
-      limit: 5
-    });
-
-    if (highRatedUsers.length > 0) {
-      // Возвращаем случайного пользователя из топ-5 по рейтингу
-      const randomIndex = Math.floor(Math.random() * highRatedUsers.length);
-      const selectedUser = highRatedUsers[randomIndex];
-      
-      logger.logResult('Выбран пользователь с высоким рейтингом', true, {
-        selected_user: selectedUser.rated.login,
-        rating: parseInt(selectedUser.get('total_rating')),
-        votes: parseInt(selectedUser.get('total_votes'))
-      });
-      
-      return selectedUser.rated;
+    // Получаем данные текущего пользователя
+    const currentUser = await User.findOne({ where: { login: currentUserId } });
+    if (!currentUser) {
+      logger.logError('Текущий пользователь не найден', { current_user: currentUserId });
+      return null;
     }
 
+    // Получаем кандидатов для свайпа (только VIP пользователи)
+    const candidates = await User.findAll({
+      where: {
+        login: { [Op.ne]: currentUserId },
+        status: { [Op.ne]: 'BANNED' },
+        viptype: { [Op.ne]: 'FREE' }
+      },
+      attributes: [
+        'id', 'login', 'ava', 'status', 'city', 'country', 'date', 'info', 
+        'registration', 'online', 'viptype', 'geo', 'search_status', 'search_age',
+        'height', 'weight', 'smoking', 'alko', 'location'
+      ],
+      limit: 20 // Берем больше кандидатов для лучшего выбора
+    });
+
+    if (candidates.length === 0) {
+      logger.logWarning('Нет доступных VIP пользователей', { current_user: currentUserId });
+      return null;
+    }
+
+    // Применяем систему рекомендаций
+    const usersWithCompatibility = compatibilityCalculator.sortByCompatibility(candidates, currentUser);
+    
+    // Получаем топ рекомендации с рандомизацией
+    const recommendedUsers = compatibilityCalculator.getTopRecommendations(candidates, currentUser, 5);
+
+    // Выбираем случайного пользователя из топ рекомендаций
+    const randomIndex = Math.floor(Math.random() * recommendedUsers.length);
+    const selectedUser = recommendedUsers[randomIndex];
+    
+    logger.logResult('Выбран пользователь на основе совместимости', true, {
+      selected_user: selectedUser.user.login,
+      compatibility_score: selectedUser.compatibility.totalScore,
+      total_candidates: candidates.length
+    });
+    
+    return selectedUser.user;
+
     // Fallback: любой VIP пользователь
-    logger.logWarning('Нет пользователей с высоким рейтингом, используем fallback', {
+    logger.logWarning('Нет доступных VIP пользователей, используем fallback', {
       current_user: currentUserId
     });
     
@@ -78,7 +83,7 @@ const getRecommendedProfile = async (currentUserId) => {
   } catch (error) {
     logger.logError('Ошибка в алгоритме рекомендаций', error);
     
-    // Fallback: обычный случайный выбор
+    // Fallback: обычный случайный выбор VIP пользователя
     return await User.findOne({
       where: {
         login: { [Op.ne]: currentUserId },

@@ -238,15 +238,15 @@ export const NotificationProvider = ({ children }) => {
             markNotificationAsRead(popup.id);
             if (navigate && typeof navigate === 'function') {
               try {
-                navigate(`/profiles/${username}`);
+                navigate(`/profile/${username}`);
               } catch (error) {
                 console.error('Navigation error:', error);
                 // Fallback: could redirect to a different page or show an error
-                window.location.href = `/profiles/${username}`;
+                window.location.href = `/profile/${username}`;
               }
             } else {
               // Fallback if navigate is not available
-              window.location.href = `/profiles/${username}`;
+              window.location.href = `/profile/${username}`;
             }
           }}
           autoCloseDelay={8000}

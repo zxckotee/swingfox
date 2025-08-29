@@ -696,4 +696,32 @@ router.get('/my/list', authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/clubs/my/ownership - Проверка владения активным клубом
+router.get('/my/ownership', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.login;
+    
+    const club = await Clubs.findOne({
+      where: {
+        owner: userId,
+        is_active: true
+      }
+    });
+    
+    res.json({
+      hasActiveClub: !!club,
+      club: club ? {
+        id: club.id,
+        name: club.name,
+        is_verified: club.is_verified
+      } : null
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'server_error',
+      message: 'Ошибка при проверке владения клубом'
+    });
+  }
+});
+
 module.exports = router;

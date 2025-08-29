@@ -17,7 +17,7 @@ import Chat from './pages/Chat';
 import Ads from './pages/Ads';
 import Admin from './pages/Admin';
 import Notifications from './pages/Notifications';
-import Gifts from './pages/Gifts';
+
 import Clubs from './pages/Clubs';
 import Subscriptions from './pages/Subscriptions';
 import Ratings from './pages/Ratings';
@@ -290,12 +290,7 @@ function App() {
                 </AuthGuard>
               } />
               
-              <Route path="/gifts" element={
-                <AuthGuard>
-                  <Navigation />
-                  <Gifts />
-                </AuthGuard>
-              } />
+
               
               <Route path="/clubs" element={
                 <AuthGuard>

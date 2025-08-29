@@ -783,13 +783,28 @@ export const giftsAPI = {
     return response.data;
   },
 
-  getReceivedGifts: async (limit = 20, offset = 0) => {
-    const params = new URLSearchParams({
-      limit: limit.toString(),
-      offset: offset.toString()
-    });
-    const response = await apiClient.get(`/gifts/received?${params.toString()}`);
-    return response.data;
+  getReceivedGifts: async (limit = 20, offset = 0, targetUser = null) => {
+    console.log('getReceivedGifts called with:', { limit, offset, targetUser });
+    
+    if (targetUser) {
+      // Используем новый роут для получения подарков конкретного пользователя
+      const url = `/gifts/received/${targetUser}?limit=${limit}&offset=${offset}`;
+      console.log('Calling API:', url);
+      const response = await apiClient.get(url);
+      console.log('API response:', response.data);
+      return response.data;
+    } else {
+      // Для текущего пользователя используем старый роут
+      const params = new URLSearchParams({
+        limit: limit.toString(),
+        offset: offset.toString()
+      });
+      const url = `/gifts?${params.toString()}`;
+      console.log('Calling API:', url);
+      const response = await apiClient.get(url);
+      console.log('API response:', response.data);
+      return response.data;
+    }
   },
 
   getSentGifts: async (limit = 20, offset = 0) => {
@@ -866,6 +881,11 @@ export const clubsAPI = {
       action,
       reason
     });
+    return response.data;
+  },
+
+  checkClubOwnership: async () => {
+    const response = await apiClient.get('/clubs/my/ownership');
     return response.data;
   }
 };

@@ -135,9 +135,19 @@ const NavContent = styled.div`
   justify-content: space-between;
   height: 70px;
   
+  @media (max-width: 1024px) {
+    padding: 0 18px;
+    height: 65px;
+  }
+  
   @media (max-width: 768px) {
     padding: 0 15px;
     height: 60px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 0 12px;
+    height: 55px;
   }
 `;
 
@@ -160,10 +170,22 @@ const LogoIcon = styled.div`
   font-size: 18px;
   box-shadow: 0 4px 15px rgba(220, 53, 34, 0.3);
   
+  @media (max-width: 1024px) {
+    width: 42px;
+    height: 42px;
+    font-size: 17px;
+  }
+  
   @media (max-width: 768px) {
     width: 40px;
     height: 40px;
     font-size: 16px;
+  }
+  
+  @media (max-width: 480px) {
+    width: 38px;
+    height: 38px;
+    font-size: 15px;
   }
 `;
 
@@ -175,8 +197,16 @@ const LogoText = styled.div`
   -webkit-text-fill-color: transparent;
   background-clip: text;
   
+  @media (max-width: 1024px) {
+    font-size: 22px;
+  }
+  
   @media (max-width: 768px) {
     font-size: 20px;
+  }
+  
+  @media (max-width: 480px) {
+    font-size: 18px;
   }
 `;
 
@@ -184,6 +214,10 @@ const NavLinks = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
+  
+  @media (max-width: 1024px) {
+    gap: 6px;
+  }
   
   @media (max-width: 768px) {
     display: none;
@@ -214,6 +248,18 @@ const NavLink = styled(Link)`
     background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
     color: white;
     box-shadow: 0 4px 15px rgba(220, 53, 34, 0.3);
+  }
+  
+  @media (max-width: 1024px) {
+    padding: 10px 14px;
+    font-size: 14px;
+    gap: 6px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 8px 12px;
+    font-size: 13px;
+    gap: 5px;
   }
 `;
 
@@ -337,6 +383,11 @@ const MobileMenu = styled.div`
   
   @media (max-width: 768px) {
     display: ${props => props.$show ? 'block' : 'none'};
+    padding: 18px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 15px;
   }
 `;
 
@@ -363,6 +414,12 @@ const MobileNavLink = styled(Link)`
   &:hover:not(.active) {
     background: #f7fafc;
     text-decoration: none;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 14px;
+    gap: 10px;
+    font-size: 14px;
   }
 `;
 
@@ -557,13 +614,7 @@ const Navigation = () => {
             <NotificationCounter />
           </NavLink>
           
-          <NavLink
-            to="/gifts"
-            className={isActiveRoute('/gifts') ? 'active' : ''}
-          >
-            <GiftIcon />
-            Подарки
-          </NavLink>
+
           
           <NavLink
             to="/clubs"
@@ -690,14 +741,7 @@ const Navigation = () => {
           <NotificationCounter />
         </MobileNavLink>
         
-        <MobileNavLink
-          to="/gifts"
-          className={isActiveRoute('/gifts') ? 'active' : ''}
-          onClick={() => setShowMobileMenu(false)}
-        >
-          <GiftIcon />
-          Подарки
-        </MobileNavLink>
+
         
         <MobileNavLink
           to="/clubs"

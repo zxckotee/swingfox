@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { useForm } from 'react-hook-form';
 import styled from 'styled-components';
 import toast from 'react-hot-toast';
-import { adsAPI, apiUtils } from '../services/api';
+import { adsAPI, apiUtils, clubsAPI } from '../services/api';
 import { LocationSelector, CitySelector } from '../components/Geography';
 import {
   PageContainer,
@@ -463,6 +463,18 @@ const Ads = () => {
   const queryClient = useQueryClient();
   const currentUser = apiUtils.getCurrentUser();
 
+  // Проверка владения клубом
+  const { data: clubOwnership } = useQuery(
+    ['club-ownership'],
+    clubsAPI.checkClubOwnership,
+    {
+      retry: false,
+      onError: () => {
+        // Пользователь не владеет клубом
+      }
+    }
+  );
+
   const {
     register,
     handleSubmit,
@@ -608,14 +620,25 @@ const Ads = () => {
     setSelectedImage(file);
   };
 
-  const adTypes = [
-    { value: 'Встречи', label: 'Встречи', icon: '👥' },
-    { value: 'Знакомства', label: 'Знакомства', icon: '💕' },
-    { value: 'Вечеринки', label: 'Вечеринки', icon: '🎉' },
-    { value: 'Мероприятия', label: 'Мероприятия', icon: '🎪' },
-    { value: 'Общение', label: 'Общение', icon: '💬' },
-    { value: 'Все', label: 'Все', icon: '📋' }
-  ];
+  // Фильтрация типов объявлений на основе прав пользователя
+  const adTypes = useMemo(() => {
+    const baseTypes = [
+      { value: 'Встречи', label: 'Встречи', icon: '👥' },
+      { value: 'Знакомства', label: 'Знакомства', icon: '💕' },
+      { value: 'Вечеринки', label: 'Вечеринки', icon: '🎉' },
+      { value: 'Общение', label: 'Общение', icon: '💬' }
+    ];
+    
+    // Добавляем "Мероприятия" только если пользователь владеет активным клубом
+    if (clubOwnership?.hasActiveClub) {
+      baseTypes.push({ value: 'Мероприятия', label: 'Мероприятия', icon: '🎪' });
+    }
+    
+    // Добавляем "Все" в конец
+    baseTypes.push({ value: 'Все', label: 'Все', icon: '📋' });
+    
+    return baseTypes;
+  }, [clubOwnership]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
