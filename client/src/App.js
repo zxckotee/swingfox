@@ -225,6 +225,8 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      staleTime: 30000, // Данные считаются свежими 30 секунд по умолчанию
+      cacheTime: 5 * 60 * 1000, // Кэш хранится 5 минут
     },
   },
 });

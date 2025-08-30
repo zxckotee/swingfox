@@ -454,6 +454,16 @@ export const swipeAPI = {
     return response.data;
   },
 
+  getProfilesBatch: async (count = 10, exclude = []) => {
+    const params = new URLSearchParams();
+    params.append('count', count);
+    if (exclude.length > 0) {
+      params.append('exclude', exclude.join(','));
+    }
+    const response = await apiClient.get(`/swipe/profiles/batch?${params.toString()}`);
+    return response.data;
+  },
+
   like: async (targetUser, source = 'gesture') => {
     const response = await apiClient.post('/swipe/like', {
       target_user: targetUser,
@@ -481,6 +491,17 @@ export const swipeAPI = {
   getSuperlikes: async () => {
     const response = await apiClient.get('/swipe/superlike-count');
     return response.data;
+  },
+
+  // Проверка существующего мэтча с пользователем
+  checkExistingMatch: async (targetUser) => {
+    try {
+      const response = await apiClient.get(`/chat/match-status/${targetUser}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error checking existing match:', error);
+      return { hasMatch: false };
+    }
   }
 };
 

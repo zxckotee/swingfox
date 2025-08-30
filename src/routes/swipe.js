@@ -12,6 +12,20 @@ const axios = require('axios');
 // Хранилище для истории слайдов пользователей (в продакшене использовать Redis)
 const userSlideHistory = new Map();
 
+// Кэш для профилей (в продакшене использовать Redis)
+const profileCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 минут
+
+// Очистка кэша каждые 5 минут
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of profileCache.entries()) {
+    if (now - value.timestamp > CACHE_TTL) {
+      profileCache.delete(key);
+    }
+  }
+}, CACHE_TTL);
+
 // Умный алгоритм рекомендаций на основе совместимости
 const getRecommendedProfile = async (currentUserId) => {
   const logger = new APILogger('SWIPE_RECOMMENDATIONS');
@@ -28,70 +42,44 @@ const getRecommendedProfile = async (currentUserId) => {
       return null;
     }
 
-    // Получаем кандидатов для свайпа (только VIP пользователи)
-    const candidates = await User.findAll({
+    // Простая загрузка случайного пользователя
+    const targetUser = await User.findOne({
       where: {
         login: { [Op.ne]: currentUserId },
-        status: { [Op.ne]: 'BANNED' },
-        viptype: { [Op.ne]: 'FREE' }
-      },
-      attributes: [
-        'id', 'login', 'ava', 'status', 'city', 'country', 'date', 'info', 
-        'registration', 'online', 'viptype', 'geo', 'search_status', 'search_age',
-        'height', 'weight', 'smoking', 'alko', 'location'
-      ],
-      limit: 20 // Берем больше кандидатов для лучшего выбора
-    });
-
-    if (candidates.length === 0) {
-      logger.logWarning('Нет доступных VIP пользователей', { current_user: currentUserId });
-      return null;
-    }
-
-    // Применяем систему рекомендаций
-    const usersWithCompatibility = compatibilityCalculator.sortByCompatibility(candidates, currentUser);
-    
-    // Получаем топ рекомендации с рандомизацией
-    const recommendedUsers = compatibilityCalculator.getTopRecommendations(candidates, currentUser, 5);
-
-    // Выбираем случайного пользователя из топ рекомендаций
-    const randomIndex = Math.floor(Math.random() * recommendedUsers.length);
-    const selectedUser = recommendedUsers[randomIndex];
-    
-    logger.logResult('Выбран пользователь на основе совместимости', true, {
-      selected_user: selectedUser.user.login,
-      compatibility_score: selectedUser.compatibility.totalScore,
-      total_candidates: candidates.length
-    });
-    
-    return selectedUser.user;
-
-    // Fallback: любой VIP пользователь
-    logger.logWarning('Нет доступных VIP пользователей, используем fallback', {
-      current_user: currentUserId
-    });
-    
-    return await User.findOne({
-      where: {
-        login: { [Op.ne]: currentUserId },
-        status: { [Op.ne]: 'BANNED' },
-        viptype: { [Op.ne]: 'FREE' }
+        status: { [Op.ne]: 'BANNED' }
+        // Убираем ограничение на VIP пользователей
       },
       order: User.sequelize.random()
     });
+
+    if (targetUser) {
+      logger.logResult('Выбран пользователь', true, {
+        selected_user: targetUser.login,
+        total_candidates: 1
+      });
+      return targetUser;
+    }
+
+    logger.logWarning('Нет доступных VIP пользователей', { current_user: currentUserId });
+    return null;
 
   } catch (error) {
     logger.logError('Ошибка в алгоритме рекомендаций', error);
     
     // Fallback: обычный случайный выбор VIP пользователя
-    return await User.findOne({
-      where: {
-        login: { [Op.ne]: currentUserId },
-        status: { [Op.ne]: 'BANNED' },
-        viptype: { [Op.ne]: 'FREE' }
-      },
-      order: User.sequelize.random()
-    });
+    try {
+      return await User.findOne({
+        where: {
+          login: { [Op.ne]: currentUserId },
+          status: { [Op.ne]: 'BANNED' },
+          viptype: { [Op.ne]: 'FREE' }
+        },
+        order: User.sequelize.random()
+      });
+    } catch (fallbackError) {
+      logger.logError('Ошибка в fallback алгоритме', fallbackError);
+      return null;
+    }
   }
 };
 
@@ -133,7 +121,7 @@ router.get('/profiles', authenticateToken, async (req, res) => {
       const targetLogin = history[history.length - 2];
       targetUser = await User.findOne({ where: { login: targetLogin } });
     } else {
-      // Получение нового профиля с помощью умного алгоритма рекомендаций
+      // Простое получение нового профиля
       targetUser = await getRecommendedProfile(userId);
     }
 
@@ -141,6 +129,15 @@ router.get('/profiles', authenticateToken, async (req, res) => {
       return res.status(404).json({ 
         error: 'no_profiles',
         message: 'Нет доступных профилей' 
+      });
+    }
+    
+    // Проверяем, что у нас есть все необходимые поля
+    if (!targetUser.login || !targetUser.ava) {
+      console.warn('Обнаружен неполный профиль в основном endpoint:', targetUser);
+      return res.status(500).json({ 
+        error: 'invalid_profile',
+        message: 'Профиль содержит неполные данные' 
       });
     }
 
@@ -178,10 +175,12 @@ router.get('/profiles', authenticateToken, async (req, res) => {
       age,
       status: targetUser.status,
       city: targetUser.city,
+      country: targetUser.country,
       distance,
       registration: targetUser.registration,
       info: targetUser.info,
-      online: onlineStatus
+      online: onlineStatus,
+      viptype: targetUser.viptype
     };
 
     // Добавляем данные партнера для пар
@@ -204,10 +203,173 @@ router.get('/profiles', authenticateToken, async (req, res) => {
     if (targetUser.search_age) profileData.searchAge = targetUser.search_age;
     if (targetUser.location) profileData.location = targetUser.location;
 
+    // Добавляем информацию о совместимости
+    try {
+      const compatibility = compatibilityCalculator.calculateCompatibility(currentUser, targetUser);
+      profileData.compatibility = compatibility;
+    } catch (compatibilityError) {
+      // Игнорируем ошибки расчета совместимости
+      console.warn('Ошибка расчета совместимости:', compatibilityError);
+      // Добавляем пустую совместимость
+      profileData.compatibility = {
+        totalScore: 0.5,
+        scores: {},
+        weights: {},
+        recommendations: ['Совместимость не рассчитана']
+      };
+    }
+    
+    // Проверяем, что профиль не пустой
+    if (!profileData.login || !profileData.ava) {
+      console.warn('Обнаружен пустой профиль в основном endpoint:', profileData.login);
+    }
+
     res.json(profileData);
 
   } catch (error) {
     console.error('Get profiles error:', error);
+    res.status(500).json({ 
+      error: 'server_error',
+      message: 'Ошибка при получении профилей' 
+    });
+  }
+});
+
+// GET /api/swipe/profiles/batch - Массовая загрузка профилей для предзагрузки
+router.get('/profiles/batch', authenticateToken, async (req, res) => {
+  try {
+    const { count = 10 } = req.query; // Убираем exclude параметр
+    const userId = req.user.login;
+    const profiles = [];
+
+    // Получаем данные текущего пользователя
+    const currentUser = await User.findOne({ where: { login: userId } });
+    if (!currentUser) {
+      return res.status(404).json({ 
+        error: 'user_not_found',
+        message: 'Пользователь не найден' 
+      });
+    }
+
+    // Простая загрузка профилей без сложной логики рекомендаций
+    const allCandidates = await User.findAll({
+      where: {
+        login: { [Op.ne]: userId }, // Исключаем только текущего пользователя
+        status: { [Op.ne]: 'BANNED' },
+        viptype: { [Op.ne]: 'FREE' }
+      },
+      attributes: [
+        'id', 'login', 'ava', 'status', 'city', 'country', 'date', 'info', 
+        'registration', 'online', 'viptype', 'geo', 'search_status', 'search_age',
+        'height', 'weight', 'smoking', 'alko', 'location'
+      ],
+      order: User.sequelize.random() // Случайный порядок
+    });
+
+    if (allCandidates.length === 0) {
+      return res.status(404).json({ 
+        error: 'no_profiles',
+        message: 'Нет доступных VIP профилей' 
+      });
+    }
+
+    // Выбираем случайные анкеты (разрешаем дублирование)
+    let selectedUsers = [];
+    for (let i = 0; i < count; i++) {
+      const randomIndex = Math.floor(Math.random() * allCandidates.length);
+      selectedUsers.push(allCandidates[randomIndex]);
+    }
+
+    // Формируем ответ для каждого профиля
+    for (const targetUser of selectedUsers) {
+      // Проверяем, что у нас есть все необходимые поля
+      if (!targetUser || !targetUser.login || !targetUser.ava) {
+        continue;
+      }
+      
+      // Вычисляем расстояние
+      const currentGeo = parseGeo(currentUser.geo);
+      const targetGeo = parseGeo(targetUser.geo);
+      const distance = currentGeo && targetGeo ? 
+        calculateDistance(currentGeo.lat, currentGeo.lng, targetGeo.lat, targetGeo.lng) : 
+        null;
+
+      // Форматируем возраст
+      const age = targetUser.date ? formatAge(targetUser.date) : null;
+
+      // Форматируем время онлайн
+      const onlineTime = targetUser.online ? formatOnlineTime(targetUser.online) : null;
+
+      // Проверяем, является ли пара
+      const isCouple = targetUser.status === 'Семейная пара(М+Ж)' || targetUser.status === 'Несемейная пара(М+Ж)';
+      let partnerData = null;
+      
+      if (isCouple && targetUser.info) {
+        try {
+          const infoData = JSON.parse(targetUser.info);
+          if (infoData.manDate && infoData.womanDate) {
+            partnerData = {
+              manDate: infoData.manDate,
+              womanDate: infoData.womanDate
+            };
+          }
+        } catch (e) {
+          // Игнорируем ошибки парсинга
+        }
+      }
+
+      // Простой расчет совместимости
+      let compatibility = {
+        totalScore: 0.5,
+        scores: {},
+        weights: {},
+        recommendations: ['Совместимость рассчитана']
+      };
+
+      try {
+        compatibility = compatibilityCalculator.calculateCompatibility(currentUser, targetUser);
+      } catch (error) {
+        // Игнорируем ошибки расчета совместимости
+      }
+
+      profiles.push({
+        id: targetUser.id,
+        login: targetUser.login,
+        ava: targetUser.ava,
+        status: targetUser.status,
+        city: targetUser.city,
+        country: targetUser.country,
+        distance: distance ? Math.round(distance) : null,
+        age: age,
+        info: targetUser.info,
+        online: onlineTime,
+        viptype: targetUser.viptype,
+        isCouple: isCouple,
+        partnerData: partnerData,
+        height: targetUser.height,
+        weight: targetUser.weight,
+        smoking: targetUser.smoking,
+        alko: targetUser.alko,
+        search_status: targetUser.search_status,
+        search_age: targetUser.search_age,
+        location: targetUser.location,
+        registration: targetUser.registration,
+        compatibility: compatibility
+      });
+    }
+
+    // Проверяем, что у нас есть хотя бы один профиль
+    if (profiles.length === 0) {
+      return res.status(404).json({ 
+        error: 'no_profiles',
+        message: 'Не удалось загрузить профили' 
+      });
+    }
+
+    res.json(profiles);
+
+  } catch (error) {
+    console.error('Batch profiles error:', error);
     res.status(500).json({ 
       error: 'server_error',
       message: 'Ошибка при получении профилей' 

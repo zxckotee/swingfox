@@ -106,9 +106,9 @@ export const NotificationProvider = ({ children }) => {
     {
       refetchInterval: 10000,
       enabled: isRouterReady && isAuthenticated, // Не запускаем запросы пока роутер не готов И пользователь авторизован
-      onSuccess: (data) => {
+      onSuccess: async (data) => {
         if (data?.notifications) {
-          checkForNewMatchNotifications(data.notifications);
+          await checkForNewMatchNotifications(data.notifications);
         }
       },
       onError: (error) => {
@@ -121,7 +121,7 @@ export const NotificationProvider = ({ children }) => {
     }
   );
 
-  const checkForNewMatchNotifications = (notifications) => {
+  const checkForNewMatchNotifications = async (notifications) => {
     const now = Date.now();
     const recentTime = now - (2 * 60 * 1000); // Последние 2 минуты
     
@@ -136,18 +136,50 @@ export const NotificationProvider = ({ children }) => {
     });
 
     if (newMatchNotifications.length > 0) {
-      newMatchNotifications.forEach(notification => {
-        showMatchPopup(notification);
-      });
+      // Проверяем каждый мэтч на существование
+      for (const notification of newMatchNotifications) {
+        try {
+          const { chatAPI } = await import('../services/api');
+          const matchStatus = await chatAPI.getMatchStatus(notification.from_user);
+          
+          // Показываем попап только если мэтча еще не было
+          if (!matchStatus.hasMatch) {
+            await showMatchPopup(notification);
+          } else {
+            console.log('Match already exists with', notification.from_user, 'skipping notification popup');
+          }
+        } catch (error) {
+          console.error('Error checking existing match for notification:', error);
+          // В случае ошибки показываем попап для безопасности
+          await showMatchPopup(notification);
+        }
+      }
       setLastChecked(now);
     }
   };
 
-  const showMatchPopup = (notification) => {
+  const showMatchPopup = async (notification) => {
     // Не показываем попапы пока роутер не готов или пользователь не авторизован
     if (!isRouterReady || !isAuthenticated) {
       console.log('Router not ready or user not authenticated, skipping popup:', notification.id);
       return;
+    }
+
+    // Проверяем, не было ли уже мэтча с этим пользователем
+    if (notification.type === 'match' && notification.from_user) {
+      try {
+        const { chatAPI } = await import('../services/api');
+        const matchStatus = await chatAPI.getMatchStatus(notification.from_user);
+        
+        // Если мэтч уже существует, не показываем попап
+        if (matchStatus.hasMatch) {
+          console.log('Match already exists with', notification.from_user, 'skipping popup:', notification.id);
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking existing match in showMatchPopup:', error);
+        // В случае ошибки продолжаем показ попапа для безопасности
+      }
     }
 
     const popup = {
@@ -179,11 +211,26 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
-  const showCustomMatchPopup = (matchData) => {
+  const showCustomMatchPopup = async (matchData) => {
     // Не показываем попапы пока роутер не готов или пользователь не авторизован
     if (!isRouterReady || !isAuthenticated) {
       console.log('Router not ready or user not authenticated, skipping custom popup');
       return;
+    }
+
+    // Проверяем, не было ли уже мэтча с этим пользователем
+    try {
+      const { chatAPI } = await import('../services/api');
+      const matchStatus = await chatAPI.getMatchStatus(matchData.username);
+      
+      // Если мэтч уже существует, не показываем попап
+      if (matchStatus.hasMatch) {
+        console.log('Match already exists with', matchData.username, 'skipping popup');
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking existing match in popup:', error);
+      // В случае ошибки продолжаем показ попапа для безопасности
     }
 
     const notification = {
@@ -198,7 +245,7 @@ export const NotificationProvider = ({ children }) => {
       priority: 'high'
     };
 
-    showMatchPopup(notification);
+    await showMatchPopup(notification);
   };
 
   const contextValue = {

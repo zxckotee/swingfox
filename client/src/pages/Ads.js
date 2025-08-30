@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import toast from 'react-hot-toast';
 import { adsAPI, apiUtils, clubsAPI } from '../services/api';
@@ -451,6 +452,7 @@ const ImageUpload = ({ image, onImageChange, error }) => {
 };
 
 const Ads = () => {
+  const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [editingAd, setEditingAd] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
@@ -606,7 +608,7 @@ const Ads = () => {
   };
 
   const handleContact = (authorLogin) => {
-    window.open(`/chat/${authorLogin}`, '_blank');
+    navigate(`/chat/${authorLogin}`);
   };
 
   const handleCloseModal = () => {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { Link } from 'react-router-dom'; // Добавляем импорт Link
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -350,12 +351,12 @@ const ActionButton = styled(IconButton)`
   }
   
   &.superlike {
-    background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+    background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
     
     &:hover:not(:disabled) {
-      background: linear-gradient(135deg, #dd6b20 0%, #c05621 100%);
+      background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
       transform: scale(1.15) translateY(-3px);
-      box-shadow: 0 12px 35px rgba(237, 137, 54, 0.4);
+      box-shadow: 0 12px 35px rgba(246, 173, 85, 0.4);
     }
     
     &:active {
@@ -376,7 +377,7 @@ const ActionButton = styled(IconButton)`
       transform: scale(0.95);
     }
   }
-  
+    
   @media (max-width: 768px) {
     width: 55px;
     height: 55px;
@@ -453,6 +454,29 @@ const SwipeHint = styled.div`
   }
 `;
 
+// Добавляем стилизованный компонент для кликабельного никнейма
+const ClickableUsername = styled(Link)`
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 6px 0;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  color: white;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: block;
+  
+  &:hover {
+    color: #ffd700;
+    text-shadow: 0 2px 8px rgba(255, 215, 0, 0.5);
+    transform: scale(1.02);
+  }
+  
+  @media (max-width: 768px) {
+    font-size: 20px;
+  }
+`;
+
 const Home = () => {
   const [currentProfile, setCurrentProfile] = useState(null);
   const [showHint, setShowHint] = useState(false);
@@ -461,6 +485,11 @@ const Home = () => {
   const [swipeDirection, setSwipeDirection] = useState(null); // 'left' для дизлайка, 'right' для лайка
   const [profileQueue, setProfileQueue] = useState([]); // Очередь предзагруженных профилей
   const [isPreloading, setIsPreloading] = useState(false); // Флаг предзагрузки
+  
+  // Добавляем состояние для истории профилей
+  const [profileHistory, setProfileHistory] = useState([]); // История предыдущих профилей (максимум 3)
+  const [historyIndex, setHistoryIndex] = useState(-1); // Индекс в истории (-1 = нет истории)
+  
   const queryClient = useQueryClient();
   const currentUser = apiUtils.getCurrentUser();
   const { showMatchPopup } = useNotifications();
@@ -485,75 +514,103 @@ const Home = () => {
     }
   };
 
+  // Функция для добавления профиля в историю
+  const addToHistory = (profile) => {
+    if (!profile) return;
+    
+    setProfileHistory(prev => {
+      const newHistory = [...prev, profile];
+      // Ограничиваем историю 3 профилями
+      if (newHistory.length > 3) {
+        return newHistory.slice(-3);
+      }
+      return newHistory;
+    });
+    setHistoryIndex(prev => Math.min(prev + 1, 2)); // Максимум индекс 2 (3 профиля)
+    
+    // Отладочная информация
+    console.log('Добавлен в историю:', profile.login, 'История:', profileHistory.length + 1);
+  };
+
   // Функция предзагрузки профилей
-  const preloadProfiles = async (count = 3) => {
+  const preloadProfiles = async (count = 10) => {
     if (isPreloading) return;
     
     setIsPreloading(true);
     
-    // Запускаем предзагрузку в фоне
-    setTimeout(async () => {
-      try {
-        const profiles = [];
-        for (let i = 0; i < count; i++) {
-          try {
-            const profile = await swipeAPI.getProfiles('forward');
-            if (profile) {
-              profiles.push(profile);
-            }
-          } catch (error) {
-            // Игнорируем ошибки при предзагрузке
-            break;
-          }
+    try {
+      // Не исключаем уже просмотренные анкеты, разрешаем дублирование
+      
+      // Загружаем профили одним batch запросом
+      const newProfiles = await swipeAPI.getProfilesBatch(count, []);
+      
+      if (newProfiles && newProfiles.length > 0) {
+        if (profileQueue.length === 0 && !currentProfile) {
+          // Если нет текущего профиля, первый становится текущим
+          setCurrentProfile(newProfiles[0]);
+          setProfileQueue(newProfiles.slice(1));
+        } else {
+          // Иначе добавляем в очередь
+          setProfileQueue(prev => [...prev, ...newProfiles]);
         }
-        
-        if (profiles.length > 0) {
-          setProfileQueue(prev => [...prev, ...profiles]);
-        }
-      } catch (error) {
-        // Игнорируем ошибки предзагрузки
-      } finally {
-        setIsPreloading(false);
       }
-    }, 100); // Небольшая задержка для неблокирующей работы
+    } catch (error) {
+      // Игнорируем ошибки предзагрузки, но логируем для отладки
+      console.warn('Ошибка предзагрузки профилей:', error);
+    } finally {
+      setIsPreloading(false);
+    }
   };
 
   // Функция получения следующего профиля
   const getNextProfile = () => {
     if (profileQueue.length > 0) {
+      // Сохраняем текущий профиль в историю
+      if (currentProfile) {
+        addToHistory(currentProfile);
+      }
+      
       // Берем профиль из очереди
       const nextProfile = profileQueue[0];
+      
+      // Мгновенно обновляем состояние
       setProfileQueue(prev => prev.slice(1));
       setCurrentProfile(nextProfile);
       
-      // Если в очереди осталось 2 профиля, подгружаем еще 3
-      if (profileQueue.length <= 2) {
-        preloadProfiles(3);
+      // Если в очереди осталось 3 профиля, подгружаем еще 10
+      if (profileQueue.length <= 3) {
+        preloadProfiles(10);
       }
       
       return nextProfile;
     } else {
-      // Если очередь пуста, делаем обычный refetch
-      refetch();
-      return null;
+      // Если очередь пуста, загружаем новую партию и возвращаем текущий профиль
+      // чтобы анимация не сломалась
+      preloadProfiles(10);
+      return currentProfile; // Возвращаем текущий профиль вместо null
     }
   };
 
-  // Получение профилей
-  const { data: profile, isLoading, refetch } = useQuery(
-    'current-profile',
-    () => swipeAPI.getProfiles('forward'),
+  // Получение профилей - теперь загружаем batch сразу
+  const { data: initialProfiles, isLoading, refetch } = useQuery(
+    'initial-profiles',
+    () => swipeAPI.getProfilesBatch(10, []), // Не исключаем анкеты
     {
       onSuccess: (data) => {
-        setCurrentProfile(data);
-        setSwipeDirection(null);
-        
-        // Запускаем предзагрузку после получения первого профиля
-        if (profileQueue.length === 0) {
-          preloadProfiles(5);
+        if (data && data.length > 0) {
+          // Первый профиль становится текущим
+          setCurrentProfile(data[0]);
+          // Остальные идут в очередь
+          setProfileQueue(data.slice(1));
+          // Запускаем предзагрузку следующей партии
+          preloadProfiles(10);
+        } else {
+          setCurrentProfile(null);
         }
+        setSwipeDirection(null);
       },
       onError: (error) => {
+        console.error('Error loading initial profiles:', error);
         if (error.response?.data?.error === 'no_profiles') {
           setCurrentProfile(null);
         } else {
@@ -568,31 +625,53 @@ const Home = () => {
   const likeMutation = useMutation(
     ({ targetUser, source }) => swipeAPI.like(targetUser, source),
     {
-      onSuccess: (data) => {
+      onSuccess: async (data) => {
         if (data.result === 'reciprocal_like' || data.match_created) {
-          // Показываем специальный попап для мэтча
+          // Проверяем, не было ли уже мэтча с этим пользователем
           if (currentProfile) {
-            showMatchPopup({
-              username: currentProfile.login,
-              userData: {
-                avatar: currentProfile.ava,
-                login: currentProfile.login
+            try {
+              const matchStatus = await swipeAPI.checkExistingMatch(currentProfile.login);
+              
+              // Показываем попап только если мэтча еще не было
+              if (!matchStatus.hasMatch) {
+                showMatchPopup({
+                  username: currentProfile.login,
+                  userData: {
+                    avatar: currentProfile.ava,
+                    login: currentProfile.login
+                  }
+                });
+                toast.success('Взаимная симпатия! 💕', { duration: 6000 });
+              } else {
+                toast.success('Лайк отправлен! 💖');
               }
-            });
+            } catch (error) {
+              console.error('Error checking existing match:', error);
+              // В случае ошибки показываем попап для безопасности
+              showMatchPopup({
+                username: currentProfile.login,
+                userData: {
+                  avatar: currentProfile.ava,
+                  login: currentProfile.login
+                }
+              });
+              toast.success('Взаимная симпатия! 💕', { duration: 6000 });
+            }
           }
-          toast.success('Взаимная симпатия! 💕', { duration: 6000 });
         } else {
           toast.success('Лайк отправлен! 💖');
         }
-        // Получаем следующий профиль после завершения анимации
-        setTimeout(() => {
-          setSwipeDirection(null); // Сбрасываем направление
-          getNextProfile();
-        }, 400);
+        // Мгновенно получаем следующий профиль
+        setSwipeDirection(null);
+        const nextProfile = getNextProfile();
+        if (!nextProfile) {
+          // Если нет следующего профиля, сбрасываем направление
+          setSwipeDirection(null);
+        }
       },
       onError: (error) => {
         toast.error(apiUtils.handleError(error));
-        setSwipeDirection(null); // Сбрасываем направление при ошибке
+        setSwipeDirection(null);
       }
     }
   );
@@ -601,15 +680,13 @@ const Home = () => {
     ({ targetUser, source }) => swipeAPI.dislike(targetUser, source),
     {
       onSuccess: () => {
-        // Получаем следующий профиль после завершения анимации
-        setTimeout(() => {
-          setSwipeDirection(null); // Сбрасываем направление
-          getNextProfile();
-        }, 400);
+        // Мгновенно получаем следующий профиль
+        setSwipeDirection(null);
+        getNextProfile();
       },
       onError: (error) => {
         toast.error(apiUtils.handleError(error));
-        setSwipeDirection(null); // Сбрасываем направление при ошибке
+        setSwipeDirection(null);
       }
     }
   );
@@ -617,28 +694,47 @@ const Home = () => {
   const superlikeMutation = useMutation(
     ({ targetUser, message }) => swipeAPI.superlike({ targetUser, message }),
     {
-      onSuccess: (data) => {
+      onSuccess: async (data) => {
         setShowSuperlikeModal(false);
         setSuperlikeMessage('');
         
         // Суперлайки часто создают мэтчи - показываем попап если есть
         if (currentProfile && (data.result === 'reciprocal_like' || data.match_created)) {
-          showMatchPopup({
-            username: currentProfile.login,
-            userData: {
-              avatar: currentProfile.ava,
-              login: currentProfile.login
+          try {
+            const matchStatus = await swipeAPI.checkExistingMatch(currentProfile.login);
+            
+            // Показываем попап только если мэтча еще не было
+            if (!matchStatus.hasMatch) {
+              showMatchPopup({
+                username: currentProfile.login,
+                userData: {
+                  avatar: currentProfile.ava,
+                  login: currentProfile.login
+                }
+              });
+              toast.success('Взаимная симпатия! 💕', { duration: 6000 });
+            } else {
+              toast.success('Суперлайк отправлен! ⭐');
             }
-          });
-          toast.success('Взаимная симпатия! 💕', { duration: 6000 });
+          } catch (error) {
+            console.error('Error checking existing match:', error);
+            // В случае ошибки показываем попап для безопасности
+            showMatchPopup({
+              username: currentProfile.login,
+              userData: {
+                avatar: currentProfile.ava,
+                login: currentProfile.login
+              }
+            });
+            toast.success('Взаимная симпатия! 💕', { duration: 6000 });
+          }
         } else {
           toast.success('Суперлайк отправлен! ⭐');
         }
         
-        setTimeout(() => {
-          setSwipeDirection(null); // Сбрасываем направление
-          getNextProfile();
-        }, 400);
+        // Мгновенно получаем следующий профиль
+        setSwipeDirection(null);
+        getNextProfile();
       },
       onError: (error) => {
         toast.error(apiUtils.handleError(error));
@@ -668,33 +764,23 @@ const Home = () => {
   // Обработчики действий
   const handleLike = () => {
     if (currentProfile) {
-      // Небольшая задержка для визуального отклика кнопки
-      setTimeout(() => {
-        setSwipeDirection('right');
-        // Запускаем анимацию свайпа вправо
-        setTimeout(() => {
-          likeMutation.mutate({
-            targetUser: currentProfile.login,
-            source: 'button'
-          });
-        }, 300); // Задержка для завершения анимации
-      }, 100);
+      setSwipeDirection('right');
+      // Мгновенно отправляем лайк
+      likeMutation.mutate({
+        targetUser: currentProfile.login,
+        source: 'button'
+      });
     }
   };
 
   const handleDislike = () => {
     if (currentProfile) {
-      // Небольшая задержка для визуального отклика кнопки
-      setTimeout(() => {
-        setSwipeDirection('left');
-        // Запускаем анимацию свайпа влево
-        setTimeout(() => {
-          dislikeMutation.mutate({
-            targetUser: currentProfile.login,
-            source: 'button'
-          });
-        }, 300); // Задержка для завершения анимации
-      }, 100);
+      setSwipeDirection('left');
+      // Мгновенно отправляем дизлайк
+      dislikeMutation.mutate({
+        targetUser: currentProfile.login,
+        source: 'button'
+      });
     }
   };
 
@@ -718,16 +804,28 @@ const Home = () => {
     setSuperlikeMessage('');
   };
 
-  const handleBack = async () => {
-    try {
-      const data = await swipeAPI.getProfiles('back');
-      setCurrentProfile(data);
-      // При возврате назад также запускаем предзагрузку
-      if (profileQueue.length <= 2) {
-        preloadProfiles(3);
+  const handleBack = () => {
+    if (historyIndex >= 0 && profileHistory.length > 0) {
+      // Сохраняем текущий профиль в начало очереди
+      if (currentProfile) {
+        setProfileQueue(prev => [currentProfile, ...prev]);
       }
-    } catch (error) {
-      toast.error(apiUtils.handleError(error));
+      
+      // Берем предыдущий профиль из истории
+      const previousProfile = profileHistory[historyIndex];
+      setCurrentProfile(previousProfile);
+      
+      // Уменьшаем индекс истории
+      setHistoryIndex(prev => prev - 1);
+      
+      // Удаляем профиль из истории (так как он теперь текущий)
+      setProfileHistory(prev => prev.slice(0, historyIndex));
+      
+      // Отладочная информация
+      console.log('Возврат к профилю:', previousProfile.login, 'Индекс истории:', historyIndex - 1);
+    } else {
+      toast.error('Нет предыдущих профилей');
+      console.log('Попытка вернуться назад, но история пуста. Индекс:', historyIndex, 'История:', profileHistory.length);
     }
   };
 
@@ -739,23 +837,21 @@ const Home = () => {
       // Свайп вправо - лайк
       if (currentProfile) {
         setSwipeDirection('right');
-        setTimeout(() => {
-          likeMutation.mutate({
-            targetUser: currentProfile.login,
-            source: 'gesture'
-          });
-        }, 300);
+        // Мгновенно отправляем лайк
+        likeMutation.mutate({
+          targetUser: currentProfile.login,
+          source: 'gesture'
+        });
       }
     } else if (info.offset.x < -threshold) {
       // Свайп влево - дизлайк
       if (currentProfile) {
         setSwipeDirection('left');
-        setTimeout(() => {
-          dislikeMutation.mutate({
-            targetUser: currentProfile.login,
-            source: 'gesture'
-          });
-        }, 300);
+        // Мгновенно отправляем дизлайк
+        dislikeMutation.mutate({
+          targetUser: currentProfile.login,
+          source: 'gesture'
+        });
       }
     }
   };
@@ -805,23 +901,6 @@ const Home = () => {
           Свайпайте влево/вправо или используйте кнопки ниже
         </SwipeHint>
         
-        {/* Отладочная информация о предзагрузке */}
-        {process.env.NODE_ENV === 'development' && (
-          <div style={{
-            position: 'absolute',
-            top: '10px',
-            right: '10px',
-            background: 'rgba(0,0,0,0.7)',
-            color: 'white',
-            padding: '5px 10px',
-            borderRadius: '15px',
-            fontSize: '12px',
-            zIndex: 10
-          }}>
-            Очередь: {profileQueue.length} | Загрузка: {isPreloading ? 'Да' : 'Нет'}
-          </div>
-        )}
-        
         <AnimatePresence mode="wait">
           {currentProfile ? (
             <ProfileCard
@@ -845,16 +924,18 @@ const Home = () => {
                 rotate: swipeDirection === 'left' ? -20 : 20
               }}
               transition={{ 
-                duration: swipeDirection ? 0.3 : 0.5,
+                duration: swipeDirection ? 0.1 : 0.2, // Ускоряем анимации
                 type: swipeDirection ? "tween" : "spring",
-                stiffness: swipeDirection ? undefined : 100
+                stiffness: swipeDirection ? undefined : 200 // Увеличиваем жесткость
               }}
-              whileDrag={{ scale: 1.05, rotate: 5 }}
+              whileDrag={{ scale: 1.02, rotate: 2 }} // Уменьшаем эффект при перетаскивании
             >
               <ProfileImage $src={currentProfile.ava ? `/uploads/${currentProfile.ava}` : ''}>
                 {!currentProfile.ava && '👤'}
                 <ProfileOverlay>
-                  <h3 className="username">@{currentProfile.login}</h3>
+                  <ClickableUsername to={`/profile/${currentProfile.login}`}>
+                    @{currentProfile.login}
+                  </ClickableUsername>
                   <div className="location">
                     <LocationIcon />
                     {currentProfile.city}, {currentProfile.distance}км
@@ -869,6 +950,26 @@ const Home = () => {
                     <InfoIcon />
                     {currentProfile.status}
                   </div>
+                  
+                  {/* Отображение совместимости */}
+                  {currentProfile.compatibility && (
+                    <div className="compatibility-badge" style={{ 
+                      margin: '8px 0', 
+                      padding: '8px 12px', 
+                      background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
+                      borderRadius: '12px',
+                      color: 'white',
+                      fontSize: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      <span style={{ fontSize: '14px' }}>💚</span>
+                      <span style={{ fontWeight: 'bold' }}>
+                        Совместимость: {Math.round(currentProfile.compatibility.totalScore * 100)}%
+                      </span>
+                    </div>
+                  )}
                   
                   {/* Компактная информация о паре */}
                   {currentProfile.isCouple && currentProfile.partnerData && (
@@ -951,6 +1052,7 @@ const Home = () => {
             className="back" 
             onClick={handleBack} 
             title="Вернуться к предыдущему профилю"
+            disabled={historyIndex < 0} // Отключаем, если нет истории
           >
             <BackIcon />
           </ActionButton>
@@ -965,21 +1067,21 @@ const Home = () => {
           </ActionButton>
           
           <ActionButton 
-            className="like" 
-            onClick={handleLike} 
-            title="Нравится"
-            disabled={likeMutation.isLoading}
-          >
-            <HeartIcon />
-          </ActionButton>
-          
-          <ActionButton 
             className="superlike" 
             onClick={handleSuperlike} 
             title="Суперлайк с сообщением"
             disabled={superlikeMutation.isLoading}
           >
             <SuperlikeIcon />
+          </ActionButton>
+          
+          <ActionButton 
+            className="like" 
+            onClick={handleLike} 
+            title="Нравится"
+            disabled={likeMutation.isLoading}
+          >
+            <HeartIcon />
           </ActionButton>
         </ActionButtons>
       )}

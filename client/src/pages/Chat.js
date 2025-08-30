@@ -699,6 +699,7 @@ const Chat = () => {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const queryClient = useQueryClient();
+  const lastSelectedChatRef = useRef(null); // Ref для отслеживания последнего выбранного чата
   
   const currentUser = apiUtils.getCurrentUser();
 
@@ -708,6 +709,8 @@ const Chat = () => {
     () => chatAPI.getConversations(50, 0), // Увеличим лимит для лучшего UX
     {
       refetchInterval: 5000, // Обновляем каждые 5 секунд
+      refetchOnWindowFocus: false, // Не обновляем при фокусе окна
+      staleTime: 3000, // Данные считаются свежими 3 секунды
       onError: (error) => {
         console.error('Ошибка при получении списка чатов:', error);
         toast.error('Не удалось загрузить список чатов');
@@ -717,7 +720,7 @@ const Chat = () => {
 
   // Создаем виртуальный чат для нового мэтча, если перешли через уведомления
   const existingChat = chats?.conversations?.find(chat => chat.companion === chatId);
-  const virtualChat = chatId && !existingChat ? {
+  const virtualChat = chatId && !existingChat && !chatsLoading ? {
     companion: chatId,
     last_message: null,
     last_message_date: null,
@@ -734,7 +737,7 @@ const Chat = () => {
   } : null;
 
   // Принудительно создаем виртуальный чат, если есть chatId и нет чатов
-  const forceVirtualChat = chatId && (!chats?.conversations || chats.conversations.length === 0) ? {
+  const forceVirtualChat = chatId && !chatsLoading && (!chats?.conversations || chats.conversations.length === 0) ? {
     companion: chatId,
     last_message: null,
     last_message_date: null,
@@ -755,17 +758,22 @@ const Chat = () => {
     ? [(virtualChat || forceVirtualChat), ...(chats?.conversations || [])]
     : (chats?.conversations || []);
 
-  // Отладочная информация
-  console.log('Chat Debug:', {
-    chatId,
-    chats: chats?.conversations,
-    existingChat,
-    virtualChat,
-    forceVirtualChat,
-    allChats,
-    selectedChat,
-    userInfo
-  });
+  // Отладочная информация (только при изменениях)
+  useEffect(() => {
+    console.log('Chat Debug:', {
+      chatId,
+      chats: chats?.conversations,
+      existingChat,
+      virtualChat,
+      forceVirtualChat,
+      allChats,
+      selectedChat,
+      lastSelectedChatRef: lastSelectedChatRef.current,
+      chatsLoading,
+      userInfo,
+      timestamp: new Date().toISOString()
+    });
+  }, [chatId, chats?.conversations, selectedChat, chatsLoading, userInfo]);
 
 
   // Получение сообщений текущего чата
@@ -773,8 +781,10 @@ const Chat = () => {
     ['messages', selectedChat],
     () => chatAPI.getMessages(selectedChat, 100, 0), // Увеличим лимит сообщений
     {
-      enabled: !!selectedChat,
+      enabled: !!selectedChat && !chatsLoading,
       refetchInterval: 2000, // Обновляем каждые 2 секунды
+      refetchOnWindowFocus: false, // Не обновляем при фокусе окна
+      staleTime: 1000, // Данные считаются свежими 1 секунду
       onError: (error) => {
         console.error('Ошибка при получении сообщений:', error);
         toast.error('Не удалось загрузить сообщения');
@@ -793,7 +803,9 @@ const Chat = () => {
     ['match-status', selectedChat],
     () => chatAPI.getMatchStatus(selectedChat),
     {
-      enabled: !!selectedChat,
+      enabled: !!selectedChat && !chatsLoading,
+      refetchOnWindowFocus: false, // Не обновляем при фокусе окна
+      staleTime: 30000, // Данные считаются свежими 30 секунд
       onError: (error) => {
         console.error('Ошибка при получении статуса мэтча:', error);
       },
@@ -810,7 +822,9 @@ const Chat = () => {
     ['user-info', chatId],
     () => apiUtils.getUserInfo(chatId),
     {
-      enabled: !!chatId && !!virtualChat,
+      enabled: !!chatId && !!virtualChat && !chatsLoading,
+      refetchOnWindowFocus: false, // Не обновляем при фокусе окна
+      staleTime: 60000, // Данные считаются свежими 1 минуту
       onError: (error) => {
         console.error('Ошибка при получении информации о пользователе:', error);
       }
@@ -819,16 +833,21 @@ const Chat = () => {
 
   // Обновляем виртуальный чат с информацией о пользователе
   useEffect(() => {
-    if (virtualChat && userInfo) {
-      virtualChat.companion_info = {
-        login: userInfo.login,
-        ava: userInfo.ava || 'no_photo.jpg',
-        status: userInfo.status || 'Новый мэтч',
-        online: userInfo.online,
-        viptype: userInfo.viptype || 'FREE'
-      };
+    if (virtualChat && userInfo && userInfo.login && !chatsLoading) {
+      // Проверяем, не обновляем ли мы уже актуальные данные
+      if (virtualChat.companion_info?.login !== userInfo.login ||
+          virtualChat.companion_info?.ava !== userInfo.ava ||
+          virtualChat.companion_info?.status !== userInfo.status) {
+        virtualChat.companion_info = {
+          login: userInfo.login,
+          ava: userInfo.ava || 'no_photo.jpg',
+          status: userInfo.status || 'Новый мэтч',
+          online: userInfo.online,
+          viptype: userInfo.viptype || 'FREE'
+        };
+      }
     }
-  }, [virtualChat, userInfo]);
+  }, [virtualChat, userInfo, chatsLoading]);
 
   // Мутации
   const sendMessageMutation = useMutation(chatAPI.sendMessage, {
@@ -877,21 +896,30 @@ const Chat = () => {
 
   // Эффекты
   useEffect(() => {
-    if (chatId && chatId !== selectedChat) {
+    if (chatId && chatId !== selectedChat && chatId !== lastSelectedChatRef.current && !chatsLoading) {
+      lastSelectedChatRef.current = chatId;
       setSelectedChat(chatId);
     }
-  }, [chatId, selectedChat]);
+  }, [chatId, chatsLoading]); // Добавляем chatsLoading в зависимости
 
   // Автоматически выбираем виртуальный чат, если перешли через уведомления
   useEffect(() => {
-    if ((virtualChat || forceVirtualChat) && !selectedChat) {
+    if ((virtualChat || forceVirtualChat) && !selectedChat && chatId && chatId !== lastSelectedChatRef.current && !chatsLoading) {
+      lastSelectedChatRef.current = chatId;
       setSelectedChat(chatId);
     }
-  }, [virtualChat, forceVirtualChat, selectedChat, chatId]);
+  }, [virtualChat, forceVirtualChat, chatId, chatsLoading]); // Добавляем chatsLoading в зависимости
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Очистка при размонтировании
+  useEffect(() => {
+    return () => {
+      lastSelectedChatRef.current = null;
+    };
+  }, []);
 
   // Фильтрация чатов по поиску
   const filteredChats = allChats.filter(chat =>
@@ -900,8 +928,17 @@ const Chat = () => {
 
   // Обработчики
   const handleChatSelect = (chatUser) => {
+    // Проверяем, не пытаемся ли мы перейти к тому же чату
+    if (chatUser === selectedChat || chatUser === lastSelectedChatRef.current || chatsLoading) {
+      return;
+    }
+    
+    lastSelectedChatRef.current = chatUser;
     setSelectedChat(chatUser);
-    navigate(`/chat/${chatUser}`);
+    // Обновляем URL только если он отличается
+    if (chatUser !== chatId) {
+      navigate(`/chat/${chatUser}`);
+    }
   };
 
   const handleSendMessage = () => {
