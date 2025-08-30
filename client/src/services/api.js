@@ -914,17 +914,17 @@ export const clubsAPI = {
 // API методы для подписок
 export const subscriptionsAPI = {
   getPlans: async () => {
-    const response = await apiClient.get('/subscriptions/plans');
+    const response = await apiClient.get('/subscriptions/pricing');
     return response.data;
   },
 
   subscribe: async (planData) => {
-    const response = await apiClient.post('/subscriptions/subscribe', planData);
+    const response = await apiClient.post('/subscriptions/create', planData);
     return response.data;
   },
 
   getStatus: async () => {
-    const response = await apiClient.get('/subscriptions/status');
+    const response = await apiClient.get('/subscriptions/current');
     return response.data;
   },
 
@@ -937,18 +937,18 @@ export const subscriptionsAPI = {
     return response.data;
   },
 
-  cancel: async (reason = '') => {
-    const response = await apiClient.post('/subscriptions/cancel', { reason });
+  cancel: async (subscriptionId, reason = '') => {
+    const response = await apiClient.post(`/subscriptions/${subscriptionId}/cancel`, { reason });
     return response.data;
   },
 
   usePromoCode: async (code) => {
-    const response = await apiClient.post('/subscriptions/promo', { code });
+    const response = await apiClient.post('/subscriptions/validate-promo', { code });
     return response.data;
   },
 
   getFeatures: async () => {
-    const response = await apiClient.get('/subscriptions/features');
+    const response = await apiClient.get('/subscriptions/pricing');
     return response.data;
   }
 };

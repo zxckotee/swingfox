@@ -461,11 +461,19 @@ const Subscriptions = () => {
     
     if (!selectedPlan) return;
 
-    subscribeMutation.mutate({
-      plan: selectedPlan.toLowerCase(),
-      duration: 1,
-      promo_code: promoCode.trim() || undefined
-    });
+    const subscriptionData = {
+      subscription_type: selectedPlan.toUpperCase(), // VIP или PREMIUM
+      duration_months: 1,
+      payment_method: 'balance', // Используем баланс фоксиков
+      auto_renewal: false
+    };
+    
+    // Добавляем промокод только если он есть
+    if (promoCode.trim()) {
+      subscriptionData.promo_code = promoCode.trim();
+    }
+    
+    subscribeMutation.mutate(subscriptionData);
   };
 
   const handleCancel = () => {
@@ -567,7 +575,7 @@ const Subscriptions = () => {
                   <PlanPrice $color={config.color}>
                     <div className="price">
                       {config.price}
-                      <span className="currency">₽</span>
+                      <span className="currency">🦊</span>
                     </div>
                     <div className="period">в месяц</div>
                   </PlanPrice>
@@ -682,7 +690,7 @@ const Subscriptions = () => {
                       </div>
                     </div>
                     <div className="payment-amount">
-                      +{payment.amount}₽
+                      +{payment.amount}🦊
                     </div>
                   </HistoryCard>
                 ))}
@@ -716,7 +724,7 @@ const Subscriptions = () => {
                   {selectedPlan} подписка
                 </h3>
                 <div style={{ fontSize: '24px', fontWeight: '700', color: PLAN_CONFIGS[selectedPlan].color }}>
-                  {PLAN_CONFIGS[selectedPlan].price}₽/месяц
+                  {PLAN_CONFIGS[selectedPlan].price}🦊/месяц
                 </div>
               </div>
 

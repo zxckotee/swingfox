@@ -332,10 +332,10 @@ router.post('/send', authenticateToken, async (req, res) => {
     // Обрабатываем специальные подарки
     if (gift_type === '8') {
       // VIP статус на месяц
-      await targetUserData.update({
-        viptype: 'VIP',
-        vip_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 дней
-      });
+      await User.update(
+        { viptype: 'VIP' },
+        { where: { login: target_user } }
+      );
       
       logger.logResult('Присвоен VIP статус', true, {
         target_user,
@@ -344,10 +344,10 @@ router.post('/send', authenticateToken, async (req, res) => {
       
     } else if (gift_type === '9') {
       // Premium статус на месяц
-      await targetUserData.update({
-        viptype: 'PREMIUM',
-        vip_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 дней
-      });
+      await User.update(
+        { viptype: 'PREMIUM' },
+        { where: { login: target_user } }
+      );
       
       logger.logResult('Присвоен Premium статус', true, {
         target_user,

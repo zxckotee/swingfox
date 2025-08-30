@@ -473,7 +473,7 @@ const EventAdCard = ({ ad, event }) => {
       <div className="event-header">
         <span className="event-badge">🎉 Мероприятие</span>
         <span className="event-price">
-          {event.price > 0 ? `${event.price} ₽` : 'Бесплатно'}
+          {event.price > 0 ? `${event.price} 🦊` : 'Бесплатно'}
         </span>
       </div>
       

@@ -192,7 +192,7 @@ router.get('/users', async (req, res) => {
       where: whereClause,
       attributes: [
         'id', 'login', 'email', 'name', 'created_at', 'online',
-        'status', 'viptype', 'city', 'balance', 'vip_expires_at'
+        'status', 'viptype', 'city', 'balance'
       ],
       order: [['created_at', 'DESC']],
       limit: parseInt(limit),
@@ -245,7 +245,10 @@ router.post('/users/:userId/action', async (req, res) => {
 
     switch (action) {
       case 'ban':
-        await user.update({ status: 'BANNED' });
+        await User.update(
+          { status: 'BANNED' },
+          { where: { login: userId } }
+        );
         
         // Создаем уведомление
         await Notifications.createNotification({
@@ -259,7 +262,10 @@ router.post('/users/:userId/action', async (req, res) => {
         break;
       
       case 'unban':
-        await user.update({ status: 'ACTIVE' });
+        await User.update(
+          { status: 'ACTIVE' },
+          { where: { login: userId } }
+        );
         
         await Notifications.createNotification({
           user_id: userId,
@@ -272,10 +278,10 @@ router.post('/users/:userId/action', async (req, res) => {
         break;
       
       case 'set_vip':
-        await user.update({
-          viptype: 'VIP',
-          vip_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 дней
-        });
+        await User.update(
+          { viptype: 'VIP' },
+          { where: { login: userId } }
+        );
         
         await Notifications.createNotification({
           user_id: userId,
@@ -288,10 +294,10 @@ router.post('/users/:userId/action', async (req, res) => {
         break;
       
       case 'set_premium':
-        await user.update({
-          viptype: 'PREMIUM',
-          vip_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 дней
-        });
+        await User.update(
+          { viptype: 'PREMIUM' },
+          { where: { login: userId } }
+        );
         
         await Notifications.createNotification({
           user_id: userId,
@@ -304,18 +310,19 @@ router.post('/users/:userId/action', async (req, res) => {
         break;
       
       case 'remove_vip':
-        await user.update({
-          viptype: 'FREE',
-          vip_expires_at: null
-        });
+        await User.update(
+          { viptype: 'FREE' },
+          { where: { login: userId } }
+        );
         break;
       
       case 'add_balance':
         const amount = parseFloat(req.body.amount) || 0;
         if (amount > 0) {
-          await user.update({
-            balance: parseFloat(user.balance) + amount
-          });
+          await User.update(
+            { balance: parseFloat(user.balance) + amount },
+            { where: { login: userId } }
+          );
           
           await Notifications.createNotification({
             user_id: userId,

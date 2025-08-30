@@ -116,10 +116,10 @@ module.exports = (sequelize) => {
     });
     
     if (user) {
-      await user.update({
-        viptype: this.subscription_type,
-        vip_expires_at: this.end_date
-      });
+      await sequelize.models.User.update(
+        { viptype: this.subscription_type },
+        { where: { login: this.user_id } }
+      );
     }
     
     await this.save();
@@ -136,12 +136,12 @@ module.exports = (sequelize) => {
         where: { login: this.user_id } 
       });
       
-      if (user && user.viptype === this.subscription_type) {
-        await user.update({
-          viptype: 'FREE',
-          vip_expires_at: null
-        });
-      }
+              if (user && user.viptype === this.subscription_type) {
+          await sequelize.models.User.update(
+            { viptype: 'FREE' },
+            { where: { login: this.user_id } }
+          );
+        }
     }
     
     await this.save();
@@ -169,10 +169,10 @@ module.exports = (sequelize) => {
       });
       
       if (user) {
-        await user.update({
-          viptype: 'FREE',
-          vip_expires_at: null
-        });
+        await sequelize.models.User.update(
+          { viptype: 'FREE' },
+          { where: { login: this.user_id } }
+        );
       }
     }
     

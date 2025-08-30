@@ -541,6 +541,17 @@ const Profile = () => {
   const isOwnProfile = !login || (currentUser && currentUser.login === login);
   const targetLogin = isOwnProfile ? currentUser?.login : login;
   
+  // Отладочная информация
+  useEffect(() => {
+    console.log('Profile component debug:', {
+      login,
+      currentUser: currentUser ? { login: currentUser.login, hasLogin: !!currentUser.login } : null,
+      isOwnProfile,
+      targetLogin,
+      hasTargetLogin: !!targetLogin
+    });
+  }, [login, currentUser, isOwnProfile, targetLogin]);
+  
   // Состояния
   const [activeTab, setActiveTab] = useState('profile');
   const [showImageModal, setShowImageModal] = useState(false);
@@ -558,7 +569,12 @@ const Profile = () => {
     {
       enabled: !!targetLogin,
       onError: (error) => {
-        console.warn('Failed to fetch received gifts:', error);
+        console.error('Gifts API error:', {
+          targetLogin,
+          error: error.message,
+          status: error.response?.status,
+          data: error.response?.data
+        });
       }
     }
   );
@@ -590,12 +606,16 @@ const Profile = () => {
 
   // Дополнительная проверка targetLogin
   if (!targetLogin) {
+    console.warn('Profile: targetLogin is undefined', { login, currentUser, isOwnProfile });
     return (
       <ProfileContainer>
         <ContentCard $maxWidth="600px">
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <h2>Ошибка</h2>
             <p>Не удалось определить профиль для просмотра</p>
+            <p style={{ fontSize: '14px', color: '#718096', marginTop: '10px' }}>
+              Debug: login={String(login)}, currentUser={currentUser ? 'exists' : 'null'}, isOwnProfile={String(isOwnProfile)}
+            </p>
             <Button onClick={() => navigate('/catalog')}>
               Вернуться к каталогу
             </Button>
@@ -612,9 +632,18 @@ const Profile = () => {
     {
       enabled: !!targetLogin,
       onError: (error) => {
+        console.error('Profile API error:', {
+          targetLogin,
+          error: error.message,
+          status: error.response?.status,
+          data: error.response?.data
+        });
+        
         if (error.response?.status === 404) {
           toast.error('Пользователь не найден');
           navigate('/catalog');
+        } else {
+          toast.error(`Ошибка загрузки профиля: ${error.message}`);
         }
       }
     }
@@ -626,7 +655,15 @@ const Profile = () => {
     () => chatAPI.getMatchStatus(targetLogin),
     {
       enabled: !isOwnProfile && !!targetLogin,
-      retry: false
+      retry: false,
+      onError: (error) => {
+        console.error('Match status API error:', {
+          targetLogin,
+          error: error.message,
+          status: error.response?.status,
+          data: error.response?.data
+        });
+      }
     }
   );
 
@@ -929,31 +966,15 @@ const Profile = () => {
           </UserInfo>
         </ProfileHeader>
 
-        {/* Секция баланса и реклама VIP (только для своего профиля) */}
+        {/* Секция баланса (только для своего профиля) */}
         {isOwnProfile && (
-          <>
-            <BalanceSection>
-              <BalanceTitle>💰 Ваш баланс</BalanceTitle>
-              <BalanceAmount>{profile.balance || 0} ₽</BalanceAmount>
-              <BalanceButton onClick={() => navigate('/subscriptions')}>
-                Пополнить баланс
-              </BalanceButton>
-            </BalanceSection>
-            
-            <VipAdSection>
-              <VipAdTitle>
-                👑 <CrownIcon />
-                Переходите на VIP!
-              </VipAdTitle>
-              <VipAdText>
-                Получите эксклюзивные возможности: больше лайков, 
-                приоритет в поиске, расширенная статистика и многое другое!
-              </VipAdText>
-              <VipAdButton onClick={() => navigate('/subscriptions')}>
-                Перейти к VIP
-              </VipAdButton>
-            </VipAdSection>
-          </>
+          <BalanceSection>
+            <BalanceTitle>💰 Ваш баланс</BalanceTitle>
+            <BalanceAmount>{profile.balance || 0} 🦊</BalanceAmount>
+            <BalanceButton onClick={() => navigate('/subscriptions')}>
+              Пополнить баланс
+            </BalanceButton>
+          </BalanceSection>
         )}
 
         {/* Кнопки действий (только для чужих профилей) */}
@@ -1045,62 +1066,80 @@ const Profile = () => {
           {activeTab === 'profile' && (
             <div>
               {isOwnProfile ? (
-                <Form onSubmit={handleSubmit(onSubmit)}>
-                  <FormGroup>
-                    <Label>Имя</Label>
-                    <Input
-                      {...register('name')}
-                      placeholder="Ваше имя"
-                    />
-                  </FormGroup>
+                <>
+                  <Form onSubmit={handleSubmit(onSubmit)}>
+                    <FormGroup>
+                      <Label>Имя</Label>
+                      <Input
+                        {...register('name')}
+                        placeholder="Ваше имя"
+                      />
+                    </FormGroup>
 
-                  <LocationSelector
-                    countryValue={watch('country')}
-                    cityValue={watch('city')}
-                    onCountryChange={(value) => {
-                      setValue('country', value);
-                      clearErrors('country');
-                      if (watch('city')) {
-                        setValue('city', '');
+                    <LocationSelector
+                      countryValue={watch('country')}
+                      cityValue={watch('city')}
+                      onCountryChange={(value) => {
+                        setValue('country', value);
+                        clearErrors('country');
+                        if (watch('city')) {
+                          setValue('city', '');
+                          clearErrors('city');
+                        }
+                      }}
+                      onCityChange={(value) => {
+                        setValue('city', value);
                         clearErrors('city');
-                      }
-                    }}
-                    onCityChange={(value) => {
-                      setValue('city', value);
-                      clearErrors('city');
-                    }}
-                    countryError={errors.country?.message}
-                    cityError={errors.city?.message}
-                    required={true}
-                    showValidation={true}
-                    layout="side-by-side"
-                  />
-
-                  <FormGroup>
-                    <Label>О себе</Label>
-                    <TextArea
-                      {...register('info')}
-                      placeholder="Расскажите о себе..."
-                      $minHeight="120px"
+                      }}
+                      countryError={errors.country?.message}
+                      cityError={errors.city?.message}
+                      required={true}
+                      showValidation={true}
+                      layout="side-by-side"
                     />
-                  </FormGroup>
 
-                  <FormGroup>
-                    <Label>Что ищете</Label>
-                    <TextArea
-                      {...register('looking_for')}
-                      placeholder="Опишите, кого или что вы ищете..."
-                      $minHeight="120px"
-                    />
-                  </FormGroup>
+                    <FormGroup>
+                      <Label>О себе</Label>
+                      <TextArea
+                        {...register('info')}
+                        placeholder="Расскажите о себе..."
+                        $minHeight="120px"
+                      />
+                    </FormGroup>
 
-                  <Button
-                    type="submit"
-                    disabled={updateProfileMutation.isLoading}
-                  >
-                    {updateProfileMutation.isLoading ? 'Сохранение...' : 'Сохранить изменения'}
-                  </Button>
-                </Form>
+                    <FormGroup>
+                      <Label>Что ищете</Label>
+                      <TextArea
+                        {...register('looking_for')}
+                        placeholder="Опишите, кого или что вы ищете..."
+                        $minHeight="120px"
+                      />
+                    </FormGroup>
+
+                    <Button
+                      type="submit"
+                      disabled={updateProfileMutation.isLoading}
+                    >
+                      {updateProfileMutation.isLoading ? 'Сохранение...' : 'Сохранить изменения'}
+                    </Button>
+                  </Form>
+                  
+                  {/* Реклама подписки (только для своего профиля) */}
+                  <VipAdSection>
+                    <VipAdTitle>
+                      👑 
+                      Переходите на подписку!
+                    </VipAdTitle>
+                    <VipAdText>
+                      Получите эксклюзивные возможности: больше лайков, 
+                      приоритет в поиске, расширенная статистика и многое другое!
+                      Доступны планы VIP и PREMIUM.
+                    </VipAdText>
+                    <VipAdButton onClick={() => navigate('/subscriptions')}>
+                      Перейти к подписке
+                    </VipAdButton>
+                  </VipAdSection>
+                </>
               ) : (
                 <div>
                   <InfoSection>

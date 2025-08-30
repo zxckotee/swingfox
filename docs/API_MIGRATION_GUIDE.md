@@ -138,7 +138,7 @@ GET /api/gifts/history?type=received
 ```
 
 **10 типов подарков:**
-- `rose` (5₽), `teddy` (10₽), `wine` (15₽), `chocolate` (20₽), `perfume` (25₽), `jewelry` (50₽), `flowers` (75₽), `champagne` (100₽), `diamond` (200₽), `car` (500₽)
+- `rose` (5🦊), `teddy` (10🦊), `wine` (15🦊), `chocolate` (20🦊), `perfume` (25🦊), `jewelry` (50🦊), `flowers` (75🦊), `champagne` (100🦊), `diamond` (200🦊), `car` (500🦊)
 
 ### 3. Система клубов (НОВАЯ)
 ```bash

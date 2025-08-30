@@ -26,7 +26,7 @@ router.get('/pricing', authenticateToken, async (req, res) => {
     // Получаем баланс пользователя
     const user = await User.findOne({ 
       where: { login: userId },
-      attributes: ['balance', 'viptype', 'vip_expires_at']
+      attributes: ['balance', 'viptype']
     });
 
     const responseData = {
@@ -35,7 +35,7 @@ router.get('/pricing', authenticateToken, async (req, res) => {
       user_balance: user.balance,
       current_subscription: {
         type: user.viptype,
-        expires_at: user.vip_expires_at,
+        expires_at: activeSubscription ? activeSubscription.end_date : null,
         is_active: activeSubscription ? activeSubscription.isActive() : false,
         days_remaining: activeSubscription ? activeSubscription.getDaysRemaining() : 0
       },
@@ -81,6 +81,16 @@ router.post('/create', authenticateToken, async (req, res) => {
 
     const userId = req.user.login;
 
+    // Логируем входящие данные для отладки
+    logger.logBusinessLogic(1, 'Входящие данные для создания подписки', {
+      subscription_type,
+      duration_months,
+      payment_method,
+      promo_code,
+      auto_renewal,
+      user_id: userId
+    }, req);
+
     if (!subscription_type || !['VIP', 'PREMIUM'].includes(subscription_type)) {
       return res.status(400).json({
         error: 'invalid_subscription_type',
@@ -88,7 +98,7 @@ router.post('/create', authenticateToken, async (req, res) => {
       });
     }
 
-    if (!![1, 3, 12].includes(parseInt(duration_months))) {
+    if (![1, 3, 12].includes(parseInt(duration_months))) {
       return res.status(400).json({
         error: 'invalid_duration',
         message: 'Поддерживаемые периоды: 1, 3 или 12 месяцев'
@@ -105,6 +115,18 @@ router.post('/create', authenticateToken, async (req, res) => {
     }, req);
 
     try {
+      // Проверяем баланс пользователя перед созданием подписки
+      const user = await User.findOne({ 
+        where: { login: userId }
+      });
+      
+      if (!user) {
+        return res.status(404).json({
+          error: 'user_not_found',
+          message: 'Пользователь не найден'
+        });
+      }
+      
       // Создаем подписку
       const subscription = await Subscriptions.createSubscription({
         user_id: userId,
@@ -114,11 +136,16 @@ router.post('/create', authenticateToken, async (req, res) => {
         promo_code,
         auto_renewal
       });
+      
+      // Логируем информацию о созданной подписке
+      logger.logBusinessLogic(2, 'Подписка создана', {
+        subscription_id: subscription.id,
+        payment_amount: subscription.payment_amount,
+        user_balance: user.balance
+      }, req);
 
       // Проверяем баланс если оплата с баланса
       if (payment_method === 'balance') {
-        const user = await User.findOne({ where: { login: userId } });
-        
         if (user.balance < subscription.payment_amount) {
           // Удаляем созданную подписку
           await subscription.destroy();
@@ -137,9 +164,10 @@ router.post('/create', authenticateToken, async (req, res) => {
           balance_change: -subscription.payment_amount
         }, req);
 
-        await user.update({
-          balance: user.balance - subscription.payment_amount
-        });
+        await User.update(
+          { balance: user.balance - subscription.payment_amount },
+          { where: { login: userId } }
+        );
 
         logger.logDatabase('UPDATE', 'subscriptions', {
           subscription_id: subscription.id,
@@ -247,7 +275,7 @@ router.get('/current', authenticateToken, async (req, res) => {
     const activeSubscription = await Subscriptions.getUserActiveSubscription(userId);
     const user = await User.findOne({ 
       where: { login: userId },
-      attributes: ['viptype', 'vip_expires_at']
+      attributes: ['viptype']
     });
 
     let responseData;
@@ -273,7 +301,7 @@ router.get('/current', authenticateToken, async (req, res) => {
       responseData = {
         has_subscription: false,
         user_type: user.viptype,
-        expires_at: user.vip_expires_at,
+        expires_at: null, // Убираем vip_expires_at, так как этого поля нет
         features: user.viptype !== 'FREE' ? Subscriptions.getFeatures()[user.viptype] : null
       };
     }
