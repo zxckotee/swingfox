@@ -578,6 +578,87 @@ export const Avatar = styled.div`
       border: 2px solid white;
     }
   `}
+  
+  /* Адаптивные размеры для разных экранов */
+  /* Большие экраны - аватарка 50px */
+  @media (min-width: 1440px) {
+    ${props => props.$size === '45px' && `
+      width: 50px;
+      height: 50px;
+      font-size: 20px;
+      border-width: 2px;
+    `}
+  }
+  
+  /* Средне-большие экраны - аватарка 47px */
+  @media (min-width: 1240px) and (max-width: 1439px) {
+    ${props => props.$size === '45px' && `
+      width: 47px;
+      height: 47px;
+      font-size: 19px;
+      border-width: 2px;
+    `}
+  }
+  
+  /* Средние экраны - аватарка 45px */
+  @media (max-width: 1200px) {
+    ${props => props.$size === '45px' && `
+      width: 45px;
+      height: 45px;
+      font-size: 18px;
+      border-width: 2px;
+    `}
+  }
+  
+  /* Планшеты в альбомной ориентации - аватарка 42px */
+  @media (max-width: 1024px) {
+    ${props => props.$size === '45px' && `
+      width: 42px;
+      height: 42px;
+      font-size: 17px;
+      border-width: 2px;
+    `}
+  }
+  
+  /* Планшеты в портретной ориентации - аватарка 40px */
+  @media (max-width: 768px) {
+    ${props => props.$size === '45px' && `
+      width: 40px;
+      height: 40px;
+      font-size: 16px;
+      border-width: 1.5px;
+    `}
+  }
+  
+  /* Большие мобильные - аватарка 38px */
+  @media (max-width: 576px) {
+    ${props => props.$size === '45px' && `
+      width: 38px;
+      height: 38px;
+      font-size: 15px;
+      border-width: 1.5px;
+    `}
+  }
+  
+  /* Мобильные - аватарка 36px */
+  @media (max-width: 480px) {
+    ${props => props.$size === '45px' && `
+      width: 36px;
+      height: 36px;
+      font-size: 14px;
+      border-width: 1.5px;
+    `}
+  }
+  
+  /* Маленькие мобильные - аватарка 34px */
+  @media (max-width: 360px) {
+    ${props => props.$size === '45px' && `
+      width: 34px;
+      height: 34px;
+      font-size: 13px;
+      border-width: 1px;
+    `}
+  }
 `;
 
 // Модальные окна

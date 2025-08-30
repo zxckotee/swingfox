@@ -71,6 +71,48 @@ const Header = styled.div`
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid #e2e8f0;
+  
+  /* Большие экраны */
+  @media (min-width: 1440px) {
+    padding: 25px;
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Средние экраны */
+  @media (max-width: 1200px) {
+    padding: 20px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+  }
+  
+  /* Планшеты в альбомной ориентации */
+  @media (max-width: 1024px) {
+    padding: 18px;
+    box-shadow: 0 3px 16px rgba(0, 0, 0, 0.08);
+  }
+  
+  /* Планшеты в портретной ориентации */
+  @media (max-width: 768px) {
+    padding: 15px;
+    box-shadow: 0 3px 15px rgba(0, 0, 0, 0.08);
+  }
+  
+  /* Большие мобильные */
+  @media (max-width: 576px) {
+    padding: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  }
+  
+  /* Мобильные */
+  @media (max-width: 480px) {
+    padding: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  }
+  
+  /* Маленькие мобильные */
+  @media (max-width: 360px) {
+    padding: 8px;
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.08);
+  }
 `;
 
 const HeaderContent = styled.div`
@@ -79,6 +121,28 @@ const HeaderContent = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  
+  /* Большие экраны */
+  @media (min-width: 1440px) {
+    max-width: 1400px;
+  }
+  
+  /* Средние экраны */
+  @media (max-width: 1200px) {
+    max-width: 100%;
+  }
+  
+  /* Планшеты */
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+  }
+  
+  /* Мобильные */
+  @media (max-width: 480px) {
+    gap: 12px;
+  }
 `;
 
 const WelcomeText = styled.div`
@@ -98,9 +162,80 @@ const WelcomeText = styled.div`
     font-size: 14px;
   }
   
+  /* Большие экраны */
+  @media (min-width: 1440px) {
+    h1 {
+      font-size: 32px;
+    }
+    
+    p {
+      font-size: 16px;
+    }
+  }
+  
+  /* Средние экраны */
+  @media (max-width: 1200px) {
+    h1 {
+      font-size: 28px;
+    }
+    
+    p {
+      font-size: 14px;
+    }
+  }
+  
+  /* Планшеты в альбомной ориентации */
+  @media (max-width: 1024px) {
+    h1 {
+      font-size: 26px;
+    }
+    
+    p {
+      font-size: 14px;
+    }
+  }
+  
+  /* Планшеты в портретной ориентации */
   @media (max-width: 768px) {
     h1 {
       font-size: 24px;
+    }
+    
+    p {
+      font-size: 13px;
+    }
+  }
+  
+  /* Большие мобильные */
+  @media (max-width: 576px) {
+    h1 {
+      font-size: 22px;
+    }
+    
+    p {
+      font-size: 13px;
+    }
+  }
+  
+  /* Мобильные */
+  @media (max-width: 480px) {
+    h1 {
+      font-size: 20px;
+    }
+    
+    p {
+      font-size: 12px;
+    }
+  }
+  
+  /* Маленькие мобильные */
+  @media (max-width: 360px) {
+    h1 {
+      font-size: 18px;
+    }
+    
+    p {
+      font-size: 11px;
     }
   }
 `;
@@ -126,7 +261,65 @@ const UserInfo = styled.div`
     }
   }
   
+  /* Большие экраны */
+  @media (min-width: 1440px) {
+    gap: 15px;
+    
+    .user-details .username {
+      font-size: 16px;
+    }
+    
+    .user-details .status {
+      font-size: 13px;
+    }
+  }
+  
+  /* Средние экраны */
+  @media (max-width: 1200px) {
+    gap: 12px;
+  }
+  
+  /* Планшеты в альбомной ориентации */
+  @media (max-width: 1024px) {
+    gap: 10px;
+    
+    .user-details .username {
+      font-size: 15px;
+    }
+    
+    .user-details .status {
+      font-size: 12px;
+    }
+  }
+  
+  /* Планшеты в портретной ориентации */
+  @media (max-width: 768px) {
+    gap: 8px;
+    
+    .user-details .username {
+      font-size: 14px;
+    }
+    
+    .user-details .status {
+      font-size: 11px;
+    }
+  }
+  
+  /* Большие мобильные */
   @media (max-width: 576px) {
+    gap: 6px;
+    
+    .user-details .username {
+      font-size: 13px;
+    }
+    
+    .user-details .status {
+      font-size: 10px;
+    }
+  }
+  
+  /* Мобильные */
+  @media (max-width: 480px) {
     .user-details {
       display: none;
     }
@@ -147,6 +340,12 @@ const SwipeContainer = styled.div`
   @media (max-width: 768px) {
     padding: 20px 15px;
   }
+  
+  /* Десктопная версия */
+  @media (min-width: 1024px) {
+    max-width: 900px;
+    padding: 40px;
+  }
 `;
 
 const ProfileCard = styled(motion.div)`
@@ -165,12 +364,20 @@ const ProfileCard = styled(motion.div)`
   }
   
   @media (max-width: 768px) {
-    height: 600px;
+    height: 650px; /* Увеличиваем высоту для мобильной версии */
     max-width: 100%;
   }
   
   @media (max-width: 480px) {
-    height: 550px;
+    height: 600px; /* Оптимальная высота для маленьких экранов */
+  }
+  
+  /* Десктопная версия */
+  @media (min-width: 1024px) {
+    max-width: 800px;
+    height: 500px;
+    display: flex;
+    flex-direction: row;
   }
 `;
 
@@ -182,6 +389,7 @@ const ProfileImage = styled.div`
   background-position: center;
   background-color: #f7fafc;
   position: relative;
+  transition: all 0.3s ease;
   
   &::before {
     content: '';
@@ -193,10 +401,11 @@ const ProfileImage = styled.div`
     background: linear-gradient(
       to bottom,
       transparent 0%,
-      transparent 50%,
-      rgba(0,0,0,0.3) 80%,
+      transparent 40%,
+      rgba(0,0,0,0.2) 70%,
       rgba(0,0,0,0.8) 100%
     );
+    transition: all 0.3s ease;
   }
   
   ${props => !props.$src && `
@@ -212,6 +421,30 @@ const ProfileImage = styled.div`
       display: none;
     }
   `}
+  
+  @media (max-width: 768px) {
+    height: 60%; /* Уменьшаем высоту изображения в мобильной версии */
+  }
+  
+  @media (max-width: 480px) {
+    height: 55%; /* Еще больше уменьшаем для маленьких экранов */
+  }
+  
+  /* Десктопная версия */
+  @media (min-width: 1024px) {
+    width: 50%;
+    height: 100%;
+    
+    &::before {
+      background: linear-gradient(
+        to right,
+        transparent 0%,
+        transparent 60%,
+        rgba(0,0,0,0.2) 80%,
+        rgba(0,0,0,0.8) 100%
+      );
+    }
+  }
 `;
 
 const ProfileOverlay = styled.div`
@@ -222,12 +455,14 @@ const ProfileOverlay = styled.div`
   padding: 20px;
   color: white;
   z-index: 2;
+  transition: all 0.3s ease;
   
   .username {
     font-size: 24px;
     font-weight: 700;
     margin: 0 0 6px 0;
     text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
   }
   
   .location {
@@ -237,11 +472,13 @@ const ProfileOverlay = styled.div`
     font-size: 14px;
     opacity: 0.9;
     margin-bottom: 3px;
+    transition: all 0.3s ease;
   }
   
   .age {
     font-size: 14px;
     opacity: 0.9;
+    transition: all 0.3s ease;
   }
   
   @media (max-width: 768px) {
@@ -255,6 +492,19 @@ const ProfileOverlay = styled.div`
       font-size: 12px;
     }
   }
+  
+  /* Десктопная версия */
+  @media (min-width: 1024px) {
+    padding: 30px;
+    
+    .username {
+      font-size: 28px;
+    }
+    
+    .location, .age {
+      font-size: 16px;
+    }
+  }
 `;
 
 const ProfileDetails = styled.div`
@@ -263,7 +513,28 @@ const ProfileDetails = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  overflow-y: auto;
+  overflow-y: auto; /* Добавляем вертикальный скролл */
+  overflow-x: hidden; /* Предотвращаем горизонтальный скролл */
+  transition: all 0.3s ease;
+  
+  /* Стили для скроллбара */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+  }
   
   .status-badge {
     display: inline-flex;
@@ -277,6 +548,118 @@ const ProfileDetails = styled.div`
     font-weight: 600;
     margin-bottom: 10px;
     align-self: flex-start;
+    box-shadow: 0 4px 12px rgba(220, 53, 34, 0.3);
+    transition: all 0.3s ease;
+  }
+  
+  .compatibility-badge {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    border-radius: 16px;
+    padding: 12px 16px;
+    color: white;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+    margin: 8px 0;
+    transition: all 0.3s ease;
+    
+    .percentage {
+      font-weight: bold;
+      font-size: 13px;
+    }
+    
+    .progress-bar {
+      flex: 1;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 3px;
+      overflow: hidden;
+      
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #ffffff 0%, #e6fffa 100%);
+        border-radius: 3px;
+        transition: width 0.3s ease;
+      }
+    }
+  }
+  
+  .partner-info {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px;
+    padding: 8px 12px;
+    color: white;
+    font-size: 12px;
+    margin: 8px 0;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s ease;
+    
+    .title {
+      font-weight: bold;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .details {
+      opacity: 0.9;
+      font-size: 11px;
+    }
+  }
+  
+  .additional-info {
+    display: grid;
+    grid-template-columns: 1fr; /* В мобильной версии всегда одна колонка */
+    gap: 6px;
+    margin: 8px 0;
+    
+    .info-item {
+      display: flex;
+      align-items: flex-start; /* Выравниваем по верху для многострочного текста */
+      gap: 8px;
+      font-size: 11px;
+      color: #4a5568;
+      padding: 8px 10px;
+      background: #f7fafc;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      transition: all 0.3s ease;
+      
+      .emoji {
+        font-size: 14px;
+        flex-shrink: 0; /* Эмодзи не сжимается */
+        margin-top: 1px; /* Небольшое выравнивание по верху */
+      }
+      
+      .text {
+        font-weight: 500;
+        flex: 1; /* Текст занимает все доступное место */
+        line-height: 1.4;
+        
+        /* Стили для вложенных элементов (для пар) */
+        div {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          
+          span {
+            font-size: 11px;
+            line-height: 1.3;
+            color: #4a5568;
+          }
+        }
+      }
+      
+      &:hover {
+        background: #edf2f7;
+        border-color: #cbd5e0;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+    }
   }
   
   .info {
@@ -287,14 +670,45 @@ const ProfileDetails = styled.div`
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
+    margin-top: 12px;
+    transition: all 0.3s ease;
   }
   
   @media (max-width: 768px) {
     padding: 16px;
+    height: 40%; /* Увеличиваем высоту в мобильной версии */
     
     .status-badge {
       font-size: 11px;
       padding: 5px 10px;
+    }
+    
+    .compatibility-badge, .partner-info {
+      font-size: 11px;
+      padding: 6px 10px;
+    }
+    
+    .additional-info {
+      gap: 4px;
+      
+      .info-item {
+        font-size: 10px;
+        padding: 6px 8px;
+        
+        .emoji {
+          font-size: 12px;
+        }
+        
+        .text {
+          font-size: 10px;
+          
+          div {
+            span {
+              font-size: 10px;
+            }
+          }
+        }
+      }
     }
     
     .info {
@@ -302,33 +716,145 @@ const ProfileDetails = styled.div`
       -webkit-line-clamp: 2;
     }
   }
+  
+  @media (max-width: 480px) {
+    padding: 12px;
+    height: 45%; /* Еще больше увеличиваем высоту для маленьких экранов */
+    
+    .additional-info {
+      gap: 3px;
+      
+      .info-item {
+        padding: 5px 6px;
+        
+        .emoji {
+          font-size: 11px;
+        }
+        
+        .text {
+          font-size: 9px;
+          
+          div {
+            span {
+              font-size: 9px;
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  /* Десктопная версия */
+  @media (min-width: 1024px) {
+    width: 50%;
+    height: 100%;
+    padding: 30px;
+    overflow-y: auto; /* Сохраняем скролл для десктопа */
+    
+    .status-badge {
+      font-size: 14px;
+      padding: 8px 16px;
+    }
+    
+    .compatibility-badge {
+      font-size: 14px;
+      padding: 16px 20px;
+      
+      .percentage {
+        font-size: 15px;
+      }
+    }
+    
+    .partner-info {
+      font-size: 14px;
+      padding: 12px 16px;
+      
+      .details {
+        font-size: 13px;
+      }
+    }
+    
+    .additional-info {
+      grid-template-columns: 1fr 1fr; /* В десктопной версии делаем две колонки */
+      gap: 8px;
+      
+      .info-item {
+        font-size: 13px;
+        padding: 8px 12px;
+        
+        .text {
+          font-size: 11px;
+          line-height: 1.4;
+          
+          /* Стили для вложенных элементов */
+          div {
+            span {
+              font-size: 11px;
+              line-height: 1.3;
+            }
+          }
+        }
+      }
+    }
+    
+    .info {
+      font-size: 15px;
+      -webkit-line-clamp: 4;
+    }
+  }
 `;
 
 const ActionButtons = styled.div`
   display: flex;
   justify-content: center;
-  gap: 20px;
+  gap: 25px;
   padding: 30px 20px 40px;
+  transition: all 0.3s ease;
   
   @media (max-width: 768px) {
-    gap: 15px;
-    padding: 20px 15px 30px;
+    gap: 20px;
+    padding: 25px 15px 35px;
+  }
+  
+  /* Десктопная версия */
+  @media (min-width: 1024px) {
+    gap: 30px;
+    padding: 40px;
   }
 `;
 
 const ActionButton = styled(IconButton)`
-  width: 65px;
-  height: 65px;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+  }
+  
+  &:hover::before {
+    transform: translateX(100%);
+  }
   
   &.dislike {
     background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
     
     &:hover:not(:disabled) {
       background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
-      transform: scale(1.15) translateY(-3px);
-      box-shadow: 0 12px 35px rgba(245, 101, 101, 0.4);
+      transform: scale(1.15) translateY(-5px);
+      box-shadow: 0 15px 40px rgba(245, 101, 101, 0.5);
     }
     
     &:active {
@@ -341,8 +867,8 @@ const ActionButton = styled(IconButton)`
     
     &:hover:not(:disabled) {
       background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
-      transform: scale(1.15) translateY(-3px);
-      box-shadow: 0 12px 35px rgba(72, 187, 120, 0.4);
+      transform: scale(1.15) translateY(-5px);
+      box-shadow: 0 15px 40px rgba(72, 187, 120, 0.5);
     }
     
     &:active {
@@ -355,8 +881,8 @@ const ActionButton = styled(IconButton)`
     
     &:hover:not(:disabled) {
       background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
-      transform: scale(1.15) translateY(-3px);
-      box-shadow: 0 12px 35px rgba(246, 173, 85, 0.4);
+      transform: scale(1.15) translateY(-5px);
+      box-shadow: 0 15px 40px rgba(246, 173, 85, 0.5);
     }
     
     &:active {
@@ -369,8 +895,8 @@ const ActionButton = styled(IconButton)`
     
     &:hover:not(:disabled) {
       background: linear-gradient(135deg, #718096 0%, #4a5568 100%);
-      transform: scale(1.15) translateY(-3px);
-      box-shadow: 0 12px 35px rgba(160, 174, 192, 0.4);
+      transform: scale(1.15) translateY(-5px);
+      box-shadow: 0 15px 40px rgba(160, 174, 192, 0.5);
     }
     
     &:active {
@@ -379,13 +905,19 @@ const ActionButton = styled(IconButton)`
   }
     
   @media (max-width: 768px) {
+    width: 60px;
+    height: 60px;
+  }
+  
+  @media (max-width: 480px) {
     width: 55px;
     height: 55px;
   }
   
-  @media (max-width: 480px) {
-    width: 50px;
-    height: 50px;
+  /* Десктопная версия */
+  @media (min-width: 1024px) {
+    width: 80px;
+    height: 80px;
   }
 `;
 
@@ -393,17 +925,20 @@ const NoMoreProfiles = styled.div`
   text-align: center;
   color: #718096;
   padding: 60px 20px;
+  animation: fadeInUp 0.6s ease-out;
   
   .icon {
     font-size: 64px;
     margin-bottom: 20px;
     opacity: 0.5;
+    animation: bounce 2s ease-in-out infinite;
   }
   
   h3 {
     margin: 0 0 15px 0;
     font-size: 24px;
     color: #2d3748;
+    animation: slideInUp 0.8s ease-out 0.2s both;
   }
   
   p {
@@ -413,6 +948,41 @@ const NoMoreProfiles = styled.div`
     max-width: 300px;
     margin-left: auto;
     margin-right: auto;
+    animation: slideInUp 0.8s ease-out 0.4s both;
+  }
+  
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+      transform: translateY(0);
+    }
+    40% {
+      transform: translateY(-10px);
+    }
+    60% {
+      transform: translateY(-5px);
+    }
   }
   
   @media (max-width: 768px) {
@@ -445,8 +1015,24 @@ const SwipeHint = styled.div`
   text-align: center;
   pointer-events: none;
   opacity: ${props => props.$show ? 1 : 0};
-  transition: opacity 0.3s ease;
+  transition: all 0.3s ease;
   backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  
+  /* Красивая анимация появления */
+  ${props => props.$show && `
+    animation: hintPulse 2s ease-in-out infinite;
+  `}
+  
+  @keyframes hintPulse {
+    0%, 100% {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(1.05);
+    }
+  }
   
   @media (max-width: 768px) {
     padding: 12px 20px;
@@ -512,6 +1098,55 @@ const Home = () => {
     } catch (error) {
       return 'Возраст не указан';
     }
+  };
+
+  // Функция для парсинга дат из поля date (формат: "2000-02-12_2000-01-02")
+  const parseDateField = (dateField) => {
+    console.log('parseDateField вызвана с:', dateField);
+    
+    if (!dateField) {
+      console.log('dateField пустой');
+      return null;
+    }
+    
+    if (!dateField.includes('_')) {
+      console.log('dateField не содержит "_"');
+      return null;
+    }
+    
+    const [manDate, womanDate] = dateField.split('_');
+    console.log('Разделено на:', { manDate, womanDate });
+    
+    return {
+      manDate: manDate.trim(),
+      womanDate: womanDate.trim()
+    };
+  };
+
+  // Функция для получения возраста из поля date
+  const getAgeFromDate = (dateField) => {
+    console.log('getAgeFromDate вызвана с:', dateField);
+    
+    const dates = parseDateField(dateField);
+    console.log('parseDateField результат:', dates);
+    
+    if (!dates) {
+      console.log('parseDateField вернул null');
+      return null;
+    }
+    
+    // Отладочная информация
+    console.log('Парсинг дат:', { dateField, parsed: dates });
+    
+    const manAge = formatPartnerAge(dates.manDate);
+    const womanAge = formatPartnerAge(dates.womanDate);
+    
+    console.log('Возраст рассчитан:', { manAge, womanAge });
+    
+    return {
+      manAge,
+      womanAge
+    };
   };
 
   // Функция для добавления профиля в историю
@@ -929,6 +1564,37 @@ const Home = () => {
                 stiffness: swipeDirection ? undefined : 200 // Увеличиваем жесткость
               }}
               whileDrag={{ scale: 1.02, rotate: 2 }} // Уменьшаем эффект при перетаскивании
+              onLoad={() => {
+                console.log('=== ПРОФИЛЬ ЗАГРУЖЕН ===');
+                console.log('Основные данные:', {
+                  login: currentProfile.login,
+                  date: currentProfile.date,
+                  age: currentProfile.age,
+                  height: currentProfile.height,
+                  weight: currentProfile.weight,
+                  smoking: currentProfile.smoking,
+                  alko: currentProfile.alko,
+                  isCouple: currentProfile.isCouple,
+                  partnerData: currentProfile.partnerData
+                });
+                
+                // Проверяем наличие разделителей
+                console.log('Проверка разделителей:', {
+                  dateHasUnderscore: currentProfile.date && currentProfile.date.includes('_'),
+                  heightHasUnderscore: currentProfile.height && currentProfile.height.includes('_'),
+                  weightHasUnderscore: currentProfile.weight && currentProfile.weight.includes('_'),
+                  smokingHasUnderscore: currentProfile.smoking && currentProfile.smoking.includes('_'),
+                  alkoHasUnderscore: currentProfile.alko && currentProfile.alko.includes('_')
+                });
+                
+                // Парсим даты если есть
+                if (currentProfile.date && currentProfile.date.includes('_')) {
+                  const ages = getAgeFromDate(currentProfile.date);
+                  console.log('Возраст из date:', ages);
+                }
+                
+                console.log('=== КОНЕЦ ПРОФИЛЯ ===');
+              }}
             >
               <ProfileImage $src={currentProfile.ava ? `/uploads/${currentProfile.ava}` : ''}>
                 {!currentProfile.ava && '👤'}
@@ -940,7 +1606,30 @@ const Home = () => {
                     <LocationIcon />
                     {currentProfile.city}, {currentProfile.distance}км
                   </div>
-                  <div className="age">{currentProfile.age} лет</div>
+                  <div className="age">
+                    {(() => {
+                      console.log('Возраст для парсинга:', { 
+                        date: currentProfile.date, 
+                        age: currentProfile.age,
+                        hasUnderscore: currentProfile.date && currentProfile.date.includes('_')
+                      });
+                      
+                      if (currentProfile.date && currentProfile.date.includes('_')) {
+                        const ages = getAgeFromDate(currentProfile.date);
+                        console.log('Возраст разделен:', ages);
+                        if (ages) {
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                              <span style={{ fontSize: '12px', color: 'white' }}>Мужчина: {ages.manAge} лет</span>
+                              <span style={{ fontSize: '12px', color: 'white' }}>Женщина: {ages.womanAge} лет</span>
+                            </div>
+                          );
+                        }
+                        return 'Возраст не указан';
+                      }
+                      return `${currentProfile.age || '?'} лет`;
+                    })()}
+                  </div>
                 </ProfileOverlay>
               </ProfileImage>
               
@@ -953,78 +1642,160 @@ const Home = () => {
                   
                   {/* Отображение совместимости */}
                   {currentProfile.compatibility && (
-                    <div className="compatibility-badge" style={{ 
-                      margin: '8px 0', 
-                      padding: '8px 12px', 
-                      background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
-                      borderRadius: '12px',
-                      color: 'white',
-                      fontSize: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}>
+                    <div className="compatibility-badge">
                       <span style={{ fontSize: '14px' }}>💚</span>
-                      <span style={{ fontWeight: 'bold' }}>
-                        Совместимость: {Math.round(currentProfile.compatibility.totalScore * 100)}%
+                      <span>Совместимость:</span>
+                      <span className="percentage">
+                        {Math.round(currentProfile.compatibility.totalScore * 100)}%
                       </span>
-                    </div>
-                  )}
-                  
-                  {/* Компактная информация о паре */}
-                  {currentProfile.isCouple && currentProfile.partnerData && (
-                    <div className="partner-info" style={{ 
-                      margin: '8px 0', 
-                      padding: '8px 12px', 
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      borderRadius: '12px',
-                      color: 'white',
-                      fontSize: '12px'
-                    }}>
-                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>👫 Пара</div>
-                      <div style={{ opacity: 0.9 }}>
-                        {formatPartnerAge(currentProfile.partnerData.manDate)}/{formatPartnerAge(currentProfile.partnerData.womanDate)} лет
+                      <div className="progress-bar">
+                        <div 
+                          className="progress-fill" 
+                          style={{ 
+                            width: `${Math.round(currentProfile.compatibility.totalScore * 100)}%` 
+                          }}
+                        />
                       </div>
                     </div>
                   )}
                   
-                  {/* Компактная дополнительная информация */}
-                  <div className="additional-info" style={{ 
-                    fontSize: '11px', 
-                    marginTop: '8px',
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '4px'
-                  }}>
+                  {/* Информация о паре */}
+                  {(() => {
+                    const isCouple = currentProfile.date && currentProfile.date.includes('_');
+                    console.log('Проверка на пару:', { 
+                      date: currentProfile.date, 
+                      isCouple,
+                      hasUnderscore: currentProfile.date && currentProfile.date.includes('_')
+                    });
+                    
+                    if (isCouple) {
+                      const ages = getAgeFromDate(currentProfile.date);
+                      console.log('Возраст пары:', ages);
+                      if (ages) {
+                        return (
+                          <div className="partner-info">
+                            <div className="title">👫 Семейная пара (М+Ж)</div>
+                            <div className="details">
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                <span style={{ fontSize: '11px', color: 'white' }}>Мужчина: {ages.manAge} лет</span>
+                                <span style={{ fontSize: '11px', color: 'white' }}>Женщина: {ages.womanAge} лет</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="partner-info">
+                          <div className="title">👫 Семейная пара (М+Ж)</div>
+                          <div className="details">Возраст не указан</div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                  
+                  {/* Дополнительная информация */}
+                  <div className="additional-info">
                     {currentProfile.height && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        📏 {currentProfile.height}см
+                      <div className="info-item">
+                        <span className="emoji">📏</span>
+                        <span className="text">
+                          {(() => {
+                            console.log('Рост для парсинга:', { height: currentProfile.height, hasUnderscore: currentProfile.height.includes('_') });
+                            if (currentProfile.height.includes('_')) {
+                              const [manHeight, womanHeight] = currentProfile.height.split('_');
+                              console.log('Рост разделен:', { manHeight, womanHeight });
+                              return (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                  <span style={{ fontSize: '11px', color: '#4a5568' }}>Мужчина: {manHeight}см</span>
+                                  <span style={{ fontSize: '11px', color: '#4a5568' }}>Женщина: {womanHeight}см</span>
+                                </div>
+                              );
+                            }
+                            return `${currentProfile.height}см`;
+                          })()}
+                        </span>
                       </div>
                     )}
                     {currentProfile.weight && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        ⚖️ {currentProfile.weight}кг
+                      <div className="info-item">
+                        <span className="emoji">⚖️</span>
+                        <span className="text">
+                          {(() => {
+                            console.log('Вес для парсинга:', { weight: currentProfile.weight, hasUnderscore: currentProfile.weight.includes('_') });
+                            if (currentProfile.weight.includes('_')) {
+                              const [manWeight, womanWeight] = currentProfile.weight.split('_');
+                              console.log('Вес разделен:', { manWeight, womanWeight });
+                              return (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                  <span style={{ fontSize: '11px', color: '#4a5568' }}>Мужчина: {manWeight}кг</span>
+                                  <span style={{ fontSize: '11px', color: '#4a5568' }}>Женщина: {womanWeight}кг</span>
+                                </div>
+                              );
+                            }
+                            return `${currentProfile.weight}кг`;
+                          })()}
+                        </span>
                       </div>
                     )}
                     {currentProfile.smoking && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        🚬 {currentProfile.smoking.length > 15 ? currentProfile.smoking.substring(0, 15) + '...' : currentProfile.smoking}
+                      <div className="info-item">
+                        <span className="emoji">🚬</span>
+                        <span className="text">
+                          {(() => {
+                            console.log('Курение для парсинга:', { smoking: currentProfile.smoking, hasUnderscore: currentProfile.smoking.includes('_') });
+                            if (currentProfile.smoking.includes('_')) {
+                              const [manSmoking, womanSmoking] = currentProfile.smoking.split('_');
+                              console.log('Курение разделено:', { manSmoking, womanSmoking });
+                              return (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                  <span style={{ fontSize: '11px', color: '#4a5568' }}>
+                                    <strong>М:</strong> {manSmoking.length > 25 ? manSmoking.substring(0, 25) + '...' : manSmoking}
+                                  </span>
+                                  <span style={{ fontSize: '11px', color: '#4a5568' }}>
+                                    <strong>Ж:</strong> {womanSmoking.length > 25 ? womanSmoking.substring(0, 25) + '...' : womanSmoking}
+                                  </span>
+                                </div>
+                              );
+                            }
+                            return currentProfile.smoking.length > 20 
+                              ? currentProfile.smoking.substring(0, 20) + '...' 
+                              : currentProfile.smoking;
+                          })()}
+                        </span>
                       </div>
                     )}
                     {currentProfile.alko && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        🍷 {currentProfile.alko.length > 15 ? currentProfile.alko.substring(0, 15) + '...' : currentProfile.alko}
+                      <div className="info-item">
+                        <span className="emoji">🍷</span>
+                        <span className="text">
+                          {(() => {
+                            console.log('Алкоголь для парсинга:', { alko: currentProfile.alko, hasUnderscore: currentProfile.alko.includes('_') });
+                            if (currentProfile.alko.includes('_')) {
+                              const [manAlko, womanAlko] = currentProfile.alko.split('_');
+                              console.log('Алкоголь разделен:', { manAlko, womanAlko });
+                              return (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                  <span style={{ fontSize: '11px', color: '#4a5568' }}>
+                                    <strong>М:</strong> {manAlko.length > 25 ? manAlko.substring(0, 25) + '...' : manAlko}
+                                  </span>
+                                  <span style={{ fontSize: '11px', color: '#4a5568' }}>
+                                    <strong>Ж:</strong> {womanAlko.length > 25 ? womanAlko.substring(0, 25) + '...' : womanAlko}
+                                  </span>
+                                </div>
+                              );
+                            }
+                            return currentProfile.alko.length > 20 
+                              ? currentProfile.alko.substring(0, 20) + '...' 
+                              : currentProfile.alko;
+                          })()}
+                        </span>
                       </div>
                     )}
                   </div>
                   
                   {/* Основная информация */}
-                  <div className="info" style={{ 
-                    marginTop: '12px',
-                    fontSize: '13px',
-                    lineHeight: '1.4',
-                    color: '#4a5568'
-                  }}>
+                  <div className="info">
                     {currentProfile.info ? 
                       (currentProfile.info.length > 120 ? currentProfile.info.substring(0, 120) + '...' : currentProfile.info) 
                       : 'Информация не указана'

@@ -5,6 +5,8 @@ import { useQueryClient, useQuery } from 'react-query';
 import toast from 'react-hot-toast';
 import { apiUtils, notificationsAPI } from '../services/api';
 import { Avatar, FlexContainer, IconButton } from './UI';
+import { MEDIA } from '../styles/breakpoints';
+import { HEADER_SIZES } from '../styles/headerSizes';
 
 // Иконки
 const HomeIcon = () => (
@@ -122,32 +124,68 @@ const NavContainer = styled.nav`
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 1000;
   backdrop-filter: blur(10px);
+  
+  /* Классы для устранения конфликтов с старым CSS */
+  &.react-navigation-container {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1000 !important;
+    width: 100% !important;
+    background: white !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+    backdrop-filter: blur(10px) !important;
+  }
 `;
 
 const NavContent = styled.div`
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 70px;
   
-  @media (max-width: 1024px) {
-    padding: 0 18px;
-    height: 65px;
+  /* Высота и отступы по новой системе */
+  height: ${HEADER_SIZES.height.tiny};
+  padding: ${HEADER_SIZES.padding.tiny};
+  
+  ${MEDIA.mobile} {
+    height: ${HEADER_SIZES.height.mobile};
+    padding: ${HEADER_SIZES.padding.mobile};
   }
   
-  @media (max-width: 768px) {
-    padding: 0 15px;
-    height: 60px;
+  ${MEDIA.mobileLarge} {
+    height: ${HEADER_SIZES.height.mobileLarge};
+    padding: ${HEADER_SIZES.padding.mobileLarge};
   }
   
-  @media (max-width: 480px) {
-    padding: 0 12px;
-    height: 55px;
+  ${MEDIA.tablet} {
+    height: ${HEADER_SIZES.height.tablet};
+    padding: ${HEADER_SIZES.padding.tablet};
+  }
+  
+  ${MEDIA.tabletLarge} {
+    height: ${HEADER_SIZES.height.tabletLarge};
+    padding: ${HEADER_SIZES.padding.tabletLarge};
+  }
+  
+  ${MEDIA.desktop} {
+    height: ${HEADER_SIZES.height.desktop};
+    padding: ${HEADER_SIZES.padding.desktop};
+  }
+  
+  ${MEDIA.desktopLarge} {
+    height: ${HEADER_SIZES.height.desktopLarge};
+    padding: ${HEADER_SIZES.padding.desktopLarge};
+    max-width: 1400px;
+  }
+  
+  ${MEDIA.desktopXL} {
+    height: ${HEADER_SIZES.height.desktopXL};
+    padding: ${HEADER_SIZES.padding.desktopXL};
+    max-width: 1600px;
   }
 `;
 
@@ -158,8 +196,6 @@ const LogoContainer = styled.div`
 `;
 
 const LogoIcon = styled.div`
-  width: 45px;
-  height: 45px;
   background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
   border-radius: 12px;
   color: white;
@@ -167,59 +203,145 @@ const LogoIcon = styled.div`
   align-items: center;
   justify-content: center;
   font-weight: bold;
-  font-size: 18px;
   box-shadow: 0 4px 15px rgba(220, 53, 34, 0.3);
+  transition: all 0.3s ease;
   
-  @media (max-width: 1024px) {
-    width: 42px;
-    height: 42px;
-    font-size: 17px;
+  /* Адаптивные размеры */
+  width: ${HEADER_SIZES.logoIcon.tiny};
+  height: ${HEADER_SIZES.logoIcon.tiny};
+  font-size: ${HEADER_SIZES.logoIconFont.tiny};
+  
+  ${MEDIA.mobile} {
+    width: ${HEADER_SIZES.logoIcon.mobile};
+    height: ${HEADER_SIZES.logoIcon.mobile};
+    font-size: ${HEADER_SIZES.logoIconFont.mobile};
   }
   
-  @media (max-width: 768px) {
-    width: 40px;
-    height: 40px;
-    font-size: 16px;
+  ${MEDIA.mobileLarge} {
+    width: ${HEADER_SIZES.logoIcon.mobileLarge};
+    height: ${HEADER_SIZES.logoIcon.mobileLarge};
+    font-size: ${HEADER_SIZES.logoIconFont.mobileLarge};
   }
   
-  @media (max-width: 480px) {
-    width: 38px;
-    height: 38px;
-    font-size: 15px;
+  ${MEDIA.tablet} {
+    width: ${HEADER_SIZES.logoIcon.tablet};
+    height: ${HEADER_SIZES.logoIcon.tablet};
+    font-size: ${HEADER_SIZES.logoIconFont.tablet};
+  }
+  
+  ${MEDIA.tabletLarge} {
+    width: ${HEADER_SIZES.logoIcon.tabletLarge};
+    height: ${HEADER_SIZES.logoIcon.tabletLarge};
+    font-size: ${HEADER_SIZES.logoIconFont.tabletLarge};
+  }
+  
+  ${MEDIA.desktop} {
+    width: ${HEADER_SIZES.logoIcon.desktop};
+    height: ${HEADER_SIZES.logoIcon.desktop};
+    font-size: ${HEADER_SIZES.logoIconFont.desktop};
+  }
+  
+  ${MEDIA.desktopLarge} {
+    width: ${HEADER_SIZES.logoIcon.desktopLarge};
+    height: ${HEADER_SIZES.logoIcon.desktopLarge};
+    font-size: ${HEADER_SIZES.logoIconFont.desktopLarge};
+  }
+  
+  ${MEDIA.desktopXL} {
+    width: ${HEADER_SIZES.logoIcon.desktopXL};
+    height: ${HEADER_SIZES.logoIcon.desktopXL};
+    font-size: ${HEADER_SIZES.logoIconFont.desktopXL};
+  }
+  
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(220, 53, 34, 0.4);
   }
 `;
 
 const LogoText = styled.div`
-  font-size: 24px;
   font-weight: bold;
   background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  transition: all 0.3s ease;
+  user-select: none;
   
-  @media (max-width: 1024px) {
-    font-size: 22px;
+  /* Адаптивные размеры шрифта */
+  font-size: ${HEADER_SIZES.logoText.tiny};
+  
+  ${MEDIA.mobile} {
+    font-size: ${HEADER_SIZES.logoText.mobile};
   }
   
-  @media (max-width: 768px) {
-    font-size: 20px;
+  ${MEDIA.mobileLarge} {
+    font-size: ${HEADER_SIZES.logoText.mobileLarge};
   }
   
-  @media (max-width: 480px) {
-    font-size: 18px;
+  ${MEDIA.tablet} {
+    font-size: ${HEADER_SIZES.logoText.tablet};
+  }
+  
+  ${MEDIA.tabletLarge} {
+    font-size: ${HEADER_SIZES.logoText.tabletLarge};
+  }
+  
+  ${MEDIA.desktop} {
+    font-size: ${HEADER_SIZES.logoText.desktop};
+  }
+  
+  ${MEDIA.desktopLarge} {
+    font-size: ${HEADER_SIZES.logoText.desktopLarge};
+  }
+  
+  ${MEDIA.desktopXL} {
+    font-size: ${HEADER_SIZES.logoText.desktopXL};
+  }
+  
+  /* Скрываем на самых маленьких экранах */
+  ${MEDIA.maxMobile} {
+    display: none;
   }
 `;
 
 const NavLinks = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
   
-  @media (max-width: 1024px) {
-    gap: 6px;
+  /* Адаптивный gap */
+  gap: ${HEADER_SIZES.navLinks.gap.tiny};
+  
+  ${MEDIA.mobile} {
+    gap: ${HEADER_SIZES.navLinks.gap.mobile};
   }
   
-  @media (max-width: 768px) {
+  ${MEDIA.mobileLarge} {
+    gap: ${HEADER_SIZES.navLinks.gap.mobileLarge};
+  }
+  
+  ${MEDIA.tablet} {
+    gap: ${HEADER_SIZES.navLinks.gap.tablet};
+  }
+  
+  ${MEDIA.tabletLarge} {
+    gap: ${HEADER_SIZES.navLinks.gap.tabletLarge};
+  }
+  
+  ${MEDIA.desktop} {
+    gap: ${HEADER_SIZES.navLinks.gap.desktop};
+  }
+  
+  ${MEDIA.desktopLarge} {
+    gap: ${HEADER_SIZES.navLinks.gap.desktopLarge};
+  }
+  
+  ${MEDIA.desktopXL} {
+    gap: ${HEADER_SIZES.navLinks.gap.desktopXL};
+  }
+  
+  /* Скрываем при ширине меньше 1170px */
+  ${MEDIA.maxDesktopMobile} {
     display: none;
   }
 `;
@@ -227,15 +349,60 @@ const NavLinks = styled.div`
 const NavLink = styled(Link)`
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
   border-radius: 12px;
   color: #4a5568;
   text-decoration: none;
   font-weight: 500;
-  font-size: 15px;
   transition: all 0.3s ease;
   position: relative;
+  white-space: nowrap;
+  
+  /* Адаптивные размеры */
+  padding: ${HEADER_SIZES.navLink.padding.tiny};
+  font-size: ${HEADER_SIZES.navLink.fontSize.tiny};
+  gap: ${HEADER_SIZES.navLink.gap.tiny};
+  
+  ${MEDIA.mobile} {
+    padding: ${HEADER_SIZES.navLink.padding.mobile};
+    font-size: ${HEADER_SIZES.navLink.fontSize.mobile};
+    gap: ${HEADER_SIZES.navLink.gap.mobile};
+  }
+  
+  ${MEDIA.mobileLarge} {
+    padding: ${HEADER_SIZES.navLink.padding.mobileLarge};
+    font-size: ${HEADER_SIZES.navLink.fontSize.mobileLarge};
+    gap: ${HEADER_SIZES.navLink.gap.mobileLarge};
+  }
+  
+  ${MEDIA.tablet} {
+    padding: ${HEADER_SIZES.navLink.padding.tablet};
+    font-size: ${HEADER_SIZES.navLink.fontSize.tablet};
+    gap: ${HEADER_SIZES.navLink.gap.tablet};
+  }
+  
+  ${MEDIA.tabletLarge} {
+    padding: ${HEADER_SIZES.navLink.padding.tabletLarge};
+    font-size: ${HEADER_SIZES.navLink.fontSize.tabletLarge};
+    gap: ${HEADER_SIZES.navLink.gap.tabletLarge};
+  }
+  
+  ${MEDIA.desktop} {
+    padding: ${HEADER_SIZES.navLink.padding.desktop};
+    font-size: ${HEADER_SIZES.navLink.fontSize.desktop};
+    gap: ${HEADER_SIZES.navLink.gap.desktop};
+  }
+  
+  ${MEDIA.desktopLarge} {
+    padding: ${HEADER_SIZES.navLink.padding.desktopLarge};
+    font-size: ${HEADER_SIZES.navLink.fontSize.desktopLarge};
+    gap: ${HEADER_SIZES.navLink.gap.desktopLarge};
+  }
+  
+  ${MEDIA.desktopXL} {
+    padding: ${HEADER_SIZES.navLink.padding.desktopXL};
+    font-size: ${HEADER_SIZES.navLink.fontSize.desktopXL};
+    gap: ${HEADER_SIZES.navLink.gap.desktopXL};
+  }
   
   &:hover {
     background: linear-gradient(135deg, rgba(220, 53, 34, 0.1) 0%, rgba(255, 107, 88, 0.1) 100%);
@@ -250,16 +417,21 @@ const NavLink = styled(Link)`
     box-shadow: 0 4px 15px rgba(220, 53, 34, 0.3);
   }
   
-  @media (max-width: 1024px) {
-    padding: 10px 14px;
-    font-size: 14px;
-    gap: 6px;
-  }
-  
-  @media (max-width: 480px) {
-    padding: 8px 12px;
-    font-size: 13px;
-    gap: 5px;
+  /* Иконки в ссылках */
+  svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    
+    ${MEDIA.desktopLarge} {
+      width: 20px;
+      height: 20px;
+    }
+    
+    ${MEDIA.desktopXL} {
+      width: 22px;
+      height: 22px;
+    }
   }
 `;
 
@@ -285,22 +457,61 @@ const VipIndicator = styled.div`
   position: absolute;
   bottom: -2px;
   right: -2px;
-  width: 20px;
-  height: 20px;
   border-radius: 50%;
   background: ${props => props.$color};
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
   border: 2px solid white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
   
-  @media (max-width: 768px) {
-    width: 18px;
-    height: 18px;
+  /* Адаптивные размеры */
+  width: ${HEADER_SIZES.vipIndicator.tiny};
+  height: ${HEADER_SIZES.vipIndicator.tiny};
+  font-size: 8px;
+  
+  ${MEDIA.mobile} {
+    width: ${HEADER_SIZES.vipIndicator.mobile};
+    height: ${HEADER_SIZES.vipIndicator.mobile};
     font-size: 9px;
+  }
+  
+  ${MEDIA.mobileLarge} {
+    width: ${HEADER_SIZES.vipIndicator.mobileLarge};
+    height: ${HEADER_SIZES.vipIndicator.mobileLarge};
+    font-size: 9px;
+  }
+  
+  ${MEDIA.tablet} {
+    width: ${HEADER_SIZES.vipIndicator.tablet};
+    height: ${HEADER_SIZES.vipIndicator.tablet};
+    font-size: 10px;
+  }
+  
+  ${MEDIA.tabletLarge} {
+    width: ${HEADER_SIZES.vipIndicator.tabletLarge};
+    height: ${HEADER_SIZES.vipIndicator.tabletLarge};
+    font-size: 10px;
+  }
+  
+  ${MEDIA.desktop} {
+    width: ${HEADER_SIZES.vipIndicator.desktop};
+    height: ${HEADER_SIZES.vipIndicator.desktop};
+    font-size: 10px;
+  }
+  
+  ${MEDIA.desktopLarge} {
+    width: ${HEADER_SIZES.vipIndicator.desktopLarge};
+    height: ${HEADER_SIZES.vipIndicator.desktopLarge};
+    font-size: 11px;
+  }
+  
+  ${MEDIA.desktopXL} {
+    width: ${HEADER_SIZES.vipIndicator.desktopXL};
+    height: ${HEADER_SIZES.vipIndicator.desktopXL};
+    font-size: 12px;
   }
 `;
 
@@ -312,10 +523,48 @@ const DropdownMenu = styled.div`
   border: 1px solid #e2e8f0;
   border-radius: 15px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-  padding: 8px;
-  min-width: 220px;
   z-index: 1000;
   backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  
+  /* Адаптивные размеры */
+  padding: ${HEADER_SIZES.dropdown.padding.tiny};
+  min-width: ${HEADER_SIZES.dropdown.minWidth.tiny};
+  
+  ${MEDIA.mobile} {
+    padding: ${HEADER_SIZES.dropdown.padding.mobile};
+    min-width: ${HEADER_SIZES.dropdown.minWidth.mobile};
+  }
+  
+  ${MEDIA.mobileLarge} {
+    padding: ${HEADER_SIZES.dropdown.padding.mobileLarge};
+    min-width: ${HEADER_SIZES.dropdown.minWidth.mobileLarge};
+  }
+  
+  ${MEDIA.tablet} {
+    padding: ${HEADER_SIZES.dropdown.padding.tablet};
+    min-width: ${HEADER_SIZES.dropdown.minWidth.tablet};
+  }
+  
+  ${MEDIA.tabletLarge} {
+    padding: ${HEADER_SIZES.dropdown.padding.tabletLarge};
+    min-width: ${HEADER_SIZES.dropdown.minWidth.tabletLarge};
+  }
+  
+  ${MEDIA.desktop} {
+    padding: ${HEADER_SIZES.dropdown.padding.desktop};
+    min-width: ${HEADER_SIZES.dropdown.minWidth.desktop};
+  }
+  
+  ${MEDIA.desktopLarge} {
+    padding: ${HEADER_SIZES.dropdown.padding.desktopLarge};
+    min-width: ${HEADER_SIZES.dropdown.minWidth.desktopLarge};
+  }
+  
+  ${MEDIA.desktopXL} {
+    padding: ${HEADER_SIZES.dropdown.padding.desktopXL};
+    min-width: ${HEADER_SIZES.dropdown.minWidth.desktopXL};
+  }
   
   ${props => !props.$show && 'display: none;'}
   
@@ -364,13 +613,37 @@ const DropdownItem = styled.button`
 
 const MobileMenuButton = styled(IconButton)`
   display: none;
+  transition: all 0.3s ease;
   
-  @media (max-width: 768px) {
+  /* Показываем при ширине меньше 1170px */
+  ${MEDIA.maxDesktopMobile} {
     display: flex;
+  }
+  
+  /* Адаптивные размеры для иконки меню */
+  svg {
+    width: 22px;
+    height: 22px;
+    
+    ${MEDIA.mobile} {
+      width: 24px;
+      height: 24px;
+    }
+    
+    ${MEDIA.tablet} {
+      width: 26px;
+      height: 26px;
+    }
+  }
+  
+  &:hover {
+    transform: scale(1.1);
   }
 `;
 
-const MobileMenu = styled.div`
+const MobileMenu = styled.div.attrs({
+  className: 'react-mobile-menu'
+})`
   display: none;
   position: absolute;
   top: 100%;
@@ -379,28 +652,71 @@ const MobileMenu = styled.div`
   background: white;
   border-top: 1px solid #e2e8f0;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  padding: 20px;
+  transition: all 0.3s ease;
+  z-index: 999;
   
-  @media (max-width: 768px) {
-    display: ${props => props.$show ? 'block' : 'none'};
-    padding: 18px;
+  /* Адаптивные отступы */
+  padding: ${HEADER_SIZES.mobileMenu.padding.tiny};
+  
+  ${MEDIA.mobile} {
+    padding: ${HEADER_SIZES.mobileMenu.padding.mobile};
   }
   
-  @media (max-width: 480px) {
-    padding: 15px;
+  ${MEDIA.mobileLarge} {
+    padding: ${HEADER_SIZES.mobileMenu.padding.mobileLarge};
+  }
+  
+  ${MEDIA.tablet} {
+    padding: ${HEADER_SIZES.mobileMenu.padding.tablet};
+  }
+  
+  ${MEDIA.tabletLarge} {
+    padding: ${HEADER_SIZES.mobileMenu.padding.tabletLarge};
+  }
+  
+  ${MEDIA.maxDesktopMobile} {
+    display: ${props => props.$show ? 'block' : 'none'};
   }
 `;
 
 const MobileNavLink = styled(Link)`
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
   color: #4a5568;
   text-decoration: none;
   border-radius: 12px;
   margin-bottom: 8px;
   transition: all 0.2s ease;
+  font-weight: 500;
+  
+  /* Адаптивные размеры */
+  padding: ${HEADER_SIZES.mobileMenu.linkPadding.tiny};
+  gap: 10px;
+  font-size: ${HEADER_SIZES.mobileMenu.fontSize.tiny};
+  
+  ${MEDIA.mobile} {
+    padding: ${HEADER_SIZES.mobileMenu.linkPadding.mobile};
+    gap: 12px;
+    font-size: ${HEADER_SIZES.mobileMenu.fontSize.mobile};
+  }
+  
+  ${MEDIA.mobileLarge} {
+    padding: ${HEADER_SIZES.mobileMenu.linkPadding.mobileLarge};
+    gap: 12px;
+    font-size: ${HEADER_SIZES.mobileMenu.fontSize.mobileLarge};
+  }
+  
+  ${MEDIA.tablet} {
+    padding: ${HEADER_SIZES.mobileMenu.linkPadding.tablet};
+    gap: 14px;
+    font-size: ${HEADER_SIZES.mobileMenu.fontSize.tablet};
+  }
+  
+  ${MEDIA.tabletLarge} {
+    padding: ${HEADER_SIZES.mobileMenu.linkPadding.tabletLarge};
+    gap: 14px;
+    font-size: ${HEADER_SIZES.mobileMenu.fontSize.tabletLarge};
+  }
   
   &:last-child {
     margin-bottom: 0;
@@ -409,17 +725,25 @@ const MobileNavLink = styled(Link)`
   &.active {
     background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
     color: white;
+    box-shadow: 0 4px 15px rgba(220, 53, 34, 0.3);
   }
   
   &:hover:not(.active) {
     background: #f7fafc;
     text-decoration: none;
+    transform: translateX(4px);
   }
   
-  @media (max-width: 480px) {
-    padding: 14px;
-    gap: 10px;
-    font-size: 14px;
+  /* Иконки в мобильном меню */
+  svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    
+    ${MEDIA.tablet} {
+      width: 22px;
+      height: 22px;
+    }
   }
 `;
 
@@ -430,13 +754,59 @@ const NotificationBadge = styled.span`
   background: #f56565;
   color: white;
   border-radius: 50%;
-  width: 18px;
-  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
   font-weight: bold;
+  box-shadow: 0 2px 8px rgba(245, 101, 101, 0.4);
+  transition: all 0.3s ease;
+  
+  /* Адаптивные размеры */
+  width: ${HEADER_SIZES.notificationBadge.tiny};
+  height: ${HEADER_SIZES.notificationBadge.tiny};
+  font-size: 10px;
+  
+  ${MEDIA.mobile} {
+    width: ${HEADER_SIZES.notificationBadge.mobile};
+    height: ${HEADER_SIZES.notificationBadge.mobile};
+    font-size: 11px;
+  }
+  
+  ${MEDIA.mobileLarge} {
+    width: ${HEADER_SIZES.notificationBadge.mobileLarge};
+    height: ${HEADER_SIZES.notificationBadge.mobileLarge};
+    font-size: 11px;
+  }
+  
+  ${MEDIA.tablet} {
+    width: ${HEADER_SIZES.notificationBadge.tablet};
+    height: ${HEADER_SIZES.notificationBadge.tablet};
+    font-size: 12px;
+  }
+  
+  ${MEDIA.tabletLarge} {
+    width: ${HEADER_SIZES.notificationBadge.tabletLarge};
+    height: ${HEADER_SIZES.notificationBadge.tabletLarge};
+    font-size: 12px;
+  }
+  
+  ${MEDIA.desktop} {
+    width: ${HEADER_SIZES.notificationBadge.desktop};
+    height: ${HEADER_SIZES.notificationBadge.desktop};
+    font-size: 12px;
+  }
+  
+  ${MEDIA.desktopLarge} {
+    width: ${HEADER_SIZES.notificationBadge.desktopLarge};
+    height: ${HEADER_SIZES.notificationBadge.desktopLarge};
+    font-size: 13px;
+  }
+  
+  ${MEDIA.desktopXL} {
+    width: ${HEADER_SIZES.notificationBadge.desktopXL};
+    height: ${HEADER_SIZES.notificationBadge.desktopXL};
+    font-size: 14px;
+  }
 `;
 
 // Компонент счетчика уведомлений
@@ -556,20 +926,28 @@ const Navigation = () => {
   // Закрытие меню при клике вне
   useEffect(() => {
     const handleClickOutside = (event) => {
+      // Закрытие пользовательского меню
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
         setShowUserMenu(false);
       }
-      setShowMobileMenu(false);
+      
+      // Закрытие мобильного меню только если клик не по кнопке меню и не внутри самого меню
+      const mobileMenuButton = event.target.closest('[data-mobile-menu-button]');
+      const mobileMenuContent = event.target.closest('.react-mobile-menu');
+      
+      if (!mobileMenuButton && !mobileMenuContent && showMobileMenu) {
+        setShowMobileMenu(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [showMobileMenu]);
 
   if (!currentUser) return null;
 
   return (
-    <NavContainer>
+    <NavContainer className="react-navigation-container">
       <NavContent>
         <LogoContainer>
           <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -664,9 +1042,48 @@ const Navigation = () => {
             <UserMenuButton onClick={() => setShowUserMenu(!showUserMenu)}>
               <Avatar
                 $src={currentUser.ava ? `/uploads/${currentUser.ava}` : ''}
-                $size="45px"
+                $size={HEADER_SIZES.userAvatar.desktop}
                 $fontSize="18px"
                 $clickable
+                css={`
+                  width: ${HEADER_SIZES.userAvatar.tiny};
+                  height: ${HEADER_SIZES.userAvatar.tiny};
+                  
+                  ${MEDIA.mobile} {
+                    width: ${HEADER_SIZES.userAvatar.mobile};
+                    height: ${HEADER_SIZES.userAvatar.mobile};
+                  }
+                  
+                  ${MEDIA.mobileLarge} {
+                    width: ${HEADER_SIZES.userAvatar.mobileLarge};
+                    height: ${HEADER_SIZES.userAvatar.mobileLarge};
+                  }
+                  
+                  ${MEDIA.tablet} {
+                    width: ${HEADER_SIZES.userAvatar.tablet};
+                    height: ${HEADER_SIZES.userAvatar.tablet};
+                  }
+                  
+                  ${MEDIA.tabletLarge} {
+                    width: ${HEADER_SIZES.userAvatar.tabletLarge};
+                    height: ${HEADER_SIZES.userAvatar.tabletLarge};
+                  }
+                  
+                  ${MEDIA.desktop} {
+                    width: ${HEADER_SIZES.userAvatar.desktop};
+                    height: ${HEADER_SIZES.userAvatar.desktop};
+                  }
+                  
+                  ${MEDIA.desktopLarge} {
+                    width: ${HEADER_SIZES.userAvatar.desktopLarge};
+                    height: ${HEADER_SIZES.userAvatar.desktopLarge};
+                  }
+                  
+                  ${MEDIA.desktopXL} {
+                    width: ${HEADER_SIZES.userAvatar.desktopXL};
+                    height: ${HEADER_SIZES.userAvatar.desktopXL};
+                  }
+                `}
               >
                 {!currentUser.ava && currentUser.login.charAt(0).toUpperCase()}
               </Avatar>
@@ -693,8 +1110,12 @@ const Navigation = () => {
             </DropdownMenu>
           </UserSection>
 
-          <MobileMenuButton 
-            onClick={() => setShowMobileMenu(!showMobileMenu)}
+          <MobileMenuButton
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowMobileMenu(!showMobileMenu);
+            }}
+            data-mobile-menu-button="true"
             $variant="secondary"
           >
             <MenuIcon />

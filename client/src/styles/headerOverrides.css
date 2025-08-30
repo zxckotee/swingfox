@@ -1,0 +1,154 @@
+/* 
+ * Файл для устранения конфликтов между старым CSS (public_html/style.css) 
+ * и новым React Navigation компонентом
+ */
+
+/* Сброс стилей старого header для React Navigation */
+.react-navigation-container {
+  /* Перекрываем старые стили header */
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1000 !important; /* Выше чем у старого header (99999) */
+  width: 100% !important;
+  background: white !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+/* Убираем стили старого header когда используется React Navigation */
+body.react-app header {
+  display: none !important;
+}
+
+/* Корректируем margin-top body для React Navigation */
+body.react-app {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Сброс стилей для мобильного меню */
+.react-mobile-menu {
+  position: absolute !important;
+  top: 100% !important;
+  left: 0 !important;
+  right: 0 !important;
+  background: white !important;
+  border-top: 1px solid #e2e8f0 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
+  z-index: 999 !important;
+}
+
+/* Устранение конфликтов со старыми медиазапросами */
+@media screen and (max-width: 1169px) {
+  .react-navigation-container {
+    /* Форсируем правильное отображение на мобильных */
+    display: block !important;
+    visibility: visible !important;
+  }
+  
+  .react-mobile-menu {
+    display: block !important;
+  }
+  
+  /* Скрываем старые элементы header на мобильных */
+  .header_menu,
+  .header_links {
+    display: none !important;
+  }
+}
+
+/* Приоритет для React компонентов */
+[data-styled] {
+  /* Повышаем специфичность styled-components */
+  position: relative;
+  z-index: inherit;
+}
+
+/* Сброс глобальных стилей которые могут влиять на Navigation */
+.react-navigation-container * {
+  box-sizing: border-box;
+}
+
+.react-navigation-container a {
+  text-decoration: none !important;
+}
+
+.react-navigation-container button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  outline: none;
+}
+
+/* Исправление проблем с overflow на мобильных */
+.react-navigation-container {
+  overflow: visible !important;
+}
+
+/* Фиксация для старых браузеров */
+.react-navigation-container {
+  -webkit-backdrop-filter: blur(10px);
+  -moz-backdrop-filter: blur(10px);
+  -ms-backdrop-filter: blur(10px);
+}
+
+/* Убираем влияние старых стилей на новые компоненты */
+.react-navigation-container .nav-link {
+  /* Сброс стилей ссылок */
+  color: inherit !important;
+  font-family: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  line-height: inherit !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+/* Исправление z-index конфликтов */
+.react-navigation-container .dropdown-menu {
+  z-index: 1001 !important;
+}
+
+.react-navigation-container .mobile-menu {
+  z-index: 1001 !important;
+}
+
+/* Responsive фиксы */
+@media screen and (min-width: 769px) {
+  .react-navigation-container .mobile-menu-button {
+    display: none !important;
+  }
+  
+  .react-navigation-container .nav-links {
+    display: flex !important;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .react-navigation-container .nav-links {
+    display: none !important;
+  }
+  
+  .react-navigation-container .mobile-menu-button {
+    display: flex !important;
+  }
+}
+
+/* Дополнительные фиксы для consistency */
+.react-navigation-container {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+}
+
+/* Убираем margin/padding конфликты */
+.react-navigation-container,
+.react-navigation-container * {
+  margin: 0;
+  padding: 0;
+}
+
+/* Восстанавливаем нужные отступы */
+.react-navigation-container .nav-content {
+  padding: inherit;
+  margin: 0 auto;
+}
