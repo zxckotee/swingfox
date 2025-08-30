@@ -9,7 +9,10 @@
     "dev:backend": "nodemon server.js",
     "dev:frontend": "cd client && npm start",
     "migrate": "npx sequelize-cli db:migrate",
-    "seed": "npx sequelize-cli db:seed:all"
+    "seed": "npx sequelize-cli db:seed:all",
+    "geo:update": "node scripts/update-user-geo.js",
+    "geo:test": "node scripts/test-geolocation.js",
+    "distance:test": "node scripts/test-distance.js"
   },
   "keywords": [
     "swingfox",

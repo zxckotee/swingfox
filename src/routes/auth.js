@@ -6,6 +6,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { generateId, generateToken, generateEmailCode } = require('../utils/helpers');
 const { APILogger } = require('../utils/logger');
 const nodemailer = require('nodemailer');
+const { getGeoWithFallback, getClientIP } = require('../utils/geoLocation');
 
 // Хранилище для email кодов (в продакшене использовать Redis)
 const emailCodes = new Map();
@@ -332,6 +333,16 @@ router.post('/register', async (req, res) => {
     const userId = generateId();
     logger.logResult('Генерация ID пользователя', true, { user_id: userId }, req);
     
+    // Получение геолокации по IP
+    const clientIP = getClientIP(req);
+    logger.logProcess('Получение геолокации по IP', { client_ip: clientIP }, req);
+    
+    const geo = await getGeoWithFallback(clientIP);
+    logger.logResult('Геолокация по IP', !!geo, { 
+      ip: clientIP, 
+      geo_coordinates: geo 
+    }, req);
+    
     // Валидация статуса
     const validStatuses = ['Семейная пара(М+Ж)', 'Несемейная пара(М+Ж)', 'Мужчина', 'Женщина'];
     if (!validStatuses.includes(about.status)) {
@@ -348,6 +359,7 @@ router.post('/register', async (req, res) => {
       status: about.status,
       country: about.country,
       city: about.city,
+      geo: geo,
       viptype: 'FREE'
     }, req);
     
@@ -359,6 +371,7 @@ router.post('/register', async (req, res) => {
       status: about.status,
       country: about.country,
       city: about.city,
+      geo: geo,
       search_status: about.search_status,
       search_age: about.search_age,
       location: about.location,
