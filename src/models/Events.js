@@ -114,26 +114,6 @@ const Events = sequelize.define('Events', {
     type: DataTypes.INTEGER,
     allowNull: true,
     comment: 'ID клуба (если событие клубное)'
-  },
-  age_restriction: {
-    type: DataTypes.STRING(20),
-    allowNull: true,
-    comment: 'Ограничения по возрасту'
-  },
-  tags: {
-    type: DataTypes.STRING(500),
-    allowNull: true,
-    comment: 'Теги события (разделенные запятыми)'
-  },
-  registration_required: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false,
-    comment: 'Требуется ли регистрация'
-  },
-  current_participants: {
-    type: DataTypes.INTEGER,
-    defaultValue: 0,
-    comment: 'Текущее количество участников'
   }
 }, {
   tableName: 'events',
@@ -386,6 +366,24 @@ Events.associate = function(models) {
     targetKey: 'id',
     as: 'Club'
   });
+
+  // Событие имеет много участников
+  if (models.EventParticipants) {
+    Events.hasMany(models.EventParticipants, {
+      foreignKey: 'event_id',
+      sourceKey: 'id',
+      as: 'Participants'
+    });
+  }
+
+  // Событие может быть связано с объявлением
+  if (models.Ads) {
+    Events.hasOne(models.Ads, {
+      foreignKey: 'event_id',
+      sourceKey: 'id',
+      as: 'Ad'
+    });
+  }
 };
 
 module.exports = Events;

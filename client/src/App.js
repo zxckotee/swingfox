@@ -19,6 +19,9 @@ import Admin from './pages/Admin';
 import Notifications from './pages/Notifications';
 
 import Clubs from './pages/Clubs';
+import ClubLogin from './pages/ClubLogin';
+import ClubRegister from './pages/ClubRegister';
+import ClubDashboard from './pages/ClubDashboard';
 import Subscriptions from './pages/Subscriptions';
 import Ratings from './pages/Ratings';
 import BalanceTopUp from './pages/BalanceTopUp';
@@ -249,6 +252,11 @@ function App() {
               {/* Публичные роуты */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              
+              {/* Роуты для клубов */}
+              <Route path="/club/login" element={<ClubLogin />} />
+              <Route path="/club/register" element={<ClubRegister />} />
+              <Route path="/club/dashboard" element={<ClubDashboard />} />
               
               {/* Защищенные роуты */}
               <Route path="/" element={

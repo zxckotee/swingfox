@@ -58,6 +58,11 @@ const photoCommentsRoutes = require('./src/routes/photo-comments');
 const profileCommentsRoutes = require('./src/routes/profile-comments');
 const reactionsRoutes = require('./src/routes/reactions');
 
+// Новые роуты для системы клубов
+const clubAuthRoutes = require('./src/routes/clubAuth');
+const clubDashboardRoutes = require('./src/routes/clubDashboard');
+const eventsRoutes = require('./src/routes/events');
+
 // Импорт cron-задач для подписок
 const SubscriptionCron = require('./src/cron/subscriptionCron');
 
@@ -81,6 +86,11 @@ app.use('/api/profiles', profilesRoutes);
 app.use('/api/photo-comments', photoCommentsRoutes);
 app.use('/api/profile-comments', profileCommentsRoutes);
 app.use('/api/reactions', reactionsRoutes);
+
+// Новые роуты для системы клубов
+app.use('/api/club/auth', clubAuthRoutes);
+app.use('/api/club', clubDashboardRoutes);
+app.use('/api/events', eventsRoutes);
 
 // Проверка статуса API
 app.get('/api/status', (req, res) => {
@@ -123,8 +133,10 @@ const startServer = async () => {
     // Синхронизируем модели (только в разработке)
     if (process.env.NODE_ENV === 'development') {
       console.log('🔄 Синхронизация моделей с базой данных...');
-      await sequelize.sync({ force: false });
-      console.log('✅ Модели синхронизированы');
+      // Временно отключаем синхронизацию для выполнения миграций
+      // await sequelize.sync({ force: false });
+      console.log('⚠️  Автоматическая синхронизация отключена. Выполните миграции вручную.');
+      console.log('💡 Для выполнения миграций используйте: npm run migrate');
     }
     
     // Запускаем cron-задачи для подписок

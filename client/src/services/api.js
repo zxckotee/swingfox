@@ -70,9 +70,18 @@ let isRedirecting = false;
 // Интерцептор для добавления токена к запросам
 apiClient.interceptors.request.use(
   (config) => {
-    const token = getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Проверяем, является ли это запросом для клубов
+    if (config.url && config.url.includes('/club/')) {
+      const clubToken = localStorage.getItem('clubToken');
+      if (clubToken) {
+        config.headers.Authorization = `Bearer ${clubToken}`;
+      }
+    } else {
+      // Для обычных пользователей используем обычный токен
+      const token = getToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },
@@ -84,20 +93,30 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 && !isRedirecting) {
-      // Токен истек или недействителен
-      isRedirecting = true;
-      setToken(null);
-      
-      // Вместо window.location.href используем событие
-      window.dispatchEvent(new CustomEvent('auth-logout'));
-      
-      // Сбрасываем флаг через некоторое время
-      setTimeout(() => {
-        isRedirecting = false;
-      }, 1000);
+      // Проверяем, является ли это запросом для клубов
+      if (error.config.url && error.config.url.includes('/club/')) {
+        // Для клубов очищаем токен клуба и перенаправляем на вход клуба
+        localStorage.removeItem('clubToken');
+        if (window.location.pathname.startsWith('/club/')) {
+          window.location.href = '/club/login';
+        }
+      } else {
+        // Для обычных пользователей очищаем обычный токен
+        isRedirecting = true;
+        setToken(null);
+        
+        // Вместо window.location.href используем событие
+        window.dispatchEvent(new CustomEvent('auth-logout'));
+        
+        // Сбрасываем флаг через некоторое время
+        setTimeout(() => {
+          isRedirecting = false;
+        }, 1000);
+      }
     } else if (error.response?.status >= 500) {
       toast.error('Ошибка сервера. Попробуйте позже.');
     }
+    
     return Promise.reject(error);
   }
 );
@@ -1273,3 +1292,104 @@ export const api = {
 };
 
 export default apiClient;
+
+// API методы для клубов
+export const clubAuthAPI = {
+  register: async (clubData) => {
+    const response = await apiClient.post('/club/auth/register', clubData);
+    return response.data;
+  },
+
+  login: async (login, password) => {
+    const response = await apiClient.post('/club/auth/login', { login, password });
+    return response.data;
+  },
+
+  verify: async () => {
+    const response = await apiClient.get('/club/auth/verify');
+    return response.data;
+  },
+
+  logout: async () => {
+    const response = await apiClient.post('/club/auth/logout');
+    return response.data;
+  }
+};
+
+// API методы для панели управления клубом
+export const clubDashboardAPI = {
+  getDashboard: async () => {
+    const response = await apiClient.get('/club/dashboard');
+    return response.data;
+  },
+
+  createEvent: async (eventData) => {
+    const response = await apiClient.post('/club/dashboard/events', eventData);
+    return response.data;
+  },
+
+  getEvents: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const response = await apiClient.get(`/club/dashboard/events?${queryString}`);
+    return response.data;
+  },
+
+  getEvent: async (eventId) => {
+    const response = await apiClient.get(`/club/dashboard/events/${eventId}`);
+    return response.data;
+  },
+
+  updateEvent: async (eventId, eventData) => {
+    const response = await apiClient.put(`/club/dashboard/events/${eventId}`, eventData);
+    return response.data;
+  },
+
+  cancelEvent: async (eventId, reason = '') => {
+    const response = await apiClient.post(`/club/dashboard/events/${eventId}/cancel`, { reason });
+    return response.data;
+  },
+
+  getEventParticipants: async (eventId, params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const response = await apiClient.get(`/club/dashboard/events/${eventId}/participants?${queryString}`);
+    return response.data;
+  },
+
+  updateParticipantStatus: async (eventId, participantId, status, notes = '') => {
+    const response = await apiClient.put(`/club/dashboard/events/${eventId}/participants/${participantId}`, {
+      status,
+      notes
+    });
+    return response.data;
+  }
+};
+
+// API методы для мероприятий
+export const eventsAPI = {
+  getEvents: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const response = await apiClient.get(`/events?${queryString}`);
+    return response.data;
+  },
+
+  getEvent: async (eventId) => {
+    const response = await apiClient.get(`/events/${eventId}`);
+    return response.data;
+  },
+
+  joinEvent: async (eventId) => {
+    const response = await apiClient.post(`/events/${eventId}/join`);
+    return response.data;
+  },
+
+  leaveEvent: async (eventId) => {
+    const response = await apiClient.post(`/events/${eventId}/leave`);
+    return response.data;
+  },
+
+  getMyEvents: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    const response = await apiClient.get(`/events/my/events?${queryString}`);
+    return response.data;
+  }
+};

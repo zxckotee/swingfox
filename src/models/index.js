@@ -21,6 +21,7 @@ const ProfileVisit = require('./ProfileVisit');
 const PhotoComments = require('./PhotoComments');
 const ProfileComments = require('./ProfileComments');
 const Reactions = require('./Reactions');
+const EventParticipants = require('./EventParticipants');
 
 // Определение ассоциаций между моделями
 
@@ -163,6 +164,10 @@ const ProfileVisitModel = ProfileVisit(sequelize);
 const PhotoCommentsModel = PhotoComments(sequelize);
 const ProfileCommentsModel = ProfileComments(sequelize);
 const ReactionsModel = Reactions(sequelize);
+// Эти модели уже определены как готовые модели, не нужно вызывать как функции
+const EventParticipantsModel = EventParticipants;
+const EventsModel = Events;
+const AdsModel = Ads;
 
 // Ассоциации для новых моделей
 if (GiftsModel.associate) GiftsModel.associate({ User });
@@ -170,9 +175,11 @@ if (ImageLikesModel.associate) ImageLikesModel.associate({ User });
 if (RatingModel.associate) RatingModel.associate({ User });
 if (StatusModel.associate) StatusModel.associate({ User });
 if (NotificationsModel.associate) NotificationsModel.associate({ User });
-if (ClubsModel.associate) ClubsModel.associate({ User, ClubApplications: ClubApplicationsModel, Events });
+if (ClubsModel.associate) ClubsModel.associate({ User, ClubApplications: ClubApplicationsModel, Events: EventsModel, EventParticipants: EventParticipantsModel });
 if (ClubApplicationsModel.associate) ClubApplicationsModel.associate({ User, Clubs: ClubsModel });
-if (Events.associate) Events.associate({ User, Clubs: ClubsModel });
+if (EventsModel.associate) EventsModel.associate({ User, Clubs: ClubsModel, EventParticipants: EventParticipantsModel, Ads: AdsModel });
+if (EventParticipantsModel.associate) EventParticipantsModel.associate({ Events: EventsModel, User, Clubs: ClubsModel });
+if (AdsModel.associate) AdsModel.associate({ Events: EventsModel });
 if (SubscriptionsModel.associate) SubscriptionsModel.associate({ User, SubscriptionPlans: SubscriptionPlansModel });
 if (SubscriptionPlansModel.associate) SubscriptionPlansModel.associate({ User });
 if (SubscriptionPaymentsModel.associate) SubscriptionPaymentsModel.associate({ User, Subscriptions: SubscriptionsModel });
@@ -187,9 +194,9 @@ module.exports = {
   User,
   Chat,
   Likes,
-  Ads,
+  Ads: AdsModel,
   Reports,
-  Events,
+  Events: EventsModel,
   Geo,
   Gifts: GiftsModel,
   ImageLikes: ImageLikesModel,
@@ -205,5 +212,6 @@ module.exports = {
   ProfileVisit: ProfileVisitModel,
   PhotoComments: PhotoCommentsModel,
   ProfileComments: ProfileCommentsModel,
-  Reactions: ReactionsModel
+  Reactions: ReactionsModel,
+  EventParticipants: EventParticipantsModel
 };

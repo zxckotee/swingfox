@@ -7,6 +7,53 @@ import toast from 'react-hot-toast';
 import { authAPI, apiUtils } from '../services/api';
 import { LocationSelector } from '../components/Geography';
 
+// Декоративные круги
+const DecorativeCircle = styled.div`
+  position: absolute;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(220, 53, 34, 0.3) 0%, rgba(255, 107, 88, 0.3) 100%);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(220, 53, 34, 0.4);
+  z-index: 1;
+  
+  &.circle-1 {
+    width: 200px;
+    height: 200px;
+    top: -100px;
+    right: -100px;
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  &.circle-2 {
+    width: 150px;
+    height: 150px;
+    bottom: -75px;
+    left: -75px;
+    animation: float 8s ease-in-out infinite reverse;
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(180deg); }
+  }
+  
+  @media (max-width: 768px) {
+    &.circle-1 {
+      width: 150px;
+      height: 150px;
+      top: -75px;
+      right: -75px;
+    }
+    
+    &.circle-2 {
+      width: 100px;
+      height: 100px;
+      bottom: -50px;
+      left: -50px;
+    }
+  }
+`;
+
 // Иконки для глаза (показать/скрыть пароль)
 const EyeIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -818,7 +865,9 @@ const Register = () => {
   }, [allFields, selectedStatus]);
 
   return (
-    <RegisterContainer>
+    <RegisterContainer style={{ position: 'relative', overflow: 'hidden' }}>
+      <DecorativeCircle className="circle-1" />
+      <DecorativeCircle className="circle-2" />
       <RegisterCard>
         <LogoSection>
           <Logo>SF</Logo>
@@ -1286,6 +1335,79 @@ const Register = () => {
         <LoginLink>
           Уже есть аккаунт? <Link to="/login">Войти</Link>
         </LoginLink>
+
+        {/* Ссылки для клубов */}
+        <div style={{ 
+          marginTop: '20px', 
+          paddingTop: '20px', 
+          borderTop: '1px solid #e2e8f0',
+          textAlign: 'center'
+        }}>
+          <div style={{ 
+            color: '#718096', 
+            fontSize: '12px', 
+            marginBottom: '8px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            Для клубов
+          </div>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            gap: '15px',
+            flexWrap: 'wrap'
+          }}>
+            <Link 
+              to="/club/login" 
+              style={{ 
+                color: '#805ad5', 
+                textDecoration: 'none', 
+                fontWeight: '600',
+                fontSize: '13px',
+                padding: '6px 12px',
+                borderRadius: '16px',
+                backgroundColor: '#f7fafc',
+                border: '1px solid #e2e8f0',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = '#edf2f7';
+                e.target.style.borderColor = '#cbd5e0';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = '#f7fafc';
+                e.target.style.borderColor = '#e2e8f0';
+              }}
+            >
+              🎪 Вход для клубов
+            </Link>
+            <Link 
+              to="/club/register" 
+              style={{ 
+                color: '#38a169', 
+                textDecoration: 'none', 
+                fontWeight: '600',
+                fontSize: '13px',
+                padding: '6px 12px',
+                borderRadius: '16px',
+                backgroundColor: '#f0fff4',
+                border: '1px solid #c6f6d5',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = '#e6fffa';
+                e.target.style.borderColor = '#9ae6b4';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = '#f0fff4';
+                e.target.style.borderColor = '#c6f6d5';
+              }}
+            >
+              🎪 Регистрация клуба
+            </Link>
+          </div>
+        </div>
       </RegisterCard>
     </RegisterContainer>
   );

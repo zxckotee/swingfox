@@ -352,6 +352,11 @@ export const Input = styled.input`
     padding: 10px 14px;
     font-size: 14px;
   }
+  
+  ${props => props.error && `
+    border-color: #f56565;
+    background: #fff5f5;
+  `}
 `;
 
 export const Select = styled.select`
@@ -388,6 +393,11 @@ export const Select = styled.select`
     padding: 10px 14px;
     font-size: 14px;
   }
+  
+  ${props => props.error && `
+    border-color: #f56565;
+    background-color: #fff5f5;
+  `}
 `;
 
 export const TextArea = styled.textarea`
@@ -422,6 +432,11 @@ export const TextArea = styled.textarea`
     font-size: 14px;
     min-height: 80px;
   }
+  
+  ${props => props.error && `
+    border-color: #f56565;
+    background: #fff5f5;
+  `}
 `;
 
 // Кнопки

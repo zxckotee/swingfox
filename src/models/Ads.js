@@ -99,6 +99,18 @@ const Ads = sequelize.define('Ads', {
     type: DataTypes.BOOLEAN,
     allowNull: false,
     defaultValue: false
+  },
+  // Новое поле для связи с мероприятиями
+  event_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'events',
+      key: 'id'
+    },
+    onUpdate: 'CASCADE',
+    onDelete: 'SET NULL',
+    comment: 'ID связанного мероприятия (для объявлений типа "Мероприятия")'
   }
 }, {
   tableName: 'ads',
@@ -113,16 +125,29 @@ const Ads = sequelize.define('Ads', {
       fields: ['type']
     },
     {
+      fields: ['status']
+    },
+    {
+      fields: ['country']
+    },
+    {
       fields: ['city']
     },
     {
-      fields: ['status']
+      fields: ['price']
+    },
+    {
+      fields: ['is_featured']
     },
     {
       fields: ['created_at']
     },
     {
       fields: ['expires_at']
+    },
+    // Новый индекс для связи с мероприятиями
+    {
+      fields: ['event_id']
     }
   ]
 });
@@ -201,6 +226,11 @@ Ads.prototype.canView = function() {
   return this.status === 'approved' && !this.isExpired();
 };
 
+// Новый метод для проверки связи с мероприятием
+Ads.prototype.isEventAd = function() {
+  return this.type === 'Мероприятия' && this.event_id !== null;
+};
+
 // Hooks
 Ads.beforeCreate(async (ad) => {
   // Устанавливаем срок действия по умолчанию (30 дней)
@@ -217,5 +247,17 @@ Ads.beforeUpdate(async (ad) => {
     ad.expires_at = null;
   }
 });
+
+// Ассоциации
+Ads.associate = function(models) {
+  // Объявление может быть связано с мероприятием
+  if (models.Events) {
+    Ads.belongsTo(models.Events, {
+      foreignKey: 'event_id',
+      targetKey: 'id',
+      as: 'Event'
+    });
+  }
+};
 
 module.exports = Ads;
