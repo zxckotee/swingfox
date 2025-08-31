@@ -937,8 +937,9 @@ export const subscriptionsAPI = {
     return response.data;
   },
 
-  cancel: async (subscriptionId, reason = '') => {
-    const response = await apiClient.post(`/subscriptions/${subscriptionId}/cancel`, { reason });
+  // FIX: cancel method - remove subscriptionId parameter
+  cancel: async (reason = '') => {
+    const response = await apiClient.post('/subscriptions/cancel', { reason });
     return response.data;
   },
 
@@ -949,6 +950,22 @@ export const subscriptionsAPI = {
 
   getFeatures: async () => {
     const response = await apiClient.get('/subscriptions/pricing');
+    return response.data;
+  },
+
+  changePlan: async (newPlanType, durationMonths = 1) => {
+    const response = await apiClient.post('/subscriptions/change-plan', {
+      new_plan_type: newPlanType,
+      duration_months: durationMonths
+    });
+    return response.data;
+  },
+  
+
+  
+  // ADD: get user balance
+  getBalance: async () => {
+    const response = await apiClient.get('/users/balance');
     return response.data;
   }
 };

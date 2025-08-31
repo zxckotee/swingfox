@@ -14,6 +14,8 @@ const Notifications = require('./Notifications');
 const Clubs = require('./Clubs');
 const ClubApplications = require('./ClubApplications');
 const Subscriptions = require('./Subscriptions');
+const SubscriptionPlans = require('./SubscriptionPlans');
+const SubscriptionPayments = require('./SubscriptionPayments');
 const PhotoLike = require('./PhotoLike');
 const ProfileVisit = require('./ProfileVisit');
 const PhotoComments = require('./PhotoComments');
@@ -154,6 +156,8 @@ const NotificationsModel = Notifications(sequelize);
 const ClubsModel = Clubs(sequelize);
 const ClubApplicationsModel = ClubApplications(sequelize);
 const SubscriptionsModel = Subscriptions(sequelize);
+const SubscriptionPlansModel = SubscriptionPlans(sequelize);
+const SubscriptionPaymentsModel = SubscriptionPayments(sequelize);
 const PhotoLikeModel = PhotoLike(sequelize);
 const ProfileVisitModel = ProfileVisit(sequelize);
 const PhotoCommentsModel = PhotoComments(sequelize);
@@ -169,7 +173,9 @@ if (NotificationsModel.associate) NotificationsModel.associate({ User });
 if (ClubsModel.associate) ClubsModel.associate({ User, ClubApplications: ClubApplicationsModel, Events });
 if (ClubApplicationsModel.associate) ClubApplicationsModel.associate({ User, Clubs: ClubsModel });
 if (Events.associate) Events.associate({ User, Clubs: ClubsModel });
-if (SubscriptionsModel.associate) SubscriptionsModel.associate({ User });
+if (SubscriptionsModel.associate) SubscriptionsModel.associate({ User, SubscriptionPlans: SubscriptionPlansModel });
+if (SubscriptionPlansModel.associate) SubscriptionPlansModel.associate({ User });
+if (SubscriptionPaymentsModel.associate) SubscriptionPaymentsModel.associate({ User, Subscriptions: SubscriptionsModel });
 if (PhotoLikeModel.associate) PhotoLikeModel.associate({ User });
 if (ProfileVisitModel.associate) ProfileVisitModel.associate({ User });
 if (PhotoCommentsModel.associate) PhotoCommentsModel.associate({ User });
@@ -193,6 +199,8 @@ module.exports = {
   Clubs: ClubsModel,
   ClubApplications: ClubApplicationsModel,
   Subscriptions: SubscriptionsModel,
+  SubscriptionPlans: SubscriptionPlansModel,
+  SubscriptionPayments: SubscriptionPaymentsModel,
   PhotoLike: PhotoLikeModel,
   ProfileVisit: ProfileVisitModel,
   PhotoComments: PhotoCommentsModel,

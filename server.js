@@ -51,11 +51,15 @@ const notificationsRoutes = require('./src/routes/notifications');
 const giftsRoutes = require('./src/routes/gifts');
 const clubsRoutes = require('./src/routes/clubs');
 const subscriptionsRoutes = require('./src/routes/subscriptions');
+const subscriptionPlansRoutes = require('./src/routes/subscription-plans');
 const ratingRoutes = require('./src/routes/rating');
 const profilesRoutes = require('./src/routes/profiles');
 const photoCommentsRoutes = require('./src/routes/photo-comments');
 const profileCommentsRoutes = require('./src/routes/profile-comments');
 const reactionsRoutes = require('./src/routes/reactions');
+
+// Импорт cron-задач для подписок
+const SubscriptionCron = require('./src/cron/subscriptionCron');
 
 // Подключение роутов
 app.use('/api/auth', authRoutes);
@@ -71,6 +75,7 @@ app.use('/api/notifications', notificationsRoutes);
 app.use('/api/gifts', giftsRoutes);
 app.use('/api/clubs', clubsRoutes);
 app.use('/api/subscriptions', subscriptionsRoutes);
+app.use('/api/subscription-plans', subscriptionPlansRoutes);
 app.use('/api/rating', ratingRoutes);
 app.use('/api/profiles', profilesRoutes);
 app.use('/api/photo-comments', photoCommentsRoutes);
@@ -121,6 +126,12 @@ const startServer = async () => {
       await sequelize.sync({ force: false });
       console.log('✅ Модели синхронизированы');
     }
+    
+    // Запускаем cron-задачи для подписок
+    console.log('🕐 Запуск cron-задач для автоматического управления подписками...');
+    const subscriptionCron = new SubscriptionCron();
+    subscriptionCron.start();
+    console.log('✅ Cron-задачи для подписок запущены');
     
     // Настройка HTTPS для разработки
     if (process.env.NODE_ENV === 'development') {

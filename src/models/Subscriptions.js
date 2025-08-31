@@ -34,8 +34,8 @@ module.exports = (sequelize) => {
     },
     auto_renewal: {
       type: DataTypes.BOOLEAN,
-      defaultValue: false,
-      comment: 'Автопродление'
+      defaultValue: true,
+      comment: 'Автопродление (всегда включено по умолчанию)'
     },
     payment_amount: {
       type: DataTypes.DECIMAL(10, 2),
@@ -130,18 +130,16 @@ module.exports = (sequelize) => {
     this.status = 'cancelled';
     this.auto_renewal = false;
     
-    // Обновляем статус пользователя на FREE если подписка истекла
-    if (new Date() > this.end_date) {
-      const user = await sequelize.models.User.findOne({ 
-        where: { login: this.user_id } 
-      });
-      
-              if (user && user.viptype === this.subscription_type) {
-          await sequelize.models.User.update(
-            { viptype: 'FREE' },
-            { where: { login: this.user_id } }
-          );
-        }
+    // Сразу сбрасываем статус пользователя на FREE при отмене
+    const user = await sequelize.models.User.findOne({ 
+      where: { login: this.user_id } 
+    });
+    
+    if (user && user.viptype === this.subscription_type) {
+      await sequelize.models.User.update(
+        { viptype: 'FREE' },
+        { where: { login: this.user_id } }
+      );
     }
     
     await this.save();
@@ -195,50 +193,86 @@ module.exports = (sequelize) => {
   };
 
   // Статические методы
-  Subscriptions.getPricing = () => {
-    return {
-      VIP: {
-        monthly: 299,
-        quarterly: 799, // Скидка 11%
-        yearly: 2999    // Скидка 16%
-      },
-      PREMIUM: {
-        monthly: 499,
-        quarterly: 1399, // Скидка 6%
-        yearly: 4999     // Скидка 17%
-      }
-    };
+  Subscriptions.getPricing = async function() {
+    try {
+      const plans = await sequelize.models.SubscriptionPlans.findAll({
+        where: { is_active: true },
+        attributes: ['type', 'monthly_price', 'quarterly_price', 'yearly_price']
+      });
+      
+      const pricing = {};
+      plans.forEach(plan => {
+        pricing[plan.type] = {
+          monthly: plan.monthly_price,
+          quarterly: plan.quarterly_price,
+          yearly: plan.yearly_price
+        };
+      });
+      
+      return pricing;
+    } catch (error) {
+      console.error('Error getting pricing from plans:', error);
+      // Fallback к статическим данным
+      return {
+        VIP: {
+          monthly: 299,
+          quarterly: 799,
+          yearly: 2999
+        },
+        PREMIUM: {
+          monthly: 499,
+          quarterly: 1399,
+          yearly: 4999
+        }
+      };
+    }
   };
 
-  Subscriptions.getFeatures = () => {
-    return {
-      VIP: {
-        superlikes_daily: 5,
-        attention_weekly: 1,
-        hide_online: true,
-        private_photos: true,
-        see_likes: true,
-        carousel: true,
-        see_visits: true,
-        unlimited_likes: true,
-        priority_support: false,
-        exclusive_events: false
-      },
-      PREMIUM: {
-        superlikes_daily: 10,
-        attention_weekly: 3,
-        hide_online: true,
-        private_photos: true,
-        see_likes: true,
-        carousel: true,
-        see_visits: true,
-        unlimited_likes: true,
-        priority_support: true,
-        exclusive_events: true,
-        custom_badges: true,
-        boost_profile: true
-      }
-    };
+  Subscriptions.getFeatures = async function() {
+    try {
+      const plans = await sequelize.models.SubscriptionPlans.findAll({
+        where: { is_active: true },
+        attributes: ['type', 'features']
+      });
+      
+      const features = {};
+      plans.forEach(plan => {
+        features[plan.type] = plan.features;
+      });
+      
+      return features;
+    } catch (error) {
+      console.error('Error getting features from plans:', error);
+      // Fallback к статическим данным
+      return {
+        VIP: {
+          superlikes_daily: 5,
+          attention_weekly: 1,
+          hide_online: true,
+          private_photos: true,
+          see_likes: true,
+          carousel: true,
+          see_visits: true,
+          unlimited_likes: true,
+          priority_support: false,
+          exclusive_events: false
+        },
+        PREMIUM: {
+          superlikes_daily: 10,
+          attention_weekly: 3,
+          hide_online: true,
+          private_photos: true,
+          see_likes: true,
+          carousel: true,
+          see_visits: true,
+          unlimited_likes: true,
+          priority_support: true,
+          exclusive_events: true,
+          custom_badges: true,
+          boost_profile: true
+        }
+      };
+    }
   };
 
   Subscriptions.createSubscription = async function(subscriptionData) {
@@ -252,19 +286,25 @@ module.exports = (sequelize) => {
     } = subscriptionData;
 
     try {
-      // Получаем цены
-      const pricing = this.getPricing();
+      // Получаем план подписки из новой системы
+      const plan = await sequelize.models.SubscriptionPlans.findOne({
+        where: { type: subscription_type, is_active: true }
+      });
+
+      if (!plan) {
+        throw new Error(`План подписки ${subscription_type} не найден`);
+      }
+
       let basePrice;
-      
       switch (duration_months) {
         case 1:
-          basePrice = pricing[subscription_type].monthly;
+          basePrice = plan.monthly_price;
           break;
         case 3:
-          basePrice = pricing[subscription_type].quarterly;
+          basePrice = plan.quarterly_price;
           break;
         case 12:
-          basePrice = pricing[subscription_type].yearly;
+          basePrice = plan.yearly_price;
           break;
         default:
           throw new Error('Неподдерживаемая длительность подписки');
@@ -313,17 +353,100 @@ module.exports = (sequelize) => {
       const subscription = await this.findOne({
         where: {
           user_id: userId,
-          status: 'active',
+          status: 'active', // Только активные подписки
           end_date: {
-            [sequelize.Sequelize.Op.gt]: new Date()
+            [sequelize.Sequelize.Op.gt]: new Date() // Только не истекшие
           }
         },
         order: [['end_date', 'DESC']]
       });
 
+      // Если подписка найдена, но статус пользователя не соответствует, исправляем
+      if (subscription) {
+        const user = await sequelize.models.User.findOne({ 
+          where: { login: userId },
+          attributes: ['viptype']
+        });
+        
+        if (user && user.viptype !== subscription.subscription_type) {
+          await sequelize.models.User.update(
+            { viptype: subscription.subscription_type },
+            { where: { login: userId } }
+          );
+        }
+      }
+
       return subscription;
     } catch (error) {
       console.error('Error getting active subscription:', error);
+      throw error;
+    }
+  };
+
+  // Получаем текущий статус пользователя (с учетом отмененных подписок)
+  Subscriptions.getUserCurrentStatus = async function(userId) {
+    try {
+      // Сначала ищем активную подписку
+      const activeSubscription = await this.getUserActiveSubscription(userId);
+      
+      if (activeSubscription) {
+        return {
+          has_subscription: true,
+          plan: activeSubscription.subscription_type,
+          status: 'active',
+          end_date: activeSubscription.end_date
+        };
+      }
+      
+      // Если активной подписки нет, всегда возвращаем FREE план
+      return {
+        has_subscription: false,
+        plan: 'FREE',
+        status: 'free',
+        end_date: null
+      };
+    } catch (error) {
+      console.error('Error getting user current status:', error);
+      throw error;
+    }
+  };
+
+  // Синхронизируем viptype пользователя с реальным статусом подписки
+  Subscriptions.syncUserVipType = async function(userId) {
+    try {
+      // Получаем активную подписку
+      const activeSubscription = await this.getUserActiveSubscription(userId);
+      
+      // Получаем пользователя
+      const user = await sequelize.models.User.findOne({ 
+        where: { login: userId },
+        attributes: ['viptype']
+      });
+      
+      if (!user) {
+        throw new Error('Пользователь не найден');
+      }
+      
+      let newVipType = 'FREE';
+      
+      if (activeSubscription) {
+        // Если есть активная подписка, устанавливаем её тип
+        newVipType = activeSubscription.subscription_type;
+      }
+      
+      // Обновляем viptype только если он отличается
+      if (user.viptype !== newVipType) {
+        await sequelize.models.User.update(
+          { viptype: newVipType },
+          { where: { login: userId } }
+        );
+        
+        console.log(`🔄 [SUBSCRIPTIONS] Синхронизирован viptype для пользователя ${userId}: ${user.viptype} → ${newVipType}`);
+      }
+      
+      return newVipType;
+    } catch (error) {
+      console.error(`❌ [SUBSCRIPTIONS] Ошибка синхронизации viptype для пользователя ${userId}:`, error);
       throw error;
     }
   };
@@ -335,6 +458,10 @@ module.exports = (sequelize) => {
       status = null
     } = options;
 
+    // Дополнительная валидация параметров
+    const safeLimit = Math.max(1, Math.min(100, parseInt(limit) || 20));
+    const safeOffset = Math.max(0, parseInt(offset) || 0);
+
     const whereClause = { user_id: userId };
     
     if (status) {
@@ -345,8 +472,8 @@ module.exports = (sequelize) => {
       const subscriptions = await this.findAll({
         where: whereClause,
         order: [['created_at', 'DESC']],
-        limit,
-        offset
+        limit: safeLimit,
+        offset: safeOffset
       });
 
       return subscriptions;
@@ -456,6 +583,142 @@ module.exports = (sequelize) => {
       targetKey: 'login',
       as: 'User'
     });
+    
+    Subscriptions.belongsTo(models.SubscriptionPlans, {
+      foreignKey: 'subscription_type',
+      targetKey: 'type',
+      as: 'Plan'
+    });
+  };
+
+  // Новые методы для автоматического управления подписками
+  Subscriptions.processAutoRenewal = async function() {
+    try {
+      // Находим все активные подписки с включенным автопродлением
+      const autoRenewalSubscriptions = await this.findAll({
+        where: {
+          status: 'active',
+          auto_renewal: true,
+          end_date: {
+            [sequelize.Sequelize.Op.lte]: new Date()
+          }
+        },
+        include: [{
+          model: sequelize.models.User,
+          as: 'User',
+          attributes: ['login', 'balance', 'viptype']
+        }]
+      });
+
+      console.log(`📊 [SUBSCRIPTIONS] Найдено ${autoRenewalSubscriptions.length} подписок для автопродления`);
+
+      for (const subscription of autoRenewalSubscriptions) {
+        try {
+          await this.processSingleAutoRenewal(subscription);
+        } catch (error) {
+          console.error(`❌ [SUBSCRIPTIONS] Ошибка автопродления подписки ${subscription.id}:`, error);
+        }
+      }
+
+      return autoRenewalSubscriptions.length;
+    } catch (error) {
+      console.error('Error processing auto renewal:', error);
+      throw error;
+    }
+  };
+
+  Subscriptions.processSingleAutoRenewal = async function(subscription) {
+    const user = subscription.User;
+    
+    try {
+      // Получаем план подписки
+      const plan = await sequelize.models.SubscriptionPlans.findOne({
+        where: { type: subscription.subscription_type, is_active: true }
+      });
+
+      if (!plan) {
+        throw new Error(`План ${subscription.subscription_type} не найден`);
+      }
+
+      const monthlyPrice = plan.monthly_price;
+
+      // Проверяем баланс пользователя
+      if (user.balance < monthlyPrice) {
+        // Недостаточно средств - отключаем автопродление и сбрасываем статус
+        subscription.auto_renewal = false;
+        subscription.status = 'expired';
+        await subscription.save();
+
+        // Сбрасываем статус пользователя на FREE
+        await sequelize.models.User.update(
+          { viptype: 'FREE' },
+          { where: { login: user.login } }
+        );
+
+        // Отправляем уведомление
+        await sequelize.models.Notifications.create({
+          user_id: user.login,
+          type: 'subscription_expired',
+          title: 'Подписка истекла',
+          message: `Ваша подписка ${subscription.subscription_type} истекла из-за недостатка средств. Автопродление отключено.`,
+          data: {
+            subscription_id: subscription.id,
+            subscription_type: subscription.subscription_type,
+            balance_required: monthlyPrice,
+            current_balance: user.balance
+          }
+        });
+
+        console.log(`⚠️ [SUBSCRIPTIONS] Подписка ${subscription.id} истекла из-за недостатка средств`);
+        return false;
+      }
+
+      // Списываем средства
+      const newBalance = user.balance - monthlyPrice;
+      await sequelize.models.User.update(
+        { balance: newBalance },
+        { where: { login: user.login } }
+      );
+
+      // Продлеваем подписку на месяц
+      const newEndDate = new Date();
+      newEndDate.setMonth(newEndDate.getMonth() + 1);
+      
+      subscription.end_date = newEndDate;
+      await subscription.save();
+
+      // Создаем запись о платеже
+      await sequelize.models.SubscriptionPayments.create({
+        subscription_id: subscription.id,
+        user_id: user.login,
+        amount: monthlyPrice,
+        payment_method: 'balance',
+        payment_type: 'auto_renewal',
+        status: 'completed'
+      });
+
+      // Отправляем уведомление об успешном продлении
+      await sequelize.models.Notifications.create({
+        user_id: user.login,
+        type: 'subscription_renewed',
+        title: 'Подписка продлена',
+        message: `Ваша подписка ${subscription.subscription_type} автоматически продлена на месяц. Списано ${monthlyPrice} фоксиков.`,
+        data: {
+          subscription_id: subscription.id,
+          subscription_type: subscription.subscription_type,
+          amount_charged: monthlyPrice,
+          new_balance: newBalance,
+          new_expiry: newEndDate
+        }
+      });
+
+      console.log(`✅ [SUBSCRIPTIONS] Подписка ${subscription.id} успешно продлена`);
+      return true;
+
+    } catch (error) {
+      console.error(`❌ [SUBSCRIPTIONS] Ошибка при автопродлении подписки ${subscription.id}:`, error);
+      throw error;
+    }
   };
 
   return Subscriptions;

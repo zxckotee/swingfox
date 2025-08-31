@@ -465,7 +465,7 @@ const Subscriptions = () => {
       subscription_type: selectedPlan.toUpperCase(), // VIP или PREMIUM
       duration_months: 1,
       payment_method: 'balance', // Используем баланс фоксиков
-      auto_renewal: false
+      auto_renewal: true
     };
     
     // Добавляем промокод только если он есть
@@ -476,12 +476,21 @@ const Subscriptions = () => {
     subscribeMutation.mutate(subscriptionData);
   };
 
-  const handleCancel = () => {
+  // FIX: cancel subscription handler - no subscription ID needed
+  const handleCancel = async () => {
     if (window.confirm('Вы уверены, что хотите отменить подписку?')) {
       const reason = prompt('Причина отмены (необязательно):');
-      cancelMutation.mutate(reason || '');
+      try {
+        await subscriptionsAPI.cancel(reason || '');
+        toast.success('Подписка отменена');
+        queryClient.invalidateQueries('subscription-status');
+      } catch (error) {
+        toast.error(apiUtils.handleError(error));
+      }
     }
   };
+
+
 
   const handlePromoApply = () => {
     if (!promoCode.trim()) {
@@ -620,21 +629,24 @@ const Subscriptions = () => {
                 {getStatusIcon(subscriptionStatus?.plan)}
               </div>
               <div className="status-title">
-                {subscriptionStatus?.plan?.toUpperCase() || 'БАЗОВЫЙ'} план
+                {subscriptionStatus?.has_subscription && subscriptionStatus?.plan !== 'free' 
+                  ? `${subscriptionStatus.plan.toUpperCase()} план` 
+                  : 'БАЗОВЫЙ план'
+                }
               </div>
               <div className="status-info">
-                {subscriptionStatus?.plan ? (
+                {subscriptionStatus?.has_subscription && subscriptionStatus?.plan !== 'free' ? (
                   <>
-                    Активна до: {apiUtils.formatDate(subscriptionStatus.expires_at)}
+                    Активна до: {subscriptionStatus.expires_at ? apiUtils.formatDate(subscriptionStatus.expires_at) : 'Не определено'}
                     <br />
-                    Автопродление: {subscriptionStatus.auto_renew ? 'Включено' : 'Отключено'}
+                    Автопродление: Включено (по умолчанию)
                   </>
                 ) : (
                   'У вас базовый план. Оформите премиум подписку для получения дополнительных возможностей!'
                 )}
               </div>
               
-              {subscriptionStatus?.plan && (
+              {subscriptionStatus?.has_subscription && subscriptionStatus?.plan !== 'free' ? (
                 <FlexContainer $gap="15px" $justify="center">
                   <Button $variant="secondary">
                     Изменить план
@@ -642,9 +654,14 @@ const Subscriptions = () => {
                   <Button 
                     $variant="danger" 
                     onClick={handleCancel}
-                    disabled={cancelMutation.isLoading}
                   >
                     Отменить подписку
+                  </Button>
+                </FlexContainer>
+              ) : (
+                <FlexContainer $gap="15px" $justify="center">
+                  <Button $variant="primary" onClick={() => setActiveTab('plans')}>
+                    Оформить подписку
                   </Button>
                 </FlexContainer>
               )}

@@ -3,6 +3,7 @@ const fs = require('fs');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 const webpack = require('webpack');
 
 const isDevelopment = process.env.NODE_ENV === 'development';
@@ -24,6 +25,9 @@ module.exports = {
   devServer: {
     static: {
       directory: path.join(__dirname, 'dist'),
+      publicPath: '/',
+      serveIndex: true,
+      watch: true
     },
     port: 443,
     host: '0.0.0.0',
@@ -157,6 +161,22 @@ module.exports = {
     new webpack.ProvidePlugin({
       process: 'process/browser.js',
       Buffer: ['buffer', 'Buffer'],
+    }),
+    
+    new CopyWebpackPlugin({
+      patterns: [
+        {
+          from: 'public/favicon.ico',
+          to: 'favicon.ico'
+        },
+        {
+          from: 'public',
+          to: '',
+          globOptions: {
+            ignore: ['**/index.html']
+          }
+        }
+      ]
     }),
     
     new HtmlWebpackPlugin({
