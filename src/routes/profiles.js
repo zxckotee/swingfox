@@ -298,7 +298,7 @@ router.post('/:login/send-gift', authenticateToken, async (req, res) => {
     }
 
     // Проверка типа подарка
-    const validGiftTypes = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+    const validGiftTypes = ['1', '2', '3', '4', '5', '6', '7', '10'];
     if (!validGiftTypes.includes(gift_type)) {
       const errorData = { error: 'invalid_gift_type', message: 'Недопустимый тип подарка' };
       logger.logError(req, new Error('Invalid gift type'), 400);

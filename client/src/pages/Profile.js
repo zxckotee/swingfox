@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from 'react-query';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { usersAPI, swipeAPI, chatAPI, giftsAPI, ratingAPI, apiUtils } from '../services/api';
+import { usersAPI, swipeAPI, chatAPI, giftsAPI, ratingAPI, subscriptionsAPI, apiUtils } from '../services/api';
 import { LocationSelector } from '../components/Geography';
 import RatingDisplay from '../components/RatingDisplay';
 import PhotoComments from '../components/PhotoComments';
@@ -41,7 +41,7 @@ import {
 
 // Дополнительные иконки
 const CameraIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
     <circle cx="12" cy="13" r="4"/>
   </svg>
@@ -65,8 +65,6 @@ const GIFT_CONFIG = {
   '5': { emoji: '🍽️', name: 'Романтический ужин', cost: 500 },
   '6': { emoji: '✈️', name: 'Путешествие', cost: 1000 },
   '7': { emoji: '💎', name: 'Украшение', cost: 800 },
-  '8': { emoji: '👑', name: 'VIP статус на месяц', cost: 1500 },
-  '9': { emoji: '⭐', name: 'Premium статус на месяц', cost: 2000 },
   '10': { emoji: '🏆', name: 'Эксклюзивный подарок', cost: 3000 }
 };
 
@@ -111,11 +109,16 @@ const AvatarOverlay = styled.div`
   position: absolute;
   bottom: 0;
   right: 0;
+  width: 36px;
+  height: 36px;
   background: rgba(255, 255, 255, 0.9);
   border-radius: 50%;
   padding: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   
   &:hover {
     background: white;
@@ -589,6 +592,13 @@ const Profile = () => {
     }
   }, [receivedGiftsData, receivedGifts]);
 
+  // Отладочная информация для подписки
+  useEffect(() => {
+    if (subscriptionStatus) {
+      console.log('Subscription status:', subscriptionStatus);
+    }
+  }, [subscriptionStatus]);
+
   const avatarInputRef = useRef();
   const imagesInputRef = useRef();
 
@@ -659,6 +669,22 @@ const Profile = () => {
       onError: (error) => {
         console.error('Match status API error:', {
           targetLogin,
+          error: error.message,
+          status: error.response?.status,
+          data: error.response?.data
+        });
+      }
+    }
+  );
+
+  // Получение статуса подписки (только для своего профиля)
+  const { data: subscriptionStatus, isLoading: isLoadingSubscription } = useQuery(
+    ['subscription-status'],
+    subscriptionsAPI.getStatus,
+    {
+      enabled: isOwnProfile,
+      onError: (error) => {
+        console.error('Subscription status API error:', {
           error: error.message,
           status: error.response?.status,
           data: error.response?.data
@@ -1124,21 +1150,65 @@ const Profile = () => {
                     </Button>
                   </Form>
                   
-                  {/* Реклама подписки (только для своего профиля) */}
-                  <VipAdSection>
-                    <VipAdTitle>
-                      👑 
-                      Переходите на подписку!
-                    </VipAdTitle>
-                    <VipAdText>
-                      Получите эксклюзивные возможности: больше лайков, 
-                      приоритет в поиске, расширенная статистика и многое другое!
-                      Доступны планы VIP и PREMIUM.
-                    </VipAdText>
-                    <VipAdButton onClick={() => navigate('/subscriptions')}>
-                      Перейти к подписке
-                    </VipAdButton>
-                  </VipAdSection>
+                  {/* Реклама подписки (только для своего профиля и только если нет активной подписки) */}
+                  {!isLoadingSubscription && (!subscriptionStatus?.has_subscription || subscriptionStatus?.plan === 'free') && (
+                    <VipAdSection>
+                      <VipAdTitle>
+                        👑 
+                        Переходите на подписку!
+                      </VipAdTitle>
+                      <VipAdText>
+                        Получите эксклюзивные возможности: больше лайков, 
+                        приоритет в поиске, расширенная статистика и многое другое!
+                        Доступны планы VIP и PREMIUM.
+                      </VipAdText>
+                      <VipAdButton onClick={() => navigate('/subscriptions')}>
+                        Перейти к подписке
+                      </VipAdButton>
+                    </VipAdSection>
+                  )}
+
+                  {/* Информация о текущей подписке (если есть активная подписка) */}
+                  {!isLoadingSubscription && subscriptionStatus?.has_subscription && subscriptionStatus?.plan !== 'free' && (
+                    <VipAdSection style={{ 
+                      background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
+                      borderColor: '#48bb78'
+                    }}>
+                      <VipAdTitle style={{ color: 'white' }}>
+                        👑 
+                        У вас активна {subscriptionStatus.plan === 'vip' ? 'VIP' : 'PREMIUM'} подписка!
+                      </VipAdTitle>
+                      <VipAdText style={{ color: 'white' }}>
+                        Ваша подписка активна до {new Date(subscriptionStatus.expires_at).toLocaleDateString('ru-RU')}.
+                        {subscriptionStatus.auto_renew && ' Автопродление включено.'}
+                      </VipAdText>
+                      <VipAdButton 
+                        onClick={() => navigate('/subscriptions')}
+                        style={{
+                          background: 'linear-gradient(135deg, #2d3748 0%, #4a5568 100%)',
+                          color: 'white'
+                        }}
+                      >
+                        Управление подпиской
+                      </VipAdButton>
+                    </VipAdSection>
+                  )}
+
+                  {/* Индикатор загрузки статуса подписки */}
+                  {isLoadingSubscription && (
+                    <VipAdSection style={{ 
+                      background: 'linear-gradient(135deg, #e2e8f0 0%, #cbd5e0 100%)',
+                      borderColor: '#cbd5e0'
+                    }}>
+                      <VipAdTitle style={{ color: '#4a5568' }}>
+                        ⏳ 
+                        Проверяем статус подписки...
+                      </VipAdTitle>
+                      <VipAdText style={{ color: '#718096' }}>
+                        Загружаем информацию о вашей подписке
+                      </VipAdText>
+                    </VipAdSection>
+                  )}
                 </>
               ) : (
                 <div>

@@ -22,7 +22,7 @@ module.exports = {
       gift_type: {
         type: Sequelize.STRING(50),
         allowNull: false,
-        comment: 'Тип подарка (1-10 или стоимость)'
+        comment: 'Тип подарка (1-7, 10 или стоимость)'
       },
       date: {
         type: Sequelize.DATEONLY,

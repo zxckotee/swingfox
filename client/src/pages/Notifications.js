@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import styled, { css } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -357,7 +357,6 @@ const EmptyState = styled.div`
 const Notifications = () => {
   const [filter, setFilter] = useState('all');
   const [selectedNotifications, setSelectedNotifications] = useState([]);
-  const [localNotifications, setLocalNotifications] = useState([]);
   const [animatingOut, setAnimatingOut] = useState(new Set());
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -382,51 +381,70 @@ const Notifications = () => {
   const notifications = notificationsData?.notifications || [];
   const unreadCount = notificationsData?.unread_count || 0;
 
-  // Обновляем локальное состояние при изменении данных
-  useEffect(() => {
-    setLocalNotifications(notifications);
-  }, [notifications]);
+
 
   // Фильтруем уведомления в зависимости от выбранного фильтра
   const filteredNotifications = useMemo(() => {
-    if (filter === 'unread') {
-      return localNotifications.filter(notif => !notif.is_read);
-    } else if (filter !== 'all') {
-      return localNotifications.filter(notif => notif.type === filter);
+    if (!notifications || notifications.length === 0) {
+      return [];
     }
-    return localNotifications;
-  }, [localNotifications, filter]);
+    
+    if (filter === 'unread') {
+      return notifications.filter(notif => !notif.is_read);
+    } else if (filter !== 'all') {
+      return notifications.filter(notif => notif.type === filter);
+    }
+    return notifications;
+  }, [notifications, filter]);
 
   // Подсчитаем количество по типам для фильтров
   const countByType = useMemo(() => {
-    return localNotifications.reduce((acc, notif) => {
+    if (!notifications || notifications.length === 0) {
+      return {};
+    }
+    
+    return notifications.reduce((acc, notif) => {
       acc[notif.type] = (acc[notif.type] || 0) + 1;
       return acc;
     }, {});
-  }, [localNotifications]);
+  }, [notifications]);
 
   // Подсчитаем количество непрочитанных
   const currentUnreadCount = useMemo(() => {
-    return localNotifications.filter(notif => !notif.is_read).length;
-  }, [localNotifications]);
+    if (!notifications || notifications.length === 0) {
+      return 0;
+    }
+    
+    return notifications.filter(notif => !notif.is_read).length;
+  }, [notifications]);
 
   // Мутации
   const markAsReadMutation = useMutation(notificationsAPI.markAsRead, {
     onSuccess: (data, variables) => {
-      // Обновляем локальное состояние
-      setLocalNotifications(prev => 
-        prev.map(notif => 
-          notif.id === variables 
-            ? { ...notif, is_read: true }
-            : notif
-        )
-      );
-      
-      // Обновляем счетчик непрочитанных
+      // Обновляем данные в queryClient для всех активных запросов
       queryClient.setQueryData(['notifications', filter], (oldData) => {
         if (!oldData) return oldData;
         return {
           ...oldData,
+          notifications: oldData.notifications.map(notif => 
+            notif.id === variables 
+              ? { ...notif, is_read: true }
+              : notif
+          ),
+          unread_count: Math.max(0, (oldData.unread_count || 0) - 1)
+        };
+      });
+      
+      // Также обновляем данные для фильтра 'all'
+      queryClient.setQueryData(['notifications', 'all'], (oldData) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          notifications: oldData.notifications.map(notif => 
+            notif.id === variables 
+              ? { ...notif, is_read: true }
+              : notif
+          ),
           unread_count: Math.max(0, (oldData.unread_count || 0) - 1)
         };
       });
@@ -440,16 +458,22 @@ const Notifications = () => {
 
   const markAllAsReadMutation = useMutation(notificationsAPI.markAllAsRead, {
     onSuccess: () => {
-      // Обновляем локальное состояние
-      setLocalNotifications(prev => 
-        prev.map(notif => ({ ...notif, is_read: true }))
-      );
-      
-      // Обновляем счетчик непрочитанных
+      // Обновляем данные в queryClient для всех активных запросов
       queryClient.setQueryData(['notifications', filter], (oldData) => {
         if (!oldData) return oldData;
         return {
           ...oldData,
+          notifications: oldData.notifications.map(notif => ({ ...notif, is_read: true })),
+          unread_count: 0
+        };
+      });
+      
+      // Также обновляем данные для фильтра 'all'
+      queryClient.setQueryData(['notifications', 'all'], (oldData) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          notifications: oldData.notifications.map(notif => ({ ...notif, is_read: true })),
           unread_count: 0
         };
       });
@@ -463,10 +487,23 @@ const Notifications = () => {
 
   const deleteNotificationMutation = useMutation(notificationsAPI.deleteNotification, {
     onSuccess: (data, variables) => {
-      // Удаляем уведомление из локального состояния
-      setLocalNotifications(prev => 
-        prev.filter(notif => notif.id !== variables)
-      );
+      // Удаляем уведомление из queryClient
+      queryClient.setQueryData(['notifications', filter], (oldData) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          notifications: oldData.notifications.filter(notif => notif.id !== variables)
+        };
+      });
+      
+      // Также обновляем данные для фильтра 'all'
+      queryClient.setQueryData(['notifications', 'all'], (oldData) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          notifications: oldData.notifications.filter(notif => notif.id !== variables)
+        };
+      });
       
       toast.success('Уведомление удалено');
     },
@@ -477,10 +514,23 @@ const Notifications = () => {
 
   const deleteReadNotificationsMutation = useMutation(notificationsAPI.deleteReadNotifications, {
     onSuccess: () => {
-      // Удаляем прочитанные уведомления из локального состояния
-      setLocalNotifications(prev => 
-        prev.filter(notif => !notif.is_read)
-      );
+      // Удаляем прочитанные уведомления из queryClient
+      queryClient.setQueryData(['notifications', filter], (oldData) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          notifications: oldData.notifications.filter(notif => !notif.is_read)
+        };
+      });
+      
+      // Также обновляем данные для фильтра 'all'
+      queryClient.setQueryData(['notifications', 'all'], (oldData) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          notifications: oldData.notifications.filter(notif => !notif.is_read)
+        };
+      });
       
       toast.success('Прочитанные уведомления удалены');
     },
@@ -514,9 +564,6 @@ const Notifications = () => {
     // Если фильтр "Непрочитанные", то скрываем уведомление через анимацию
     if (filter === 'unread') {
       setTimeout(() => {
-        setLocalNotifications(prev => 
-          prev.filter(notif => notif.id !== id)
-        );
         setAnimatingOut(prev => {
           const newSet = new Set(prev);
           newSet.delete(id);
@@ -545,15 +592,15 @@ const Notifications = () => {
   };
 
   // Фильтры
-  const filterTabs = [
-    { key: 'all', label: 'Все', count: localNotifications.length },
+  const filterTabs = useMemo(() => [
+    { key: 'all', label: 'Все', count: notifications.length },
     { key: 'unread', label: 'Непрочитанные', count: currentUnreadCount },
     { key: 'match', label: '💕 Мэтчи', count: countByType.match || 0 },
     { key: 'message', label: 'Сообщения', count: countByType.message || 0 },
     { key: 'like', label: 'Лайки', count: countByType.like || 0 },
     { key: 'gift', label: 'Подарки', count: countByType.gift || 0 },
     { key: 'system', label: 'Системные', count: countByType.system || 0 }
-  ];
+  ], [notifications.length, currentUnreadCount, countByType]);
 
   if (isLoading) {
     return (
