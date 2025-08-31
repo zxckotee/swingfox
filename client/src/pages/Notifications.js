@@ -4,7 +4,7 @@ import styled, { css } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { notificationsAPI, apiUtils } from '../services/api';
+import { notificationsAPI, privacyAPI, apiUtils } from '../services/api';
 import MatchNotification from '../components/MatchNotification';
 import {
   PageContainer,
@@ -354,6 +354,112 @@ const EmptyState = styled.div`
   }
 `;
 
+const GuestsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const GuestItem = styled(motion.div)`
+  background: white;
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border-left: 4px solid #38a169;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+  }
+  
+  @media (max-width: 768px) {
+    padding: 15px;
+  }
+`;
+
+const GuestContent = styled.div`
+  display: flex;
+  gap: 15px;
+  align-items: center;
+`;
+
+const GuestAvatar = styled.div`
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #38a169 0%, #48bb78 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 24px;
+  flex-shrink: 0;
+  
+  img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+  
+  @media (max-width: 768px) {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+  }
+`;
+
+const GuestDetails = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const GuestName = styled.h4`
+  margin: 0 0 5px 0;
+  color: #2d3748;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  
+  &:hover {
+    color: #38a169;
+  }
+`;
+
+const GuestInfo = styled.div`
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+`;
+
+const GuestStatus = styled.span`
+  font-size: 12px;
+  color: #718096;
+  background: #f7fafc;
+  padding: 2px 8px;
+  border-radius: 12px;
+`;
+
+const GuestLocation = styled.span`
+  font-size: 12px;
+  color: #718096;
+`;
+
+const GuestTime = styled.span`
+  font-size: 11px;
+  color: #a0aec0;
+`;
+
+const GuestActions = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+`;
+
 const Notifications = () => {
   const [filter, setFilter] = useState('all');
   const [selectedNotifications, setSelectedNotifications] = useState([]);
@@ -365,6 +471,11 @@ const Notifications = () => {
   const { data: notificationsData, isLoading, refetch } = useQuery(
     ['notifications', filter],
     () => {
+      // Если выбран фильтр "guests", не делаем запрос к уведомлениям
+      if (filter === 'guests') {
+        return { notifications: [], unread_count: 0 };
+      }
+      
       const filters = {};
       if (filter === 'unread') filters.unread = true;
       if (filter !== 'all' && filter !== 'unread') filters.type = filter;
@@ -372,19 +483,61 @@ const Notifications = () => {
     },
     {
       refetchInterval: 30000, // Обновление каждые 30 секунд
+      enabled: filter !== 'guests', // Отключаем для вкладки гостей
       onError: (error) => {
         toast.error(apiUtils.handleError(error));
       }
     }
   );
 
+  // Получение гостей профиля (только для VIP пользователей)
+  const { data: guestsData, isLoading: guestsLoading } = useQuery(
+    ['guests', filter],
+    () => notificationsAPI.getGuests(),
+    {
+      enabled: filter === 'guests' && apiUtils.isVip(currentUser),
+      onError: (error) => {
+        toast.error(apiUtils.handleError(error));
+      }
+    }
+  );
+
+  // Получение текущего пользователя
+  const { data: currentUser } = useQuery(
+    ['currentUser'],
+    () => {
+      const token = localStorage.getItem('swingfox_token');
+      if (!token) return null;
+      
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return {
+          login: payload.login,
+          vipType: payload.vipType || 'FREE'
+        };
+      } catch (error) {
+        console.error('Ошибка парсинга токена:', error);
+        return null;
+      }
+    },
+    {
+      staleTime: 5 * 60 * 1000, // 5 минут
+      cacheTime: 10 * 60 * 1000 // 10 минут
+    }
+  );
+
   const notifications = notificationsData?.notifications || [];
   const unreadCount = notificationsData?.unread_count || 0;
-
+  const guests = guestsData?.guests || [];
 
 
   // Фильтруем уведомления в зависимости от выбранного фильтра
   const filteredNotifications = useMemo(() => {
+    // Если выбран фильтр "guests", возвращаем пустой массив
+    if (filter === 'guests') {
+      return [];
+    }
+    
     if (!notifications || notifications.length === 0) {
       return [];
     }
@@ -592,15 +745,24 @@ const Notifications = () => {
   };
 
   // Фильтры
-  const filterTabs = useMemo(() => [
-    { key: 'all', label: 'Все', count: notifications.length },
-    { key: 'unread', label: 'Непрочитанные', count: currentUnreadCount },
-    { key: 'match', label: '💕 Мэтчи', count: countByType.match || 0 },
-    { key: 'message', label: 'Сообщения', count: countByType.message || 0 },
-    { key: 'like', label: 'Лайки', count: countByType.like || 0 },
-    { key: 'gift', label: 'Подарки', count: countByType.gift || 0 },
-    { key: 'system', label: 'Системные', count: countByType.system || 0 }
-  ], [notifications.length, currentUnreadCount, countByType]);
+  const filterTabs = useMemo(() => {
+    const tabs = [
+      { key: 'all', label: 'Все', count: notifications.length },
+      { key: 'unread', label: 'Непрочитанные', count: currentUnreadCount },
+      { key: 'match', label: '💕 Мэтчи', count: countByType.match || 0 },
+      { key: 'message', label: 'Сообщения', count: countByType.message || 0 },
+      { key: 'like', label: 'Лайки', count: countByType.like || 0 },
+      { key: 'gift', label: 'Подарки', count: countByType.gift || 0 },
+      { key: 'system', label: 'Системные', count: countByType.system || 0 }
+    ];
+
+    // Добавляем вкладку гостей только для VIP пользователей
+    if (apiUtils.isVip(currentUser)) {
+      tabs.splice(2, 0, { key: 'guests', label: '👥 Гости', count: guests.length, vipOnly: true });
+    }
+
+    return tabs;
+  }, [notifications.length, currentUnreadCount, countByType, guests.length, currentUser]);
 
   if (isLoading) {
     return (
@@ -664,7 +826,82 @@ const Notifications = () => {
           </BulkActions>
         </NotificationsHeader>
 
-        {filteredNotifications.length === 0 ? (
+        {filter === 'guests' ? (
+          guestsLoading ? (
+            <EmptyState>
+              <div className="icon">⏳</div>
+              <h3>Загрузка гостей...</h3>
+              <p>Получаем информацию о посетителях вашего профиля</p>
+            </EmptyState>
+          ) : guests.length === 0 ? (
+            <EmptyState>
+              <div className="icon">👥</div>
+              <h3>Нет гостей</h3>
+              <p>Пока никто не посещал ваш профиль</p>
+            </EmptyState>
+          ) : (
+            <GuestsList>
+              <AnimatePresence>
+                {guests.map((guest) => (
+                  <GuestItem
+                    key={guest.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <GuestContent>
+                      <GuestAvatar>
+                        {guest.avatar && guest.avatar !== 'no_photo.jpg' ? (
+                          <img 
+                            src={`/uploads/${guest.avatar}`} 
+                            alt={guest.visitor}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <span style={{ display: guest.avatar && guest.avatar !== 'no_photo.jpg' ? 'none' : 'flex' }}>
+                          {guest.visitor.charAt(0).toUpperCase()}
+                        </span>
+                      </GuestAvatar>
+                      
+                      <GuestDetails>
+                        <GuestName onClick={() => handleViewProfile(guest.visitor)}>
+                          {guest.visitor}
+                        </GuestName>
+                        
+                        <GuestInfo>
+                          <GuestStatus>{guest.status}</GuestStatus>
+                          <GuestLocation>{guest.city}, {guest.country}</GuestLocation>
+                          {guest.online && (
+                            <span style={{ color: '#38a169', fontSize: '12px' }}>🟢 Онлайн</span>
+                          )}
+                        </GuestInfo>
+                        
+                        <GuestTime>
+                          Посетил {apiUtils.formatTimeAgo(guest.visited_at)}
+                        </GuestTime>
+                      </GuestDetails>
+                      
+                      <GuestActions>
+                        <ProfileButton
+                          $size="35px"
+                          $variant="secondary"
+                          onClick={() => handleViewProfile(guest.visitor)}
+                          title="Посмотреть профиль"
+                        >
+                          👤
+                        </ProfileButton>
+                      </GuestActions>
+                    </GuestContent>
+                  </GuestItem>
+                ))}
+              </AnimatePresence>
+            </GuestsList>
+          )
+        ) : filteredNotifications.length === 0 ? (
           <EmptyState>
             <div className="icon">🔔</div>
             <h3>Нет уведомлений</h3>

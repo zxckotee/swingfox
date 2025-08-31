@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useParams, Navigate, useNavigate } from 'react-router-dom';
+import { useParams, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { usersAPI, swipeAPI, chatAPI, giftsAPI, ratingAPI, subscriptionsAPI, apiUtils } from '../services/api';
+import { usersAPI, swipeAPI, chatAPI, giftsAPI, ratingAPI, subscriptionsAPI, apiUtils, privacyAPI } from '../services/api';
 import { LocationSelector } from '../components/Geography';
 import RatingDisplay from '../components/RatingDisplay';
 import PhotoComments from '../components/PhotoComments';
@@ -23,6 +23,7 @@ import {
   Label,
   Input,
   TextArea,
+  Checkbox,
   LoadingSpinner,
   Grid,
   Card,
@@ -537,18 +538,40 @@ const GiftMessage = styled.div`
 const Profile = () => {
   const { login } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
+  
+  // Получение параметра tab из URL
+  const searchParams = new URLSearchParams(location.search);
+  const tabFromUrl = searchParams.get('tab');
+  
+  const [activeTab, setActiveTab] = useState('profile');
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [showGiftModal, setShowGiftModal] = useState(false);
+  const [selectedGift, setSelectedGift] = useState(null);
+  const [giftMessage, setGiftMessage] = useState('');
+  const [showSuperlikeModal, setShowSuperlikeModal] = useState(false);
+  const [superlikeMessage, setSuperlikeMessage] = useState('');
+
+  // Устанавливаем активную вкладку на основе URL параметра
+  useEffect(() => {
+    if (tabFromUrl && ['profile', 'photos', 'gifts', 'settings'].includes(tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
+
   const currentUser = apiUtils.getCurrentUser();
   
   // Определяем, чей это профиль
   const isOwnProfile = !login || (currentUser && currentUser.login === login);
   const targetLogin = isOwnProfile ? currentUser?.login : login;
-  
+
   // Отладочная информация
   useEffect(() => {
     console.log('Profile component debug:', {
       login,
-      currentUser: currentUser ? { login: currentUser.login, hasLogin: !!currentUser.login } : null,
+      currentUser: apiUtils.getCurrentUser() ? { login: apiUtils.getCurrentUser().login, hasLogin: !!apiUtils.getCurrentUser().login } : null,
       isOwnProfile,
       targetLogin,
       hasTargetLogin: !!targetLogin
@@ -556,41 +579,46 @@ const Profile = () => {
   }, [login, currentUser, isOwnProfile, targetLogin]);
   
   // Состояния
-  const [activeTab, setActiveTab] = useState('profile');
-  const [showImageModal, setShowImageModal] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [showGiftModal, setShowGiftModal] = useState(false);
-  const [showSuperlikeModal, setShowSuperlikeModal] = useState(false);
-  const [selectedGift, setSelectedGift] = useState(null);
-  const [giftMessage, setGiftMessage] = useState('');
-  const [superlikeMessage, setSuperlikeMessage] = useState('');
+  // const [activeTab, setActiveTab] = useState('profile');
+  // const [showImageModal, setShowImageModal] = useState(false);
+  // const [selectedImage, setSelectedImage] = useState(null);
+  // const [showGiftModal, setShowGiftModal] = useState(false);
+  // const [showSuperlikeModal, setShowSuperlikeModal] = useState(false);
+  // const [selectedGift, setSelectedGift] = useState(null);
+  // const [giftMessage, setGiftMessage] = useState('');
+  // const [superlikeMessage, setSuperlikeMessage] = useState('');
 
   // Получение полученных подарков
-  const { data: receivedGiftsData } = useQuery(
-    ['received-gifts', targetLogin],
-    () => giftsAPI.getReceivedGifts(50, 0, targetLogin),
+  const { data: receivedGiftsData = [] } = useQuery(
+    ['receivedGifts', targetLogin],
+    () => giftsAPI.getReceivedGifts(20, 0, targetLogin),
     {
       enabled: !!targetLogin,
       onError: (error) => {
-        console.error('Gifts API error:', {
-          targetLogin,
-          error: error.message,
-          status: error.response?.status,
-          data: error.response?.data
-        });
+        console.error('Ошибка при получении подарков:', error);
       }
     }
   );
 
-  const receivedGifts = receivedGiftsData?.gifts || [];
-  
+  // Получение настроек приватности
+  const { data: privacySettings } = useQuery(
+    ['privacySettings'],
+    () => privacyAPI.getSettings(),
+    {
+      enabled: isOwnProfile,
+      onError: (error) => {
+        console.error('Ошибка при получении настроек приватности:', error);
+      }
+    }
+  );
+
   // Отладочная информация
   useEffect(() => {
     if (receivedGiftsData) {
       console.log('Received gifts data:', receivedGiftsData);
-      console.log('Received gifts:', receivedGifts);
+      console.log('Received gifts:', receivedGiftsData);
     }
-  }, [receivedGiftsData, receivedGifts]);
+  }, [receivedGiftsData]);
 
   // Отладочная информация для подписки
   useEffect(() => {
@@ -802,15 +830,31 @@ const Profile = () => {
     }
   });
 
+  // Мутация для отправки подарка
   const sendGiftMutation = useMutation(giftsAPI.sendGift, {
-    onSuccess: () => {
-      toast.success('Подарок отправлен!');
+    onSuccess: (data) => {
+      toast.success('Подарок успешно отправлен!');
       setShowGiftModal(false);
       setSelectedGift(null);
       setGiftMessage('');
+      
+      // Обновляем данные профиля
       if (targetLogin) {
-        queryClient.invalidateQueries(['match-status', targetLogin]);
+        queryClient.invalidateQueries(['profile', targetLogin]);
       }
+    },
+    onError: (error) => {
+      toast.error(apiUtils.handleError(error));
+    }
+  });
+
+  // Мутация для сохранения настроек приватности
+  const privacyMutation = useMutation(privacyAPI.updateSettings, {
+    onSuccess: (data) => {
+      toast.success('Настройки приватности обновлены');
+      
+      // Обновляем данные пользователя
+      queryClient.invalidateQueries(['currentUser']);
     },
     onError: (error) => {
       toast.error(apiUtils.handleError(error));
@@ -903,22 +947,39 @@ const Profile = () => {
     });
   };
 
-  const handleSendGift = () => {
+  // Функция для отправки подарка
+  const handleSendGift = async () => {
     if (!selectedGift) {
       toast.error('Выберите подарок');
       return;
     }
-    
-    if (!targetLogin) {
-      toast.error('Ошибка: не указан получатель подарка');
-      return;
+
+    try {
+      await sendGiftMutation.mutateAsync({
+        to_user: targetLogin,
+        gift_type: selectedGift,
+        message: giftMessage
+      });
+    } catch (error) {
+      console.error('Ошибка при отправке подарка:', error);
     }
+  };
+
+  // Функция для сохранения настроек приватности
+  const handlePrivacySubmit = async (e) => {
+    e.preventDefault();
     
-    sendGiftMutation.mutate({
-      to_user: targetLogin,
-      gift_type: selectedGift,
-      message: giftMessage ? giftMessage.trim() : ''
-    });
+    try {
+      const currentSettings = queryClient.getQueryData(['privacySettings']);
+      if (currentSettings) {
+        await privacyMutation.mutateAsync({
+          privacy: currentSettings.privacy,
+          notifications: currentSettings.notifications
+        });
+      }
+    } catch (error) {
+      console.error('Ошибка при сохранении настроек:', error);
+    }
   };
 
   const handleGoToChat = () => {
@@ -1076,7 +1137,7 @@ const Profile = () => {
             $active={activeTab === 'gifts'}
             onClick={() => setActiveTab('gifts')}
           >
-            🎁 Подарки {receivedGifts.length > 0 && `(${receivedGifts.length})`}
+            🎁 Подарки {receivedGiftsData.length > 0 && `(${receivedGiftsData.length})`}
           </Tab>
           {isOwnProfile && (
             <Tab
@@ -1304,7 +1365,7 @@ const Profile = () => {
                   )}
 
                   {/* Подарки (для всех профилей) */}
-                  {receivedGifts.length > 0 && (
+                  {receivedGiftsData.length > 0 && (
                     <InfoSection>
                       <h3>🎁 Полученные подарки</h3>
                       <div style={{ 
@@ -1313,7 +1374,7 @@ const Profile = () => {
                         gap: '15px',
                         marginTop: '15px'
                       }}>
-                        {receivedGifts.slice(0, 6).map((gift, index) => (
+                        {receivedGiftsData.slice(0, 6).map((gift, index) => (
                           <div key={index} style={{
                             background: 'linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%)',
                             border: '2px solid #fed7d7',
@@ -1351,7 +1412,7 @@ const Profile = () => {
                             </div>
                           </div>
                         ))}
-                        {receivedGifts.length > 6 && (
+                        {receivedGiftsData.length > 6 && (
                           <div style={{
                             background: 'rgba(220, 53, 34, 0.1)',
                             border: '2px dashed #dc3522',
@@ -1364,7 +1425,7 @@ const Profile = () => {
                             cursor: 'pointer'
                           }} onClick={() => setActiveTab('gifts')}>
                             <div style={{ color: '#dc3522', fontSize: '14px', fontWeight: '600' }}>
-                              +{receivedGifts.length - 6} еще
+                              +{receivedGiftsData.length - 6} еще
                             </div>
                           </div>
                         )}
@@ -1503,7 +1564,7 @@ const Profile = () => {
                 🎁 Подарки
               </h3>
               
-              {receivedGifts.length === 0 ? (
+              {receivedGiftsData.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 20px', color: '#718096' }}>
                   <div style={{ fontSize: '64px', marginBottom: '20px', opacity: 0.5 }}>🎁</div>
                   <h4 style={{ margin: '0 0 10px 0', color: '#2d3748' }}>
@@ -1537,19 +1598,19 @@ const Profile = () => {
                     }}>
                       <div>
                         <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc3522' }}>
-                          {receivedGifts.length}
+                          {receivedGiftsData.length}
                         </div>
                         <div style={{ fontSize: '12px', color: '#4a5568' }}>Всего получено</div>
                       </div>
                       <div>
                         <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc3522' }}>
-                          {receivedGifts.filter(g => g.message).length}
+                          {receivedGiftsData.filter(g => g.message).length}
                         </div>
                         <div style={{ fontSize: '12px', color: '#4a5568' }}>С сообщениями</div>
                       </div>
                       <div>
                         <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc3522' }}>
-                          {new Set(receivedGifts.map(g => g.from_user)).size}
+                          {new Set(receivedGiftsData.map(g => g.from_user)).size}
                         </div>
                         <div style={{ fontSize: '12px', color: '#4a5568' }}>Отправителей</div>
                       </div>
@@ -1558,7 +1619,7 @@ const Profile = () => {
 
                   {/* Список подарков */}
                   <Grid $columns="repeat(auto-fill, minmax(280px, 1fr))" $gap="20px">
-                    {receivedGifts.map((gift, index) => (
+                    {receivedGiftsData.map((gift, index) => (
                       <GiftCard key={index}>
                         <GiftEmoji>{GIFT_CONFIG[gift.gift_type]?.emoji || '🎁'}</GiftEmoji>
                         <GiftSender onClick={() => handleGiftSenderClick(gift.from_user)}>
@@ -1583,7 +1644,201 @@ const Profile = () => {
             <div>
               <InfoSection>
                 <h3>Настройки профиля</h3>
-                <InfoItem>Здесь будут настройки приватности и уведомлений</InfoItem>
+                
+                <Form onSubmit={handlePrivacySubmit}>
+                  <FormGroup>
+                    <Label>Приватность</Label>
+                    
+                    <Checkbox
+                      label="Анонимные посещения профилей"
+                      checked={privacySettings?.privacy?.anonymous_visits || false}
+                      onChange={(e) => {
+                        const newSettings = {
+                          ...privacySettings,
+                          privacy: {
+                            ...privacySettings?.privacy,
+                            anonymous_visits: e.target.checked
+                          }
+                        };
+                        // Обновляем локальное состояние
+                        queryClient.setQueryData(['privacySettings'], newSettings);
+                      }}
+                    />
+                    
+                    <Checkbox
+                      label="Показывать статус онлайн"
+                      checked={privacySettings?.privacy?.show_online_status !== false}
+                      onChange={(e) => {
+                        const newSettings = {
+                          ...privacySettings,
+                          privacy: {
+                            ...privacySettings?.privacy,
+                            show_online_status: e.target.checked
+                          }
+                        };
+                        queryClient.setQueryData(['privacySettings'], newSettings);
+                      }}
+                    />
+                    
+                    <Checkbox
+                      label="Показывать время последнего посещения"
+                      checked={privacySettings?.privacy?.show_last_seen !== false}
+                      onChange={(e) => {
+                        const newSettings = {
+                          ...privacySettings,
+                          privacy: {
+                            ...privacySettings?.privacy,
+                            show_last_seen: e.target.checked
+                          }
+                        };
+                        queryClient.setQueryData(['privacySettings'], newSettings);
+                      }}
+                    />
+                    
+                    <Checkbox
+                      label="Разрешить сообщения от всех"
+                      checked={privacySettings?.privacy?.allow_messages !== false}
+                      onChange={(e) => {
+                        const newSettings = {
+                          ...privacySettings,
+                          privacy: {
+                            ...privacySettings?.privacy,
+                            allow_messages: e.target.checked
+                          }
+                        };
+                        queryClient.setQueryData(['privacySettings'], newSettings);
+                      }}
+                    />
+                    
+                    <Checkbox
+                      label="Разрешить подарки от всех"
+                      checked={privacySettings?.privacy?.allow_gifts !== false}
+                      onChange={(e) => {
+                        const newSettings = {
+                          ...privacySettings,
+                          privacy: {
+                            ...privacySettings?.privacy,
+                            allow_gifts: e.target.checked
+                          }
+                        };
+                        queryClient.setQueryData(['privacySettings'], newSettings);
+                      }}
+                    />
+                    
+                    <Checkbox
+                      label="Разрешить оценки профиля"
+                      checked={privacySettings?.privacy?.allow_ratings !== false}
+                      onChange={(e) => {
+                        const newSettings = {
+                          ...privacySettings,
+                          privacy: {
+                            ...privacySettings?.privacy,
+                            allow_ratings: e.target.checked
+                          }
+                        };
+                        queryClient.setQueryData(['privacySettings'], newSettings);
+                      }}
+                    />
+                    
+                    <Checkbox
+                      label="Разрешить комментарии"
+                      checked={privacySettings?.privacy?.allow_comments !== false}
+                      onChange={(e) => {
+                        const newSettings = {
+                          ...privacySettings,
+                          privacy: {
+                            ...privacySettings?.privacy,
+                            allow_comments: e.target.checked
+                          }
+                        };
+                        queryClient.setQueryData(['privacySettings'], newSettings);
+                      }}
+                    />
+                  </FormGroup>
+                  
+                  <FormGroup>
+                    <Label>Уведомления</Label>
+                    
+                    <Checkbox
+                      label="Новые мэтчи"
+                      checked={privacySettings?.notifications?.new_matches !== false}
+                      onChange={(e) => {
+                        const newSettings = {
+                          ...privacySettings,
+                          notifications: {
+                            ...privacySettings?.notifications,
+                            new_matches: e.target.checked
+                          }
+                        };
+                        queryClient.setQueryData(['privacySettings'], newSettings);
+                      }}
+                    />
+                    
+                    <Checkbox
+                      label="Сообщения"
+                      checked={privacySettings?.notifications?.messages !== false}
+                      onChange={(e) => {
+                        const newSettings = {
+                          ...privacySettings,
+                          notifications: {
+                            ...privacySettings?.notifications,
+                            messages: e.target.checked
+                          }
+                        };
+                        queryClient.setQueryData(['privacySettings'], newSettings);
+                      }}
+                    />
+                    
+                    <Checkbox
+                      label="Лайки"
+                      checked={privacySettings?.notifications?.likes !== false}
+                      onChange={(e) => {
+                        const newSettings = {
+                          ...privacySettings,
+                          notifications: {
+                            ...privacySettings?.notifications,
+                            likes: e.target.checked
+                          }
+                        };
+                        queryClient.setQueryData(['privacySettings'], newSettings);
+                      }}
+                    />
+                    
+                    <Checkbox
+                      label="Подарки"
+                      checked={privacySettings?.notifications?.gifts !== false}
+                      onChange={(e) => {
+                        const newSettings = {
+                          ...privacySettings,
+                          notifications: {
+                            ...privacySettings?.notifications,
+                            gifts: e.target.checked
+                          }
+                        };
+                        queryClient.setQueryData(['privacySettings'], newSettings);
+                      }}
+                    />
+                    
+                    <Checkbox
+                      label="Посещения профиля"
+                      checked={privacySettings?.notifications?.profile_visits !== false}
+                      onChange={(e) => {
+                        const newSettings = {
+                          ...privacySettings,
+                          notifications: {
+                            ...privacySettings?.notifications,
+                            profile_visits: e.target.checked
+                          }
+                        };
+                        queryClient.setQueryData(['privacySettings'], newSettings);
+                      }}
+                    />
+                  </FormGroup>
+                  
+                  <Button type="submit" disabled={privacyMutation.isLoading}>
+                    {privacyMutation.isLoading ? 'Сохранение...' : 'Сохранить настройки'}
+                  </Button>
+                </Form>
               </InfoSection>
             </div>
           )}

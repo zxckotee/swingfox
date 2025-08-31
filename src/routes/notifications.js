@@ -485,4 +485,80 @@ router.post('/cleanup', authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/notifications/guests - Получение гостей профиля (только для VIP)
+router.get('/guests', authenticateToken, async (req, res) => {
+  const logger = new APILogger('NOTIFICATIONS');
+  
+  try {
+    logger.logRequest(req, 'GET /notifications/guests');
+    
+    const userId = req.user.login;
+    
+    // Проверяем, есть ли у пользователя подписка
+    const user = await User.findOne({ where: { login: userId } });
+    if (!user || !user.isVip()) {
+      return res.status(403).json({
+        error: 'subscription_required',
+        message: 'Для просмотра гостей требуется подписка'
+      });
+    }
+
+    const { page = 1, limit = 20 } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // Получаем посещения профиля из таблицы profile_visits
+    const { ProfileVisit } = require('../models');
+    
+    const visits = await ProfileVisit.findAll({
+      where: { visited: userId },
+      include: [{
+        model: User,
+        as: 'VisitorUser',
+        attributes: ['login', 'ava', 'status', 'country', 'city', 'online']
+      }],
+      order: [['created_at', 'DESC']],
+      limit: parseInt(limit),
+      offset
+    });
+
+    const totalCount = await ProfileVisit.count({
+      where: { visited: userId }
+    });
+
+    const responseData = {
+      guests: visits.map(visit => ({
+        id: visit.id,
+        visitor: visit.VisitorUser.login,
+        avatar: visit.VisitorUser.ava,
+        status: visit.VisitorUser.status,
+        country: visit.VisitorUser.country,
+        city: visit.VisitorUser.city,
+        // Показываем статус онлайн только если разрешено в настройках посетителя
+        online: visit.VisitorUser.privacy_settings?.privacy?.show_online_status !== false ? visit.VisitorUser.online : null,
+        visited_at: visit.created_at
+      })),
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: totalCount,
+        pages: Math.ceil(totalCount / parseInt(limit))
+      }
+    };
+
+    logger.logSuccess(req, 200, {
+      guests_count: visits.length,
+      total_count: totalCount
+    });
+    
+    res.json(responseData);
+
+  } catch (error) {
+    logger.logError(req, error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при получении гостей'
+    });
+  }
+});
+
 module.exports = router;

@@ -123,6 +123,62 @@ const User = sequelize.define('User', {
   images_password: {
     type: DataTypes.STRING(255),
     allowNull: true
+  },
+  privacy_settings: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'JSON с настройками приватности',
+    get() {
+      try {
+        const value = this.getDataValue('privacy_settings');
+        if (!value) return this.getDefaultPrivacySettings();
+        return JSON.parse(value);
+      } catch (error) {
+        console.warn('Ошибка парсинга privacy_settings:', error);
+        return this.getDefaultPrivacySettings();
+      }
+    },
+    set(value) {
+      try {
+        this.setDataValue('privacy_settings', JSON.stringify(value));
+      } catch (error) {
+        console.warn('Ошибка сохранения privacy_settings:', error);
+        this.setDataValue('privacy_settings', JSON.stringify(this.getDefaultPrivacySettings()));
+      }
+    }
+  },
+  geo_updated_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Время последнего обновления геоданных'
+  },
+  notification_token: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'FCM токен для push-уведомлений'
+  },
+  premium_features: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'JSON с доступными премиум функциями',
+    get() {
+      try {
+        const value = this.getDataValue('premium_features');
+        if (!value) return this.getDefaultPremiumFeatures();
+        return JSON.parse(value);
+      } catch (error) {
+        console.warn('Ошибка парсинга premium_features:', error);
+        return this.getDefaultPremiumFeatures();
+      }
+    },
+    set(value) {
+      try {
+        this.setDataValue('premium_features', JSON.stringify(value));
+      } catch (error) {
+        console.warn('Ошибка сохранения premium_features:', error);
+        this.setDataValue('premium_features', JSON.stringify(this.getDefaultPremiumFeatures()));
+      }
+    }
   }
 }, {
   tableName: 'users',
@@ -203,6 +259,50 @@ User.findByLoginOrEmail = function(loginOrEmail) {
       ]
     }
   });
+};
+
+// Методы для получения настроек по умолчанию
+User.prototype.getDefaultPrivacySettings = function() {
+  return {
+    privacy: {
+      anonymous_visits: false,
+      show_online_status: true,
+      show_last_seen: true,
+      allow_messages: true,
+      allow_gifts: true,
+      allow_ratings: true,
+      allow_comments: true
+    },
+    notifications: {
+      new_matches: true,
+      messages: true,
+      likes: true,
+      gifts: true,
+      profile_visits: true
+    }
+  };
+};
+
+User.prototype.getDefaultPremiumFeatures = function() {
+  return {
+    can_view_guests: this.viptype !== 'FREE',
+    can_anonymous_visits: this.viptype !== 'FREE',
+    can_see_who_liked: this.viptype !== 'FREE',
+    can_rewind_last_swipe: this.viptype !== 'FREE',
+    can_send_superlikes: this.viptype !== 'FREE',
+    can_see_read_receipts: this.viptype === 'PREMIUM',
+    can_see_online_status: this.viptype === 'PREMIUM'
+  };
+};
+
+// Метод для проверки VIP статуса
+User.prototype.isVip = function() {
+  return this.viptype && this.viptype !== 'FREE';
+};
+
+// Метод для проверки Premium статуса
+User.prototype.isPremium = function() {
+  return this.viptype === 'PREMIUM';
 };
 
 module.exports = User;

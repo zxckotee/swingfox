@@ -1099,7 +1099,7 @@ const Navigation = () => {
                 <ProfileIcon />
                 Мой профиль
               </DropdownItem>
-              <DropdownItem onClick={() => navigate('/profile')}>
+              <DropdownItem onClick={() => navigate('/profile?tab=settings')}>
                 <SettingsIcon />
                 Настройки
               </DropdownItem>

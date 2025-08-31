@@ -47,43 +47,60 @@ router.get('/:login', authenticateToken, async (req, res) => {
     // Форматируем время онлайн
     const onlineStatus = formatOnlineTime(targetUser.online);
 
-    // Базовые данные профиля
-    let profileData = {
-      id: targetUser.id,
-      login: targetUser.login,
-      ava: targetUser.ava,
-      status: targetUser.status,
-      country: targetUser.country,
-      city: targetUser.city,
-      age,
-      distance,
-      registration: targetUser.registration,
-      info: targetUser.info,
-      online: onlineStatus,
-      viptype: targetUser.viptype
+    // Формируем ответ с учетом настроек приватности
+    const response = {
+      profile: {
+        login: targetUser.login,
+        name: targetUser.name,
+        ava: targetUser.ava,
+        status: targetUser.status,
+        country: targetUser.country,
+        city: targetUser.city,
+        geo: targetUser.geo,
+        age: age,
+        distance: distance,
+        registration: targetUser.registration,
+        info: targetUser.info,
+        // Показываем статус онлайн только если разрешено в настройках
+        online: targetUser.privacy_settings?.privacy?.show_online_status !== false ? formatOnlineTime(targetUser.online) : null,
+        viptype: targetUser.viptype,
+        images: targetUser.images ? targetUser.images.split('&&') : [],
+        search_status: targetUser.search_status,
+        search_age: targetUser.search_age,
+        location: targetUser.location,
+        mobile: targetUser.mobile,
+        height: targetUser.height,
+        weight: targetUser.weight,
+        smoking: targetUser.smoking,
+        alko: targetUser.alko,
+        date: targetUser.date,
+        balance: targetUser.balance,
+        locked_images: targetUser.locked_images,
+        images_password: targetUser.images_password
+      }
     };
 
     // Добавляем данные партнера для пар
     if (targetUser.status === 'Семейная пара(М+Ж)' || targetUser.status === 'Несемейная пара(М+Ж)') {
       const partnerData = targetUser.getPartnerData();
       if (partnerData) {
-        profileData.partnerData = partnerData;
-        profileData.isCouple = true;
+        response.profile.partnerData = partnerData;
+        response.profile.isCouple = true;
       }
     } else {
-      profileData.isCouple = false;
+      response.profile.isCouple = false;
     }
 
     // Добавляем дополнительные поля для отображения
-    if (targetUser.height) profileData.height = targetUser.height;
-    if (targetUser.weight) profileData.weight = targetUser.weight;
-    if (targetUser.smoking) profileData.smoking = targetUser.smoking;
-    if (targetUser.alko) profileData.alko = targetUser.alko;
-    if (targetUser.search_status) profileData.searchStatus = targetUser.search_status;
-    if (targetUser.search_age) profileData.searchAge = targetUser.search_age;
-    if (targetUser.location) profileData.location = targetUser.location;
-    if (targetUser.mobile) profileData.mobile = targetUser.mobile;
-    if (targetUser.images) profileData.images = targetUser.images.split('&&').filter(Boolean);
+    if (targetUser.height) response.profile.height = targetUser.height;
+    if (targetUser.weight) response.profile.weight = targetUser.weight;
+    if (targetUser.smoking) response.profile.smoking = targetUser.smoking;
+    if (targetUser.alko) response.profile.alko = targetUser.alko;
+    if (targetUser.search_status) response.profile.searchStatus = targetUser.search_status;
+    if (targetUser.search_age) response.profile.searchAge = targetUser.search_age;
+    if (targetUser.location) response.profile.location = targetUser.location;
+    if (targetUser.mobile) response.profile.mobile = targetUser.mobile;
+    if (targetUser.images) response.profile.images = targetUser.images.split('&&').filter(Boolean);
 
     // Получаем статистику лайков фото
     const photoLikes = await PhotoLike.findAll({
@@ -103,15 +120,15 @@ router.get('/:login', authenticateToken, async (req, res) => {
       });
       likeCounts[like.photo_index] = count;
     }
-    profileData.photoLikes = likeCounts;
+    response.profile.photoLikes = likeCounts;
 
     // Получаем рейтинг пользователя
     const ratings = await Rating.findAll({
       where: { to_user: login },
       attributes: ['value']
     });
-    profileData.totalRating = ratings.reduce((sum, rating) => sum + rating.value, 0);
-    profileData.ratingCount = ratings.length;
+    response.profile.totalRating = ratings.reduce((sum, rating) => sum + rating.value, 0);
+    response.profile.ratingCount = ratings.length;
 
     // Получаем мою оценку (если не свой профиль)
     if (fromUser !== login) {
@@ -121,13 +138,13 @@ router.get('/:login', authenticateToken, async (req, res) => {
           to_user: login
         }
       });
-      profileData.myRating = myRating ? myRating.value : 0;
+      response.profile.myRating = myRating ? myRating.value : 0;
     }
 
     logger.logSuccess(req, 200, { profile_found: true, user_status: targetUser.status });
     res.json({
       success: true,
-      profile: profileData
+      profile: response.profile
     });
 
   } catch (error) {
@@ -305,12 +322,19 @@ router.post('/:login/send-gift', authenticateToken, async (req, res) => {
       return res.status(400).json(errorData);
     }
 
-    // Проверка существования получателя
+    // Проверяем существование получателя
     const targetUser = await User.findOne({ where: { login } });
     if (!targetUser) {
       const errorData = { error: 'user_not_found', message: 'Пользователь не найден' };
       logger.logError(req, new Error('Target user not found'), 404);
       return res.status(404).json(errorData);
+    }
+
+    // Проверяем настройки приватности получателя
+    if (targetUser.privacy_settings?.privacy?.allow_gifts === false) {
+      const errorData = { error: 'gifts_not_allowed', message: 'Получатель не разрешает отправку подарков' };
+      logger.logError(req, new Error('Gifts not allowed by privacy settings'), 403);
+      return res.status(403).json(errorData);
     }
 
     // Проверка баланса отправителя
@@ -399,12 +423,19 @@ router.post('/:login/rate', authenticateToken, async (req, res) => {
       return res.status(400).json(errorData);
     }
 
-    // Проверка существования получателя
+    // Проверяем существование получателя
     const targetUser = await User.findOne({ where: { login } });
     if (!targetUser) {
       const errorData = { error: 'user_not_found', message: 'Пользователь не найден' };
       logger.logError(req, new Error('Target user not found'), 404);
       return res.status(404).json(errorData);
+    }
+
+    // Проверяем настройки приватности получателя
+    if (targetUser.privacy_settings?.privacy?.allow_ratings === false) {
+      const errorData = { error: 'ratings_not_allowed', message: 'Получатель не разрешает оценки профиля' };
+      logger.logError(req, new Error('Ratings not allowed by privacy settings'), 403);
+      return res.status(403).json(errorData);
     }
 
     // Проверка существующей оценки
@@ -570,6 +601,26 @@ router.post('/:login/visit', authenticateToken, async (req, res) => {
       visitor: fromUser,
       visited: login
     }, req);
+
+    // Проверяем настройки приватности посещаемого пользователя
+    const targetUser = await User.findOne({ where: { login } });
+    if (!targetUser) {
+      return res.status(404).json({ error: 'user_not_found', message: 'Пользователь не найден' });
+    }
+
+    // Если у посещаемого пользователя включены анонимные посещения, не регистрируем
+    if (targetUser.privacy_settings?.privacy?.anonymous_visits) {
+      logger.logResult('Посещение не зарегистрировано (анонимный режим)', true, {
+        visitor: fromUser,
+        visited: login,
+        reason: 'anonymous_visits_enabled'
+      }, req);
+      
+      return res.json({
+        success: true,
+        message: 'Visit registered anonymously'
+      });
+    }
 
     // Проверка последнего посещения (не чаще раза в час)
     const oneHourAgo = new Date();

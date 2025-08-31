@@ -361,6 +361,25 @@ router.post('/send', authenticateToken, upload.array('images', 5), async (req, r
       });
     }
 
+    // Проверяем настройки приватности получателя
+    if (recipient.privacy_settings?.privacy?.allow_messages === false) {
+      // Удаляем загруженные файлы
+      if (req.files) {
+        for (const file of req.files) {
+          try {
+            await fs.unlink(file.path);
+          } catch (err) {
+            console.error('Error deleting file:', err);
+          }
+        }
+      }
+      
+      return res.status(403).json({
+        error: 'messages_not_allowed',
+        message: 'Получатель не разрешает отправку сообщений'
+      });
+    }
+
     // Проверяем разрешение на отправку сообщения (с fallback'ом)
     let sendAllowed = true;
     let matchWarning = null;

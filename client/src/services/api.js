@@ -740,6 +740,17 @@ export const notificationsAPI = {
     return response.data;
   },
 
+  // Новый метод для получения гостей профиля
+  getGuests: async (page = 1, limit = 20) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString()
+    });
+    
+    const response = await apiClient.get(`/notifications/guests?${params.toString()}`);
+    return response.data;
+  },
+
   markAsRead: async (id) => {
     const response = await apiClient.put(`/notifications/${id}/read`);
     return response.data;
@@ -767,6 +778,19 @@ export const notificationsAPI = {
 
   getUnreadCount: async () => {
     const response = await apiClient.get('/notifications/count');
+    return response.data;
+  }
+};
+
+// Новый API для настроек приватности
+export const privacyAPI = {
+  getSettings: async () => {
+    const response = await apiClient.get('/users/privacy-settings');
+    return response.data;
+  },
+
+  updateSettings: async (settings) => {
+    const response = await apiClient.put('/users/privacy-settings', settings);
     return response.data;
   }
 };
@@ -1238,6 +1262,7 @@ export const api = {
   ads: adsAPI,
   admin: adminAPI,
   notifications: notificationsAPI,
+  privacy: privacyAPI,
   gifts: giftsAPI,
   clubs: clubsAPI,
   subscriptions: subscriptionsAPI,

@@ -101,7 +101,24 @@ router.post('/:username', authenticateToken, async (req, res) => {
     if (currentUser === username) {
       return res.status(400).json({
         error: 'self_comment',
-        message: 'Нельзя оставлять комментарии к своему профилю'
+        message: 'Нельзя оставить комментарий к своему профилю'
+      });
+    }
+
+    // Проверяем существование пользователя
+    const targetUser = await User.findOne({ where: { login: username } });
+    if (!targetUser) {
+      return res.status(404).json({
+        error: 'user_not_found',
+        message: 'Пользователь не найден'
+      });
+    }
+
+    // Проверяем настройки приватности владельца профиля
+    if (targetUser.privacy_settings?.privacy?.allow_comments === false) {
+      return res.status(403).json({
+        error: 'comments_not_allowed',
+        message: 'Владелец профиля не разрешает комментарии'
       });
     }
 

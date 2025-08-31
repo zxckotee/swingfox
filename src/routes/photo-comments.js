@@ -3,6 +3,7 @@ const router = express.Router();
 const { PhotoComments, User, Notifications } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { APILogger } = require('../utils/logger');
+const { Op } = require('sequelize');
 
 // GET /api/photo-comments/:filename - Получение комментариев к фотографии
 router.get('/:filename', authenticateToken, async (req, res) => {
@@ -69,12 +70,12 @@ router.post('/:filename', authenticateToken, async (req, res) => {
     
     const { filename } = req.params;
     const { comment_text } = req.body;
-    const currentUser = req.user.login;
+    const fromUser = req.user.login;
 
     if (!comment_text || comment_text.trim().length === 0) {
       return res.status(400).json({
         error: 'empty_comment',
-        message: 'Текст комментария не может быть пустым'
+        message: 'Комментарий не может быть пустым'
       });
     }
 
@@ -85,25 +86,47 @@ router.post('/:filename', authenticateToken, async (req, res) => {
       });
     }
 
+    // Получаем владельца фотографии
+    const photoOwner = await User.findOne({
+      where: {
+        images: { [Op.like]: `%${filename}%` }
+      }
+    });
+
+    if (!photoOwner) {
+      return res.status(404).json({
+        error: 'photo_not_found',
+        message: 'Фотография не найдена'
+      });
+    }
+
+    // Проверяем настройки приватности владельца фотографии
+    if (photoOwner.privacy_settings?.privacy?.allow_comments === false) {
+      return res.status(403).json({
+        error: 'comments_not_allowed',
+        message: 'Владелец фотографии не разрешает комментарии'
+      });
+    }
+
     logger.logBusinessLogic(1, 'Создание комментария к фотографии', {
-      current_user: currentUser,
+      current_user: fromUser,
       filename,
       comment_length: comment_text.length
     }, req);
 
     // Создаем комментарий
     const comment = await PhotoComments.createComment(
-      currentUser,
+      fromUser,
       filename,
       comment_text.trim()
     );
 
     // Получаем данные пользователя для ответа
-    const user = await User.findOne({ where: { login: currentUser } });
+    const user = await User.findOne({ where: { login: fromUser } });
 
     logger.logDatabase('INSERT', 'photo_comments', {
       comment_id: comment.id,
-      from_user: currentUser,
+      from_user: fromUser,
       filename,
       comment_length: comment_text.length
     }, req);
@@ -116,8 +139,8 @@ router.post('/:filename', authenticateToken, async (req, res) => {
         user_id: 'photo_owner', // Нужно получить из User
         type: 'photo_comment',
         title: 'Новый комментарий к фотографии',
-        message: `Пользователь ${user?.name || currentUser} оставил комментарий к вашей фотографии`,
-        from_user: currentUser,
+        message: `Пользователь ${user?.name || fromUser} оставил комментарий к вашей фотографии`,
+        from_user: fromUser,
         priority: 'normal',
         data: {
           filename,
@@ -136,7 +159,7 @@ router.post('/:filename', authenticateToken, async (req, res) => {
         text: comment.comment_text,
         created_at: comment.created_at,
         user: {
-          login: currentUser,
+          login: fromUser,
           name: user?.name,
           avatar: user?.ava,
           vip_type: user?.viptype

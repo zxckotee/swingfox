@@ -773,4 +773,76 @@ router.post('/unlock-images', authenticateToken, async (req, res) => {
   }
 });
 
+// PUT /api/users/privacy-settings - Обновление настроек приватности
+router.put('/privacy-settings', authenticateToken, async (req, res) => {
+  const logger = new APILogger('USERS');
+  
+  try {
+    logger.logRequest(req, 'PUT /users/privacy-settings');
+    
+    const userId = req.user.login;
+    const { privacy, notifications } = req.body;
+    
+    const user = await User.findOne({ where: { login: userId } });
+    if (!user) {
+      return res.status(404).json({
+        error: 'user_not_found',
+        message: 'Пользователь не найден'
+      });
+    }
+    
+    // Обновляем настройки приватности
+    user.privacy_settings = { privacy, notifications };
+    await user.save();
+    
+    logger.logSuccess(req, 200, {
+      user_id: userId,
+      privacy_updated: true
+    });
+    
+    res.json({
+      message: 'Настройки приватности обновлены',
+      privacy_settings: user.privacy_settings
+    });
+    
+  } catch (error) {
+    logger.logError(req, error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при обновлении настроек приватности'
+    });
+  }
+});
+
+// GET /api/users/privacy-settings - Получение настроек приватности
+router.get('/privacy-settings', authenticateToken, async (req, res) => {
+  const logger = new APILogger('USERS');
+  
+  try {
+    logger.logRequest(req, 'GET /users/privacy-settings');
+    
+    const userId = req.user.login;
+    const user = await User.findOne({ where: { login: userId } });
+    
+    if (!user) {
+      return res.status(404).json({
+        error: 'user_not_found',
+        message: 'Пользователь не найден'
+      });
+    }
+    
+    res.json({
+      privacy_settings: user.privacy_settings,
+      premium_features: user.premium_features
+    });
+    
+  } catch (error) {
+    logger.logError(req, error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при получении настроек приватности'
+    });
+  }
+});
+
 module.exports = router;
