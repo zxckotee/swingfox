@@ -312,6 +312,10 @@ const Clubs = () => {
   const [typeFilter, setTypeFilter] = useState('');
   const queryClient = useQueryClient();
 
+  // Проверяем, авторизован ли пользователь как клуб
+  const isClubUser = !!localStorage.getItem('clubToken');
+  const isRegularUser = !!localStorage.getItem('token');
+
   // Form state
   const [clubForm, setClubForm] = useState({
     name: '',
@@ -459,6 +463,8 @@ const Clubs = () => {
 
   const filteredClubs = clubsData?.clubs || [];
   const myClubsList = myClubs?.clubs || [];
+
+
 
   return (
     <ClubsContainer>

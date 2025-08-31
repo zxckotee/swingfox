@@ -372,11 +372,31 @@ const ClubDashboard = () => {
   };
   
   const handleCreateEvent = () => {
-    toast.info('Создание мероприятий будет доступно в следующем обновлении');
+    toast('Создание мероприятий будет доступно в следующем обновлении', {
+      icon: 'ℹ️',
+      duration: 4000
+    });
   };
   
   const handleViewEvents = () => {
-    toast.info('Просмотр мероприятий будет доступен в следующем обновлении');
+    toast('Просмотр мероприятий будет доступен в следующем обновлении', {
+      icon: 'ℹ️',
+      duration: 4000
+    });
+  };
+  
+  const handleViewParticipants = () => {
+    toast('Управление участниками будет доступно в следующем обновлении', {
+      icon: 'ℹ️',
+      duration: 4000
+    });
+  };
+  
+  const handleSettings = () => {
+    toast('Настройки клуба будут доступны в следующем обновлении', {
+      icon: 'ℹ️',
+      duration: 4000
+    });
   };
   
   if (isLoading) {
@@ -469,7 +489,7 @@ const ClubDashboard = () => {
             </ActionDescription>
           </ActionCard>
           
-          <ActionCard>
+          <ActionCard onClick={handleViewParticipants}>
             <ActionIcon>👥</ActionIcon>
             <ActionTitle>Участники</ActionTitle>
             <ActionDescription>
@@ -477,7 +497,7 @@ const ClubDashboard = () => {
             </ActionDescription>
           </ActionCard>
           
-          <ActionCard>
+          <ActionCard onClick={handleSettings}>
             <ActionIcon>⚙️</ActionIcon>
             <ActionTitle>Настройки</ActionTitle>
             <ActionDescription>

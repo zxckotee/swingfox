@@ -114,6 +114,54 @@ const Events = sequelize.define('Events', {
     type: DataTypes.INTEGER,
     allowNull: true,
     comment: 'ID клуба (если событие клубное)'
+  },
+  
+  // Связь с объявлениями
+  ad_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'ads',
+      key: 'id'
+    },
+    onUpdate: 'CASCADE',
+    onDelete: 'SET NULL',
+    comment: 'ID объявления (связь с Ads)'
+  },
+  
+  bot_settings: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: 'Настройки бота для мероприятия'
+  },
+  
+  auto_invite_enabled: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+    comment: 'Включить автоматические приглашения'
+  },
+
+  // НОВЫЕ ПОЛЯ ДЛЯ СОЦИАЛЬНОЙ ДИНАМИКИ И МОНЕТИЗАЦИИ
+  // event_type убрано, так как уже есть поле type
+  
+  compatibility_rules: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: 'Правила совместимости участников'
+  },
+  
+  ice_breaker_topics: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: 'Темы для начала разговора'
+  },
+  
+  is_premium: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    comment: 'Является ли мероприятие премиум'
   }
 }, {
   tableName: 'events',
@@ -138,6 +186,23 @@ const Events = sequelize.define('Events', {
     },
     {
       fields: ['approved']
+    },
+    {
+      fields: ['club_id']
+    },
+    {
+      fields: ['ad_id']
+    },
+    {
+      fields: ['club_id', 'auto_invite_enabled']
+    },
+    // НОВЫЕ ИНДЕКСЫ ДЛЯ СОЦИАЛЬНОЙ ДИНАМИКИ И МОНЕТИЗАЦИИ
+    // Индекс для event_type убран, так как используется существующее поле type
+    {
+      fields: ['is_premium']
+    },
+    {
+      fields: ['price']
     }
   ]
 });
@@ -156,6 +221,15 @@ Events.getStatusLabels = () => ({
   active: 'Активно',
   completed: 'Завершено',
   cancelled: 'Отменено'
+});
+
+// СТАТИЧЕСКИЕ МЕТОДЫ ДЛЯ ТИПОВ МЕРОПРИЯТИЙ
+Events.getEventTypeLabels = () => ({
+  party: 'Вечеринка',
+  meeting: 'Встреча',
+  club_event: 'Клубное событие',
+  private: 'Приватное',
+  other: 'Другое'
 });
 
 // Методы экземпляра
@@ -190,6 +264,11 @@ Events.prototype.getStatusLabel = function() {
   return labels[this.status] || this.status;
 };
 
+Events.prototype.getEventTypeLabel = function() {
+  const labels = Events.getEventTypeLabels();
+  return labels[this.type] || this.type;
+};
+
 Events.prototype.isUpcoming = function() {
   return new Date(this.event_date) > new Date();
 };
@@ -204,6 +283,23 @@ Events.prototype.canEdit = function(userLogin) {
 
 Events.prototype.canJoin = function() {
   return this.approved && this.status === 'planned' && this.isUpcoming();
+};
+
+// НОВЫЕ МЕТОДЫ ДЛЯ СОЦИАЛЬНОЙ ДИНАМИКИ
+Events.prototype.isPremium = function() {
+  return this.is_premium === true;
+};
+
+Events.prototype.hasCompatibilityRules = function() {
+  return this.compatibility_rules && Object.keys(this.compatibility_rules).length > 0;
+};
+
+Events.prototype.getIceBreakerTopics = function() {
+  return this.ice_breaker_topics || [];
+};
+
+Events.prototype.canUseCompatibility = function() {
+  return this.hasCompatibilityRules() && this.isPremium();
 };
 
 // Hooks
@@ -249,7 +345,8 @@ Events.getClubEvents = async function(clubId, options = {}) {
     limit = 20,
     offset = 0,
     status = null,
-    upcoming = null
+    upcoming = null,
+    premium = null
   } = options;
 
   const whereClause = { club_id: clubId };
@@ -266,6 +363,12 @@ Events.getClubEvents = async function(clubId, options = {}) {
     whereClause.event_date = {
       [sequelize.Sequelize.Op.lt]: new Date()
     };
+  }
+
+  // event_type убрано, используется существующее поле type
+
+  if (premium !== null) {
+    whereClause.is_premium = premium;
   }
 
   try {
@@ -295,7 +398,8 @@ Events.getUpcomingEvents = async function(options = {}) {
     limit = 20,
     offset = 0,
     city = null,
-    type = null
+    type = null,
+    premium = null
   } = options;
 
   const whereClause = {
@@ -314,6 +418,12 @@ Events.getUpcomingEvents = async function(options = {}) {
   
   if (type && type !== 'all') {
     whereClause.type = type;
+  }
+
+  // event_type убрано, используется существующее поле type
+
+  if (premium !== null) {
+    whereClause.is_premium = premium;
   }
 
   try {
@@ -340,6 +450,114 @@ Events.getUpcomingEvents = async function(options = {}) {
     return events;
   } catch (error) {
     console.error('Error getting upcoming events:', error);
+    throw error;
+  }
+};
+
+// НОВЫЕ СТАТИЧЕСКИЕ МЕТОДЫ
+Events.getPremiumEvents = async function(options = {}) {
+  const {
+    limit = 20,
+    offset = 0,
+    city = null
+  } = options;
+
+  const whereClause = {
+    approved: true,
+    status: 'planned',
+    is_premium: true,
+    event_date: {
+      [sequelize.Sequelize.Op.gt]: new Date()
+    }
+  };
+  
+  if (city) {
+    whereClause.city = {
+      [sequelize.Sequelize.Op.iLike]: `%${city}%`
+    };
+  }
+
+  // event_type убрано, используется существующее поле type
+
+  try {
+    const events = await this.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: sequelize.models.User,
+          as: 'OrganizerUser',
+          attributes: ['login', 'name', 'ava']
+        },
+        {
+          model: sequelize.models.Clubs,
+          as: 'Club',
+          attributes: ['id', 'name', 'type', 'avatar'],
+          required: false
+        }
+      ],
+      order: [['event_date', 'ASC']],
+      limit,
+      offset
+    });
+
+    return events;
+  } catch (error) {
+    console.error('Error getting premium events:', error);
+    throw error;
+  }
+};
+
+Events.getEventsByType = async function(eventType, options = {}) {
+  const {
+    limit = 20,
+    offset = 0,
+    city = null,
+    premium = null
+  } = options;
+
+  const whereClause = {
+    approved: true,
+    status: 'planned',
+    type: eventType,
+    event_date: {
+      [sequelize.Sequelize.Op.gt]: new Date()
+    }
+  };
+  
+  if (city) {
+    whereClause.city = {
+      [sequelize.Sequelize.Op.iLike]: `%${city}%`
+    };
+  }
+
+  if (premium !== null) {
+    whereClause.is_premium = premium;
+  }
+
+  try {
+    const events = await this.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: sequelize.models.User,
+          as: 'OrganizerUser',
+          attributes: ['login', 'name', 'ava']
+        },
+        {
+          model: sequelize.models.Clubs,
+          as: 'Club',
+          attributes: ['id', 'name', 'type', 'avatar'],
+          required: false
+        }
+      ],
+      order: [['event_date', 'ASC']],
+      limit,
+      offset
+    });
+
+    return events;
+  } catch (error) {
+    console.error('Error getting events by type:', error);
     throw error;
   }
 };

@@ -369,10 +369,10 @@ const ClubLogin = () => {
         
         toast.success('Вход выполнен успешно!');
         
-        console.log('Перенаправляем на /club/dashboard...'); // Отладка
+        console.log('Перенаправляем на главную страницу...'); // Отладка
         
-        // Перенаправляем на дашборд клуба
-        navigate('/club/dashboard');
+        // Перенаправляем на главную страницу с интегрированной функциональностью клубов
+        navigate('/');
         
         console.log('navigate вызван'); // Отладка
       } else if (response.token) {
@@ -381,10 +381,10 @@ const ClubLogin = () => {
         
         toast.success('Вход выполнен успешно!');
         
-        console.log('Перенаправляем на /club/dashboard (без success)...'); // Отладка
+        console.log('Перенаправляем в раздел клубов (без success)...'); // Отладка
         
-        // Перенаправляем на дашборд клуба
-        navigate('/club/dashboard');
+        // Перенаправляем в раздел клубов для управления мероприятиями
+        navigate('/clubs');
         
         console.log('navigate вызван (без success)'); // Отладка
       } else {

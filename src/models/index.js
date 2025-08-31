@@ -12,6 +12,7 @@ const Rating = require('./Rating');
 const Status = require('./Status');
 const Notifications = require('./Notifications');
 const Clubs = require('./Clubs');
+const ClubBot = require('./ClubBot');
 const ClubApplications = require('./ClubApplications');
 const Subscriptions = require('./Subscriptions');
 const SubscriptionPlans = require('./SubscriptionPlans');
@@ -155,6 +156,7 @@ const RatingModel = Rating(sequelize);
 const StatusModel = Status(sequelize);
 const NotificationsModel = Notifications(sequelize);
 const ClubsModel = Clubs(sequelize);
+const ClubBotModel = ClubBot;
 const ClubApplicationsModel = ClubApplications(sequelize);
 const SubscriptionsModel = Subscriptions(sequelize);
 const SubscriptionPlansModel = SubscriptionPlans(sequelize);
@@ -175,11 +177,40 @@ if (ImageLikesModel.associate) ImageLikesModel.associate({ User });
 if (RatingModel.associate) RatingModel.associate({ User });
 if (StatusModel.associate) StatusModel.associate({ User });
 if (NotificationsModel.associate) NotificationsModel.associate({ User });
-if (ClubsModel.associate) ClubsModel.associate({ User, ClubApplications: ClubApplicationsModel, Events: EventsModel, EventParticipants: EventParticipantsModel });
+
+// Обновленные ассоциации для клубов
+if (ClubsModel.associate) ClubsModel.associate({ 
+  User, 
+  ClubApplications: ClubApplicationsModel, 
+  Events: EventsModel, 
+  EventParticipants: EventParticipantsModel, 
+  ClubBot: ClubBotModel 
+});
+
+if (ClubBotModel.associate) ClubBotModel.associate({ Clubs: ClubsModel });
 if (ClubApplicationsModel.associate) ClubApplicationsModel.associate({ User, Clubs: ClubsModel });
-if (EventsModel.associate) EventsModel.associate({ User, Clubs: ClubsModel, EventParticipants: EventParticipantsModel, Ads: AdsModel });
-if (EventParticipantsModel.associate) EventParticipantsModel.associate({ Events: EventsModel, User, Clubs: ClubsModel });
-if (AdsModel.associate) AdsModel.associate({ Events: EventsModel });
+
+// Обновленные ассоциации для мероприятий
+if (EventsModel.associate) EventsModel.associate({ 
+  User, 
+  Clubs: ClubsModel, 
+  EventParticipants: EventParticipantsModel, 
+  Ads: AdsModel 
+});
+
+// Обновленные ассоциации для участников мероприятий
+if (EventParticipantsModel.associate) EventParticipantsModel.associate({ 
+  Events: EventsModel, 
+  User, 
+  Clubs: ClubsModel 
+});
+
+// Обновленные ассоциации для объявлений
+if (AdsModel.associate) AdsModel.associate({ 
+  Events: EventsModel,
+  Clubs: ClubsModel
+});
+
 if (SubscriptionsModel.associate) SubscriptionsModel.associate({ User, SubscriptionPlans: SubscriptionPlansModel });
 if (SubscriptionPlansModel.associate) SubscriptionPlansModel.associate({ User });
 if (SubscriptionPaymentsModel.associate) SubscriptionPaymentsModel.associate({ User, Subscriptions: SubscriptionsModel });
@@ -204,6 +235,7 @@ module.exports = {
   Status: StatusModel,
   Notifications: NotificationsModel,
   Clubs: ClubsModel,
+  ClubBot: ClubBotModel,
   ClubApplications: ClubApplicationsModel,
   Subscriptions: SubscriptionsModel,
   SubscriptionPlans: SubscriptionPlansModel,

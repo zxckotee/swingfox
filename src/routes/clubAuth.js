@@ -4,7 +4,8 @@ const { Clubs } = require('../models');
 const { 
   generateClubToken, 
   hashClubPassword, 
-  verifyClubPassword 
+  verifyClubPassword,
+  authenticateClub
 } = require('../middleware/clubAuth');
 const { generateId } = require('../utils/helpers');
 const { APILogger } = require('../utils/logger');
@@ -231,34 +232,10 @@ router.post('/login', async (req, res) => {
  * Проверка токена клуба
  * GET /api/club/auth/verify
  */
-router.get('/verify', async (req, res) => {
+router.get('/verify', authenticateClub, async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({
-        error: 'token_required',
-        message: 'Токен не предоставлен'
-      });
-    }
-    
-    // Проверяем токен
-    const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(token, process.env.CLUB_JWT_SECRET || 'club_secret_key');
-    
-    // Получаем актуальную информацию о клубе
-    const club = await Clubs.findOne({
-      where: { 
-        id: decoded.clubId,
-        is_active: true 
-      }
-    });
-    
-    if (!club) {
-      return res.status(401).json({
-        error: 'invalid_token',
-        message: 'Недействительный токен'
-      });
-    }
+    // Клуб уже проверен middleware authenticateClub
+    const club = req.club;
     
     res.json({
       valid: true,
@@ -273,20 +250,7 @@ router.get('/verify', async (req, res) => {
     });
     
   } catch (error) {
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({
-        error: 'invalid_token',
-        message: 'Недействительный токен'
-      });
-    }
-    
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({
-        error: 'token_expired',
-        message: 'Токен истек'
-      });
-    }
-    
+    console.error('Error in club verify endpoint:', error);
     res.status(500).json({
       error: 'server_error',
       message: 'Ошибка проверки токена'

@@ -4,12 +4,16 @@ const { User } = require('../models');
 // Middleware для проверки JWT токена
 const authenticateToken = async (req, res, next) => {
   try {
-    console.log('authenticateToken middleware - проверяем токен');
+    console.log('🔍 authenticateToken middleware - проверяем токен');
+    console.log('🔍 URL:', req.url);
+    console.log('🔍 Method:', req.method);
+    console.log('🔍 Headers:', Object.keys(req.headers));
+    
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
-    console.log('Auth header:', authHeader);
-    console.log('Token:', token ? 'present' : 'missing');
+    console.log('🔍 Auth header:', authHeader);
+    console.log('🔍 Token:', token ? 'present' : 'missing');
 
     if (!token) {
       console.log('Ошибка: токен не предоставлен');
@@ -19,38 +23,75 @@ const authenticateToken = async (req, res, next) => {
       });
     }
 
-    // Проверяем токен
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('Token decoded:', { userId: decoded.userId });
-    
-    // Проверяем, что пользователь существует и токен актуален
-    const user = await User.findOne({
-      where: { 
-        id: decoded.userId,
-        auth_token: token 
-      }
-    });
-
-    console.log('User found:', user ? 'yes' : 'no');
-
-    if (!user) {
-      console.log('Ошибка: пользователь не найден');
-      return res.status(403).json({ 
-        error: 'invalid_token',
-        message: 'Недействительный токен' 
+    // Сначала пытаемся проверить как токен пользователя
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log('🔍 Token decoded as user:', { userId: decoded.userId });
+      
+      // Проверяем, что пользователь существует и токен актуален
+      const user = await User.findOne({
+        where: { 
+          id: decoded.userId,
+          auth_token: token 
+        }
       });
+
+      console.log('🔍 User found:', user ? 'yes' : 'no');
+
+      if (user) {
+        // Добавляем информацию о пользователе в req
+        req.user = {
+          id: user.id,
+          login: user.login,
+          email: user.email,
+          viptype: user.viptype
+        };
+
+        console.log('🔍 User authenticated:', req.user.login);
+        return next();
+      }
+    } catch (userTokenError) {
+      console.log('🔍 Token is not a valid user token, trying club token...');
     }
 
-    // Добавляем информацию о пользователе в req
-    req.user = {
-      id: user.id,
-      login: user.login,
-      email: user.email,
-      viptype: user.viptype
-    };
+    // Если токен не пользовательский, пытаемся проверить как токен клуба
+    try {
+      const decoded = jwt.verify(token, process.env.CLUB_JWT_SECRET || 'club_secret_key');
+      console.log('🔍 Token decoded as club:', { clubId: decoded.clubId });
+      
+      // Проверяем, что клуб существует и активен
+      const { Clubs } = require('../models');
+      const club = await Clubs.findOne({
+        where: { 
+          id: decoded.clubId,
+          is_active: true 
+        }
+      });
 
-    console.log('User authenticated:', req.user.login);
-    next();
+      console.log('🔍 Club found:', club ? 'yes' : 'no');
+
+      if (club) {
+        // Добавляем информацию о клубе в req
+        req.club = {
+          id: club.id,
+          name: club.name,
+          login: club.login,
+          type: club.type
+        };
+
+        console.log('🔍 Club authenticated:', req.club.name);
+        return next();
+      }
+    } catch (clubTokenError) {
+      console.log('🔍 Token is not a valid club token either');
+    }
+
+    // Если токен не подходит ни для пользователя, ни для клуба
+    console.log('🔍 Ошибка: токен недействителен ни для пользователя, ни для клуба');
+    return res.status(403).json({ 
+      error: 'invalid_token',
+      message: 'Недействительный токен' 
+    });
   } catch (error) {
     console.error('Auth middleware error:', error);
     
@@ -84,30 +125,67 @@ const optionalAuth = async (req, res, next) => {
       return next();
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('Token decoded:', { userId: decoded.userId });
-    
-    const user = await User.findOne({
-      where: { 
-        id: decoded.userId,
-        auth_token: token 
+    // Сначала пытаемся проверить как токен пользователя
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log('🔍 Token decoded as user:', { userId: decoded.userId });
+      
+      const user = await User.findOne({
+        where: { 
+          id: decoded.userId,
+          auth_token: token 
+        }
+      });
+
+      console.log('🔍 User found:', user ? 'yes' : 'no');
+
+      if (user) {
+        req.user = {
+          id: user.id,
+          login: user.login,
+          email: user.email,
+          viptype: user.viptype
+        };
+        console.log('🔍 User authenticated:', req.user.login);
+        return next();
       }
-    });
-
-    console.log('User found:', user ? 'yes' : 'no');
-
-    req.user = user ? {
-      id: user.id,
-      login: user.login,
-      email: user.email,
-      viptype: user.viptype
-    } : null;
-
-    if (req.user) {
-      console.log('User authenticated:', req.user.login);
-    } else {
-      console.log('Пользователь не аутентифицирован');
+    } catch (userTokenError) {
+      console.log('🔍 Token is not a valid user token, trying club token...');
     }
+
+    // Если токен не пользовательский, пытаемся проверить как токен клуба
+    try {
+      const decoded = jwt.verify(token, process.env.CLUB_JWT_SECRET || 'club_secret_key');
+      console.log('🔍 Token decoded as club:', { clubId: decoded.clubId });
+      
+      const { Clubs } = require('../models');
+      const club = await Clubs.findOne({
+        where: { 
+          id: decoded.clubId,
+          is_active: true 
+        }
+      });
+
+      console.log('🔍 Club found:', club ? 'yes' : 'no');
+
+      if (club) {
+        req.club = {
+          id: club.id,
+          name: club.name,
+          login: club.login,
+          type: club.type
+        };
+        console.log('🔍 Club authenticated:', req.club.name);
+        return next();
+      }
+    } catch (clubTokenError) {
+      console.log('🔍 Token is not a valid club token either');
+    }
+
+    // Если токен не подходит ни для пользователя, ни для клуба
+    req.user = null;
+    req.club = null;
+    console.log('🔍 Ни пользователь, ни клуб не аутентифицированы');
 
     next();
   } catch (error) {

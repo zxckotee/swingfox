@@ -8,6 +8,7 @@ import { Avatar, FlexContainer, IconButton } from './UI';
 import { MEDIA } from '../styles/breakpoints';
 import { HEADER_SIZES } from '../styles/headerSizes';
 
+
 // Иконки
 const HomeIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -847,6 +848,10 @@ const Navigation = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const userMenuRef = useRef(null);
   
+  // Проверяем тип авторизации
+  const isClubUser = !!localStorage.getItem('clubToken');
+  const isRegularUser = !!localStorage.getItem('token');
+  
   // Получаем актуальные данные пользователя при монтировании
   useEffect(() => {
     const fetchUserData = async () => {
@@ -906,11 +911,20 @@ const Navigation = () => {
   }, []);
 
   const handleLogout = () => {
-    if (window.confirm('Выйти из аккаунта?')) {
-      apiUtils.logout();
-      queryClient.clear();
-      toast.success('Вы вышли из аккаунта');
-      navigate('/login');
+    if (isClubUser) {
+      if (window.confirm('Выйти из клуба?')) {
+        localStorage.removeItem('clubToken');
+        queryClient.clear();
+        toast.success('Вы вышли из клуба');
+        navigate('/club/login');
+      }
+    } else {
+      if (window.confirm('Выйти из аккаунта?')) {
+        apiUtils.logout();
+        queryClient.clear();
+        toast.success('Вы вышли из аккаунта');
+        navigate('/login');
+      }
     }
   };
 
@@ -995,11 +1009,11 @@ const Navigation = () => {
 
           
           <NavLink
-            to="/clubs"
-            className={isActiveRoute('/clubs') ? 'active' : ''}
+            to="/"
+            className={isActiveRoute('/') ? 'active' : ''}
           >
             <UsersIcon />
-            Клубы
+            {isClubUser ? 'Панель управления' : 'Клубы'}
           </NavLink>
           
           <NavLink
@@ -1037,8 +1051,8 @@ const Navigation = () => {
           )}
         </NavLinks>
 
-        <FlexContainer $gap="12px">
-          <UserSection ref={userMenuRef}>
+                    <FlexContainer $gap="12px">
+              <UserSection ref={userMenuRef}>
             <UserMenuButton onClick={() => setShowUserMenu(!showUserMenu)}>
               <Avatar
                 $src={currentUser.ava ? `/uploads/${currentUser.ava}` : ''}
@@ -1095,18 +1109,37 @@ const Navigation = () => {
             </UserMenuButton>
             
             <DropdownMenu $show={showUserMenu}>
-              <DropdownItem onClick={handleProfileClick}>
-                <ProfileIcon />
-                Мой профиль
-              </DropdownItem>
-              <DropdownItem onClick={() => navigate('/profile?tab=settings')}>
-                <SettingsIcon />
-                Настройки
-              </DropdownItem>
-              <DropdownItem className="danger" onClick={handleLogout}>
-                <LogoutIcon />
-                Выйти
-              </DropdownItem>
+              {isClubUser ? (
+                <>
+                  <DropdownItem onClick={() => navigate('/club/dashboard')}>
+                    <ProfileIcon />
+                    Панель управления
+                  </DropdownItem>
+                  <DropdownItem onClick={() => navigate('/club/dashboard?tab=settings')}>
+                    <SettingsIcon />
+                    Настройки клуба
+                  </DropdownItem>
+                  <DropdownItem className="danger" onClick={handleLogout}>
+                    <LogoutIcon />
+                    Выйти из клуба
+                  </DropdownItem>
+                </>
+              ) : (
+                <>
+                  <DropdownItem onClick={handleProfileClick}>
+                    <ProfileIcon />
+                    Мой профиль
+                  </DropdownItem>
+                  <DropdownItem onClick={() => navigate('/profile?tab=settings')}>
+                    <SettingsIcon />
+                    Настройки
+                  </DropdownItem>
+                  <DropdownItem className="danger" onClick={handleLogout}>
+                    <LogoutIcon />
+                    Выйти
+                  </DropdownItem>
+                </>
+              )}
             </DropdownMenu>
           </UserSection>
 
@@ -1165,12 +1198,12 @@ const Navigation = () => {
 
         
         <MobileNavLink
-          to="/clubs"
-          className={isActiveRoute('/clubs') ? 'active' : ''}
+          to="/"
+          className={isActiveRoute('/') ? 'active' : ''}
           onClick={() => setShowMobileMenu(false)}
         >
           <UsersIcon />
-          Клубы
+          {isClubUser ? 'Панель управления' : 'Клубы'}
         </MobileNavLink>
         
         <MobileNavLink

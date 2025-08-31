@@ -111,6 +111,54 @@ const Ads = sequelize.define('Ads', {
     onUpdate: 'CASCADE',
     onDelete: 'SET NULL',
     comment: 'ID связанного мероприятия (для объявлений типа "Мероприятия")'
+  },
+  
+  // Связь с клубами
+  club_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'clubs',
+      key: 'id'
+    },
+    onUpdate: 'CASCADE',
+    onDelete: 'SET NULL',
+    comment: 'ID клуба (если объявление от клуба)'
+  },
+  
+  is_club_ad: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    comment: 'Флаг объявления клуба'
+  },
+  
+  club_contact_info: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Контактная информация клуба'
+  },
+
+  // НОВЫЕ ПОЛЯ ДЛЯ ВИРУСНОГО МАРКЕТИНГА
+  viral_share_enabled: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+    comment: 'Можно ли делиться объявлением в социальных сетях'
+  },
+  
+  referral_bonus: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+    comment: 'Бонус за приглашение друга (в баллах или валюте)'
+  },
+  
+  social_proof_count: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+    comment: 'Количество репостов/лайков для социального доказательства'
   }
 }, {
   tableName: 'ads',
@@ -148,6 +196,26 @@ const Ads = sequelize.define('Ads', {
     // Новый индекс для связи с мероприятиями
     {
       fields: ['event_id']
+    },
+    // Индексы для связи с клубами
+    {
+      fields: ['club_id']
+    },
+    {
+      fields: ['is_club_ad']
+    },
+    {
+      fields: ['club_id', 'is_club_ad']
+    },
+    // НОВЫЕ ИНДЕКСЫ ДЛЯ ВИРУСНОГО МАРКЕТИНГА
+    {
+      fields: ['viral_share_enabled']
+    },
+    {
+      fields: ['referral_bonus']
+    },
+    {
+      fields: ['social_proof_count']
     }
   ]
 });
@@ -231,6 +299,24 @@ Ads.prototype.isEventAd = function() {
   return this.type === 'Мероприятия' && this.event_id !== null;
 };
 
+// НОВЫЕ МЕТОДЫ ДЛЯ ВИРУСНОГО МАРКЕТИНГА
+Ads.prototype.incrementSocialProof = async function() {
+  this.social_proof_count += 1;
+  await this.save();
+};
+
+Ads.prototype.canShare = function() {
+  return this.viral_share_enabled && this.status === 'approved';
+};
+
+Ads.prototype.getReferralBonus = function() {
+  return this.referral_bonus;
+};
+
+Ads.prototype.isClubAd = function() {
+  return this.is_club_ad === true;
+};
+
 // Hooks
 Ads.beforeCreate(async (ad) => {
   // Устанавливаем срок действия по умолчанию (30 дней)
@@ -256,6 +342,15 @@ Ads.associate = function(models) {
       foreignKey: 'event_id',
       targetKey: 'id',
       as: 'Event'
+    });
+  }
+
+  // Объявление может быть связано с клубом
+  if (models.Clubs) {
+    Ads.belongsTo(models.Clubs, {
+      foreignKey: 'club_id',
+      targetKey: 'id',
+      as: 'Club'
     });
   }
 };

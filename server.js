@@ -60,8 +60,13 @@ const reactionsRoutes = require('./src/routes/reactions');
 
 // Новые роуты для системы клубов
 const clubAuthRoutes = require('./src/routes/clubAuth');
-const clubDashboardRoutes = require('./src/routes/clubDashboard');
+// clubDashboardRoutes убран - функциональность интегрирована в основные роуты
 const eventsRoutes = require('./src/routes/events');
+
+// НОВЫЕ МАРКЕТИНГОВЫЕ РОУТЫ
+const referralsRoutes = require('./src/routes/referrals');
+const analyticsRoutes = require('./src/routes/analytics');
+const compatibilityRoutes = require('./src/routes/compatibility');
 
 // Импорт cron-задач для подписок
 const SubscriptionCron = require('./src/cron/subscriptionCron');
@@ -89,8 +94,13 @@ app.use('/api/reactions', reactionsRoutes);
 
 // Новые роуты для системы клубов
 app.use('/api/club/auth', clubAuthRoutes);
-app.use('/api/club', clubDashboardRoutes);
+// app.use('/api/club', clubDashboardRoutes); // Убрано - функциональность интегрирована в основные роуты
 app.use('/api/events', eventsRoutes);
+
+// НОВЫЕ МАРКЕТИНГОВЫЕ РОУТЫ
+app.use('/api/referrals', referralsRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/compatibility', compatibilityRoutes);
 
 // Проверка статуса API
 app.get('/api/status', (req, res) => {

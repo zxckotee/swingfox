@@ -166,6 +166,72 @@ module.exports = (sequelize) => {
       comment: 'Кто верифицировал клуб'
     },
     
+    // Email система
+    email: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      comment: 'Email клуба для подтверждения'
+    },
+    
+    email_verified: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: 'Подтвержден ли email клуба'
+    },
+    
+    email_verification_token: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      comment: 'Токен для подтверждения email'
+    },
+    
+    email_verification_expires: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: 'Срок действия токена подтверждения'
+    },
+    
+    verification_sent_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: 'Когда отправлено подтверждение email'
+    },
+    
+    // НОВЫЕ МАРКЕТИНГОВЫЕ ПОЛЯ
+    category: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: 'Категория клуба (вечеринки, ужины, активность)'
+    },
+    
+    rating: {
+      type: DataTypes.DECIMAL(3, 2),
+      allowNull: false,
+      defaultValue: 0.00,
+      comment: 'Рейтинг клуба'
+    },
+    
+    member_count: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      comment: 'Количество участников клуба'
+    },
+    
+    is_premium: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: 'Является ли клуб премиум'
+    },
+    
+    referral_code: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      comment: 'Реферальный код клуба'
+    },
+    
     created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
@@ -206,6 +272,28 @@ module.exports = (sequelize) => {
       },
       {
         fields: ['created_at']
+      },
+      {
+        fields: ['email']
+      },
+      {
+        fields: ['email_verified']
+      },
+      {
+        fields: ['email_verification_token']
+      },
+      // НОВЫЕ ИНДЕКСЫ ДЛЯ МАРКЕТИНГОВЫХ ПОЛЕЙ
+      {
+        fields: ['category']
+      },
+      {
+        fields: ['rating']
+      },
+      {
+        fields: ['is_premium']
+      },
+      {
+        fields: ['referral_code']
       }
     ]
   });
@@ -239,6 +327,7 @@ module.exports = (sequelize) => {
   Clubs.prototype.addMember = async function() {
     if (!this.isFull()) {
       this.current_members = parseInt(this.current_members) + 1;
+      this.member_count = parseInt(this.member_count) + 1;
       return await this.save();
     }
     throw new Error('Клуб переполнен');
@@ -247,6 +336,7 @@ module.exports = (sequelize) => {
   Clubs.prototype.removeMember = async function() {
     if (this.current_members > 1) {
       this.current_members = parseInt(this.current_members) - 1;
+      this.member_count = parseInt(this.member_count) - 1;
       return await this.save();
     }
     throw new Error('Нельзя удалить последнего участника');
@@ -271,6 +361,56 @@ module.exports = (sequelize) => {
     return await this.save();
   };
 
+  // Email методы
+  Clubs.prototype.generateVerificationToken = function() {
+    const crypto = require('crypto');
+    this.email_verification_token = crypto.randomBytes(32).toString('hex');
+    this.email_verification_expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 часа
+    this.verification_sent_at = new Date();
+    return this.email_verification_token;
+  };
+
+  Clubs.prototype.verifyEmail = function(token) {
+    if (this.email_verification_token === token && 
+        this.email_verification_expires > new Date()) {
+      this.email_verified = true;
+      this.email_verification_token = null;
+      this.email_verification_expires = null;
+      return true;
+    }
+    return false;
+  };
+
+  Clubs.prototype.isEmailVerified = function() {
+    return this.email_verified === true;
+  };
+
+  Clubs.prototype.canSendVerification = function() {
+    if (!this.verification_sent_at) return true;
+    const hoursSinceLastSent = (Date.now() - this.verification_sent_at.getTime()) / (1000 * 60 * 60);
+    return hoursSinceLastSent >= 1; // Можно отправлять раз в час
+  };
+
+  // НОВЫЕ МАРКЕТИНГОВЫЕ МЕТОДЫ
+  Clubs.prototype.generateReferralCode = function() {
+    const crypto = require('crypto');
+    this.referral_code = crypto.randomBytes(16).toString('hex').substring(0, 8).toUpperCase();
+    return this.referral_code;
+  };
+
+  Clubs.prototype.upgradeToPremium = async function() {
+    this.is_premium = true;
+    return await this.save();
+  };
+
+  Clubs.prototype.updateRating = async function(newRating) {
+    if (newRating >= 0 && newRating <= 5) {
+      this.rating = newRating;
+      return await this.save();
+    }
+    throw new Error('Рейтинг должен быть от 0 до 5');
+  };
+
   // Статические методы
   Clubs.getActiveClubs = async function(options = {}) {
     const {
@@ -279,7 +419,9 @@ module.exports = (sequelize) => {
       city = null,
       type = null,
       search = null,
-      verified = null
+      verified = null,
+      category = null,
+      premium = null
     } = options;
 
     const whereClause = { is_active: true };
@@ -296,6 +438,14 @@ module.exports = (sequelize) => {
     
     if (verified !== null) {
       whereClause.is_verified = verified;
+    }
+
+    if (category) {
+      whereClause.category = category;
+    }
+
+    if (premium !== null) {
+      whereClause.is_premium = premium;
     }
     
     if (search) {
@@ -321,7 +471,7 @@ module.exports = (sequelize) => {
     try {
       const clubs = await this.findAll({
         where: whereClause,
-        order: [['created_at', 'DESC']],
+        order: [['rating', 'DESC'], ['member_count', 'DESC'], ['created_at', 'DESC']],
         limit,
         offset
       });
@@ -342,7 +492,7 @@ module.exports = (sequelize) => {
           is_active: true,
           is_verified: true
         },
-        order: [['created_at', 'DESC']],
+        order: [['rating', 'DESC'], ['created_at', 'DESC']],
         limit,
         offset
       });
@@ -357,7 +507,8 @@ module.exports = (sequelize) => {
       const clubs = await this.findAll({
         where: { is_active: true },
         order: [
-          ['current_members', 'DESC'],
+          ['member_count', 'DESC'],
+          ['rating', 'DESC'],
           ['created_at', 'DESC']
         ],
         limit
@@ -379,12 +530,64 @@ module.exports = (sequelize) => {
           type,
           is_active: true
         },
-        order: [['created_at', 'DESC']],
+        order: [['rating', 'DESC'], ['created_at', 'DESC']],
         limit,
         offset
       });
     } catch (error) {
       console.error('Error getting clubs by type:', error);
+      throw error;
+    }
+  };
+
+  // НОВЫЕ СТАТИЧЕСКИЕ МЕТОДЫ
+  Clubs.getTopRatedClubs = async function(limit = 10) {
+    try {
+      return await this.findAll({
+        where: { is_active: true },
+        order: [['rating', 'DESC'], ['member_count', 'DESC']],
+        limit
+      });
+    } catch (error) {
+      console.error('Error getting top rated clubs:', error);
+      throw error;
+    }
+  };
+
+  Clubs.getClubsByCategory = async function(category, options = {}) {
+    const { limit = 20, offset = 0 } = options;
+    
+    try {
+      return await this.findAll({
+        where: { 
+          category,
+          is_active: true
+        },
+        order: [['rating', 'DESC'], ['member_count', 'DESC']],
+        limit,
+        offset
+      });
+    } catch (error) {
+      console.error('Error getting clubs by category:', error);
+      throw error;
+    }
+  };
+
+  Clubs.getPremiumClubs = async function(options = {}) {
+    const { limit = 20, offset = 0 } = options;
+    
+    try {
+      return await this.findAll({
+        where: { 
+          is_premium: true,
+          is_active: true
+        },
+        order: [['rating', 'DESC'], ['member_count', 'DESC']],
+        limit,
+        offset
+      });
+    } catch (error) {
+      console.error('Error getting premium clubs:', error);
       throw error;
     }
   };
@@ -411,6 +614,15 @@ module.exports = (sequelize) => {
         foreignKey: 'club_id',
         sourceKey: 'id',
         as: 'EventParticipants'
+      });
+    }
+
+    // Клуб имеет бота
+    if (models.ClubBot) {
+      Clubs.hasOne(models.ClubBot, {
+        foreignKey: 'club_id',
+        sourceKey: 'id',
+        as: 'Bot'
       });
     }
   };

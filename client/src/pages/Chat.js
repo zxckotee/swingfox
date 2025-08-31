@@ -858,7 +858,10 @@ const Chat = () => {
       
       // Показываем предупреждение если есть
       if (data?.match_warning) {
-        toast.warning(data.match_warning);
+        toast(data.match_warning, {
+          icon: '⚠️',
+          duration: 5000
+        });
       }
     },
     onError: (error) => {

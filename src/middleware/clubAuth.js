@@ -8,16 +8,24 @@ const { Clubs } = require('../models');
  */
 const authenticateClub = async (req, res, next) => {
   try {
+    console.log('authenticateClub middleware - проверяем токен клуба');
+    console.log('Auth header:', req.headers.authorization);
+    
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
+      console.log('Token: missing');
       return res.status(401).json({ 
         error: 'club_token_required',
         message: 'Требуется токен клуба' 
       });
     }
     
+    console.log('Token:', token.substring(0, 20) + '...');
+    
     // Проверяем JWT токен клуба
     const decoded = jwt.verify(token, process.env.CLUB_JWT_SECRET || 'club_secret_key');
+    console.log('Decoded token:', decoded);
+    
     const club = await Clubs.findOne({
       where: { 
         id: decoded.clubId,
@@ -26,11 +34,14 @@ const authenticateClub = async (req, res, next) => {
     });
     
     if (!club) {
+      console.log('Club not found or inactive');
       return res.status(401).json({ 
         error: 'invalid_club_token',
         message: 'Недействительный токен клуба' 
       });
     }
+    
+    console.log('Club authenticated:', club.name);
     
     // Добавляем клуб в request
     req.club = club;

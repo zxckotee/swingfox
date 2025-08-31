@@ -15,6 +15,8 @@ const EventParticipants = sequelize.define('EventParticipants', {
       model: 'events',
       key: 'id'
     },
+    onUpdate: 'CASCADE',
+    onDelete: 'CASCADE',
     comment: 'ID мероприятия'
   },
   
@@ -25,7 +27,9 @@ const EventParticipants = sequelize.define('EventParticipants', {
       model: 'users',
       key: 'login'
     },
-    comment: 'Логин пользователя'
+    onUpdate: 'CASCADE',
+    onDelete: 'CASCADE',
+    comment: 'ID пользователя (логин)'
   },
   
   club_id: {
@@ -35,7 +39,9 @@ const EventParticipants = sequelize.define('EventParticipants', {
       model: 'clubs',
       key: 'id'
     },
-    comment: 'ID клуба-организатора'
+    onUpdate: 'CASCADE',
+    onDelete: 'CASCADE',
+    comment: 'ID клуба'
   },
   
   registration_date: {
@@ -46,10 +52,10 @@ const EventParticipants = sequelize.define('EventParticipants', {
   },
   
   payment_status: {
-    type: DataTypes.ENUM('pending', 'paid', 'cancelled'),
+    type: DataTypes.ENUM('pending', 'paid', 'cancelled', 'refunded'),
     allowNull: false,
     defaultValue: 'pending',
-    comment: 'Статус оплаты'
+    comment: 'Статус платежа'
   },
   
   amount_paid: {
@@ -61,11 +67,11 @@ const EventParticipants = sequelize.define('EventParticipants', {
   payment_date: {
     type: DataTypes.DATE,
     allowNull: true,
-    comment: 'Дата оплаты'
+    comment: 'Дата платежа'
   },
   
   status: {
-    type: DataTypes.ENUM('registered', 'attended', 'cancelled', 'no_show'),
+    type: DataTypes.ENUM('registered', 'confirmed', 'attended', 'cancelled'),
     allowNull: false,
     defaultValue: 'registered',
     comment: 'Статус участия'
@@ -74,14 +80,14 @@ const EventParticipants = sequelize.define('EventParticipants', {
   notes: {
     type: DataTypes.TEXT,
     allowNull: true,
-    comment: 'Заметки организатора'
+    comment: 'Заметки'
   },
   
   created_at: {
     type: DataTypes.DATE,
     allowNull: false,
     defaultValue: DataTypes.NOW,
-    comment: 'Дата создания записи'
+    comment: 'Дата создания'
   },
   
   updated_at: {
@@ -106,10 +112,10 @@ const EventParticipants = sequelize.define('EventParticipants', {
       fields: ['club_id']
     },
     {
-      fields: ['payment_status']
+      fields: ['status']
     },
     {
-      fields: ['status']
+      fields: ['payment_status']
     },
     {
       fields: ['event_id', 'user_id'],
@@ -120,32 +126,57 @@ const EventParticipants = sequelize.define('EventParticipants', {
 });
 
 // Методы экземпляра
-EventParticipants.prototype.markAsPaid = async function(amount) {
-  this.payment_status = 'paid';
-  this.amount_paid = parseFloat(amount);
-  this.payment_date = new Date();
+EventParticipants.prototype.confirm = async function() {
+  this.status = 'confirmed';
   return await this.save();
 };
 
-EventParticipants.prototype.markAsAttended = async function() {
+EventParticipants.prototype.attend = async function() {
   this.status = 'attended';
   return await this.save();
 };
 
-EventParticipants.prototype.cancelRegistration = async function() {
+EventParticipants.prototype.cancel = async function() {
   this.status = 'cancelled';
   return await this.save();
 };
 
-EventParticipants.prototype.markAsNoShow = async function() {
-  this.status = 'no_show';
+EventParticipants.prototype.markAsPaid = async function(amount, paymentDate = new Date()) {
+  this.payment_status = 'paid';
+  this.amount_paid = amount;
+  this.payment_date = paymentDate;
   return await this.save();
 };
 
+EventParticipants.prototype.getStatusLabel = function() {
+  const labels = {
+    'registered': 'Зарегистрирован',
+    'confirmed': 'Подтвержден',
+    'attended': 'Присутствовал',
+    'cancelled': 'Отменен'
+  };
+  return labels[this.status] || this.status;
+};
+
+EventParticipants.prototype.getPaymentStatusLabel = function() {
+  const labels = {
+    'pending': 'Ожидает оплаты',
+    'paid': 'Оплачено',
+    'cancelled': 'Отменено',
+    'refunded': 'Возвращено'
+  };
+  return labels[this.payment_status] || this.payment_status;
+};
+
 // Статические методы
-EventParticipants.getEventParticipants = async function(eventId, options = {}) {
-  const { status = null, payment_status = null } = options;
-  
+EventParticipants.getByEvent = async function(eventId, options = {}) {
+  const {
+    status = null,
+    payment_status = null,
+    limit = 100,
+    offset = 0
+  } = options;
+
   const whereClause = { event_id: eventId };
   
   if (status) {
@@ -155,113 +186,140 @@ EventParticipants.getEventParticipants = async function(eventId, options = {}) {
   if (payment_status) {
     whereClause.payment_status = payment_status;
   }
-  
+
   try {
-    return await this.findAll({
+    const participants = await this.findAll({
       where: whereClause,
       include: [
         {
           model: sequelize.models.User,
           as: 'User',
-          attributes: ['login', 'ava', 'city', 'viptype']
+          attributes: ['login', 'name', 'ava']
+        },
+        {
+          model: sequelize.models.Clubs,
+          as: 'Club',
+          attributes: ['id', 'name', 'type', 'avatar']
         }
       ],
-      order: [['registration_date', 'ASC']]
+      order: [['registration_date', 'ASC']],
+      limit,
+      offset
     });
+
+    return participants;
   } catch (error) {
     console.error('Error getting event participants:', error);
     throw error;
   }
 };
 
-EventParticipants.getUserEvents = async function(userId, options = {}) {
-  const { status = null, upcoming = null } = options;
-  
+EventParticipants.getByUser = async function(userId, options = {}) {
+  const {
+    status = null,
+    limit = 50,
+    offset = 0
+  } = options;
+
   const whereClause = { user_id: userId };
   
   if (status) {
     whereClause.status = status;
   }
-  
+
   try {
-    const participants = await this.findAll({
+    const participations = await this.findAll({
       where: whereClause,
       include: [
         {
           model: sequelize.models.Events,
           as: 'Event',
-          attributes: ['id', 'title', 'event_date', 'location', 'city', 'price', 'status']
+          attributes: ['id', 'title', 'event_date', 'city', 'location']
         },
         {
           model: sequelize.models.Clubs,
           as: 'Club',
-          attributes: ['id', 'login', 'avatar']
+          attributes: ['id', 'name', 'type', 'avatar']
         }
       ],
-      order: [['registration_date', 'DESC']]
+      order: [['registration_date', 'DESC']],
+      limit,
+      offset
     });
-    
-    // Фильтруем по дате если нужно
-    if (upcoming === true) {
-      return participants.filter(p => new Date(p.Event.event_date) > new Date());
-    } else if (upcoming === false) {
-      return participants.filter(p => new Date(p.Event.event_date) <= new Date());
-    }
-    
-    return participants;
+
+    return participations;
   } catch (error) {
-    console.error('Error getting user events:', error);
+    console.error('Error getting user participations:', error);
     throw error;
   }
 };
 
-EventParticipants.getClubEventStats = async function(clubId, eventId) {
+EventParticipants.getEventStats = async function(eventId) {
   try {
-    const participants = await this.findAll({
-      where: { club_id: clubId, event_id: eventId }
+    const stats = await this.findAll({
+      where: { event_id: eventId },
+      attributes: [
+        'status',
+        'payment_status',
+        [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+      ],
+      group: ['status', 'payment_status']
     });
-    
-    const stats = {
-      total: participants.length,
-      registered: participants.filter(p => p.status === 'registered').length,
-      attended: participants.filter(p => p.status === 'attended').length,
-      cancelled: participants.filter(p => p.status === 'cancelled').length,
-      no_show: participants.filter(p => p.status === 'no_show').length,
-      paid: participants.filter(p => p.payment_status === 'paid').length,
-      pending_payment: participants.filter(p => p.payment_status === 'pending').length,
-      total_revenue: participants
-        .filter(p => p.payment_status === 'paid')
-        .reduce((sum, p) => sum + parseFloat(p.amount_paid || 0), 0)
+
+    const result = {
+      total: 0,
+      by_status: {},
+      by_payment: {},
+      confirmed: 0,
+      paid: 0
     };
-    
-    return stats;
+
+    stats.forEach(stat => {
+      const count = parseInt(stat.getDataValue('count'));
+      const status = stat.status;
+      const paymentStatus = stat.payment_status;
+      
+      result.total += count;
+      result.by_status[status] = (result.by_status[status] || 0) + count;
+      result.by_payment[paymentStatus] = (result.by_payment[paymentStatus] || 0) + count;
+      
+      if (status === 'confirmed') {
+        result.confirmed += count;
+      }
+      
+      if (paymentStatus === 'paid') {
+        result.paid += count;
+      }
+    });
+
+    return result;
   } catch (error) {
-    console.error('Error getting club event stats:', error);
+    console.error('Error getting event stats:', error);
     throw error;
   }
 };
 
 // Ассоциации
 EventParticipants.associate = function(models) {
-  // Участник принадлежит мероприятию
-  EventParticipants.belongsTo(models.Events, {
-    foreignKey: 'event_id',
-    targetKey: 'id',
-    as: 'Event'
-  });
-  
-  // Участник - это пользователь
+  // Участник принадлежит пользователю
   EventParticipants.belongsTo(models.User, {
     foreignKey: 'user_id',
     targetKey: 'login',
     as: 'User'
   });
-  
-  // Участник связан с клубом-организатором
+
+  // Участник принадлежит клубу
   EventParticipants.belongsTo(models.Clubs, {
     foreignKey: 'club_id',
     targetKey: 'id',
     as: 'Club'
+  });
+
+  // Участник принадлежит мероприятию
+  EventParticipants.belongsTo(models.Events, {
+    foreignKey: 'event_id',
+    targetKey: 'id',
+    as: 'Event'
   });
 };
 

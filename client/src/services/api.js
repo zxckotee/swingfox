@@ -57,6 +57,18 @@ const clearUserCache = () => {
   localStorage.removeItem(USER_CACHE_KEY);
 };
 
+// Получение токена клуба из localStorage
+const getClubToken = () => localStorage.getItem('clubToken');
+
+// Сохранение токена клуба
+const setClubToken = (token) => {
+  if (token) {
+    localStorage.setItem('clubToken', token);
+  } else {
+    localStorage.removeItem('clubToken');
+  }
+};
+
 // Проверка актуальности кэша (15 минут)
 const isCacheValid = (cachedData) => {
   if (!cachedData || !cachedData.cachedAt) return false;
@@ -70,19 +82,22 @@ let isRedirecting = false;
 // Интерцептор для добавления токена к запросам
 apiClient.interceptors.request.use(
   (config) => {
-    // Проверяем, является ли это запросом для клубов
-    if (config.url && config.url.includes('/club/')) {
-      const clubToken = localStorage.getItem('clubToken');
-      if (clubToken) {
-        config.headers.Authorization = `Bearer ${clubToken}`;
-      }
+    // Сначала проверяем, авторизован ли пользователь как клуб
+    const clubToken = localStorage.getItem('clubToken');
+    const userToken = getToken();
+    
+    if (clubToken) {
+      // Если есть токен клуба, используем его для всех запросов
+      console.log('🔍 API Interceptor: Используем токен клуба для запроса:', config.url);
+      config.headers.Authorization = `Bearer ${clubToken}`;
+    } else if (userToken) {
+      // Если нет токена клуба, но есть токен пользователя
+      console.log('🔍 API Interceptor: Используем токен пользователя для запроса:', config.url);
+      config.headers.Authorization = `Bearer ${userToken}`;
     } else {
-      // Для обычных пользователей используем обычный токен
-      const token = getToken();
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
+      console.log('🔍 API Interceptor: Нет токенов для запроса:', config.url);
     }
+    
     return config;
   },
   (error) => Promise.reject(error)
@@ -93,15 +108,19 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 && !isRedirecting) {
-      // Проверяем, является ли это запросом для клубов
-      if (error.config.url && error.config.url.includes('/club/')) {
-        // Для клубов очищаем токен клуба и перенаправляем на вход клуба
+      // Проверяем, авторизован ли пользователь как клуб
+      const clubToken = localStorage.getItem('clubToken');
+      
+      if (clubToken) {
+        // Если есть токен клуба, очищаем его и перенаправляем на вход клуба
+        console.log('🔍 API Interceptor: Ошибка 401 для клуба, очищаем токен клуба');
         localStorage.removeItem('clubToken');
-        if (window.location.pathname.startsWith('/club/')) {
+        if (window.location.pathname !== '/club/login') {
           window.location.href = '/club/login';
         }
       } else {
         // Для обычных пользователей очищаем обычный токен
+        console.log('🔍 API Interceptor: Ошибка 401 для пользователя, очищаем токен');
         isRedirecting = true;
         setToken(null);
         
@@ -479,8 +498,21 @@ export const swipeAPI = {
     if (exclude.length > 0) {
       params.append('exclude', exclude.join(','));
     }
-    const response = await apiClient.get(`/swipe/profiles/batch?${params.toString()}`);
-    return response.data;
+    
+    // Проверяем, авторизован ли пользователь как клуб
+    const clubToken = localStorage.getItem('clubToken');
+    
+    if (clubToken) {
+      // Для клубов используем специальный endpoint
+      console.log('🔍 API: Клуб запрашивает профили через /clubs/profiles/batch');
+      const response = await apiClient.get(`/clubs/profiles/batch?${params.toString()}`);
+      return response.data;
+    } else {
+      // Для обычных пользователей используем стандартный endpoint
+      console.log('🔍 API: Пользователь запрашивает профили через /swipe/profiles/batch');
+      const response = await apiClient.get(`/swipe/profiles/batch?${params.toString()}`);
+      return response.data;
+    }
   },
 
   like: async (targetUser, source = 'gesture') => {
@@ -1302,6 +1334,9 @@ export const clubAuthAPI = {
 
   login: async (login, password) => {
     const response = await apiClient.post('/club/auth/login', { login, password });
+    if (response.data.token) {
+      setClubToken(response.data.token);
+    }
     return response.data;
   },
 
@@ -1312,6 +1347,7 @@ export const clubAuthAPI = {
 
   logout: async () => {
     const response = await apiClient.post('/club/auth/logout');
+    setClubToken(null);
     return response.data;
   }
 };
@@ -1390,6 +1426,28 @@ export const eventsAPI = {
   getMyEvents: async (params = {}) => {
     const queryString = new URLSearchParams(params).toString();
     const response = await apiClient.get(`/events/my/events?${queryString}`);
+    return response.data;
+  },
+
+  // Методы для клубов
+  createEvent: async (eventData) => {
+    const response = await apiClient.post('/events', eventData);
+    return response.data;
+  },
+
+  updateEvent: async (eventId, eventData) => {
+    const response = await apiClient.put(`/events/${eventId}`, eventData);
+    return response.data;
+  },
+
+  deleteEvent: async (eventId) => {
+    const response = await apiClient.delete(`/events/${eventId}`);
+    return response.data;
+  },
+
+  getClubEvents: async (clubId, params = {}) => {
+    const queryString = new URLSearchParams({ club_id: clubId, ...params }).toString();
+    const response = await apiClient.get(`/events?${queryString}`);
     return response.data;
   }
 };

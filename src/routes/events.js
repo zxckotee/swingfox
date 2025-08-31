@@ -561,4 +561,222 @@ router.get('/my/events', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * Создание мероприятия клубом
+ * POST /api/events
+ */
+router.post('/', authenticateToken, async (req, res) => {
+  const logger = new APILogger('EVENTS');
+  
+  try {
+    // Проверяем, авторизован ли клуб
+    if (!req.club) {
+      return res.status(401).json({
+        error: 'club_auth_required',
+        message: 'Требуется аутентификация клуба'
+      });
+    }
+
+    const {
+      title,
+      description,
+      date,
+      time,
+      location,
+      max_participants,
+      event_type,
+      price
+    } = req.body;
+
+    // Валидация
+    if (!title || !description || !date || !location) {
+      return res.status(400).json({
+        error: 'missing_fields',
+        message: 'Заполните все обязательные поля'
+      });
+    }
+
+    // Создаем мероприятие
+    const event = await Events.create({
+      title,
+      description,
+      event_date: new Date(`${date}T${time || '00:00'}`),
+      location,
+      city: req.club.city,
+      max_participants: max_participants || null,
+      type: event_type || 'meeting',
+      price: price ? parseFloat(price) : 0,
+      club_id: req.club.id,
+      approved: true,
+      status: 'planned',
+      current_participants: 0,
+      created_by: req.club.id,
+      created_at: new Date()
+    });
+
+    logger.logResult('Создание мероприятия клубом', true, {
+      event_id: event.id,
+      club_id: req.club.id,
+      title: event.title
+    }, req);
+
+    const responseData = {
+      success: true,
+      message: 'Мероприятие создано успешно',
+      event: {
+        id: event.id,
+        title: event.title,
+        description: event.description,
+        event_date: event.event_date,
+        location: event.location,
+        city: event.city,
+        max_participants: event.max_participants,
+        type: event.type,
+        price: event.price,
+        club_id: event.club_id,
+        status: event.status
+      }
+    };
+
+    logger.logSuccess(req, 201, responseData);
+    res.status(201).json(responseData);
+
+  } catch (error) {
+    logger.logError(req, error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при создании мероприятия'
+    });
+  }
+});
+
+/**
+ * Обновление мероприятия клубом
+ * PUT /api/events/:id
+ */
+router.put('/:id', authenticateToken, async (req, res) => {
+  const logger = new APILogger('EVENTS');
+  
+  try {
+    // Проверяем, авторизован ли клуб
+    if (!req.club) {
+      return res.status(401).json({
+        error: 'club_auth_required',
+        message: 'Требуется аутентификация клуба'
+      });
+    }
+
+    const { id } = req.params;
+    const updateData = req.body;
+
+    // Проверяем, существует ли мероприятие и принадлежит ли клубу
+    const event = await Events.findOne({
+      where: {
+        id: parseInt(id),
+        club_id: req.club.id
+      }
+    });
+
+    if (!event) {
+      return res.status(404).json({
+        error: 'event_not_found',
+        message: 'Мероприятие не найдено или у вас нет прав на его редактирование'
+      });
+    }
+
+    // Обновляем мероприятие
+    await event.update(updateData);
+
+    logger.logResult('Обновление мероприятия клубом', true, {
+      event_id: event.id,
+      club_id: req.club.id
+    }, req);
+
+    const responseData = {
+      success: true,
+      message: 'Мероприятие обновлено успешно',
+      event: {
+        id: event.id,
+        title: event.title,
+        description: event.description,
+        event_date: event.event_date,
+        location: event.location,
+        city: event.city,
+        max_participants: event.max_participants,
+        type: event.type,
+        price: event.price,
+        status: event.status
+      }
+    };
+
+    logger.logSuccess(req, 200, responseData);
+    res.json(responseData);
+
+  } catch (error) {
+    logger.logError(req, error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при обновлении мероприятия'
+    });
+  }
+});
+
+/**
+ * Удаление мероприятия клубом
+ * DELETE /api/events/:id
+ */
+router.delete('/:id', authenticateToken, async (req, res) => {
+  const logger = new APILogger('EVENTS');
+  
+  try {
+    // Проверяем, авторизован ли клуб
+    if (!req.club) {
+      return res.status(401).json({
+        error: 'club_auth_required',
+        message: 'Требуется аутентификация клуба'
+      });
+    }
+
+    const { id } = req.params;
+
+    // Проверяем, существует ли мероприятие и принадлежит ли клубу
+    const event = await Events.findOne({
+      where: {
+        id: parseInt(id),
+        club_id: req.club.id
+      }
+    });
+
+    if (!event) {
+      return res.status(404).json({
+        error: 'event_not_found',
+        message: 'Мероприятие не найдено или у вас нет прав на его удаление'
+      });
+    }
+
+    // Удаляем мероприятие
+    await event.destroy();
+
+    logger.logResult('Удаление мероприятия клубом', true, {
+      event_id: event.id,
+      club_id: req.club.id
+    }, req);
+
+    const responseData = {
+      success: true,
+      message: 'Мероприятие удалено успешно'
+    };
+
+    logger.logSuccess(req, 200, responseData);
+    res.json(responseData);
+
+  } catch (error) {
+    logger.logError(req, error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при удалении мероприятия'
+    });
+  }
+});
+
 module.exports = router;

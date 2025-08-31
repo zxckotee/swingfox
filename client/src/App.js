@@ -21,7 +21,6 @@ import Notifications from './pages/Notifications';
 import Clubs from './pages/Clubs';
 import ClubLogin from './pages/ClubLogin';
 import ClubRegister from './pages/ClubRegister';
-import ClubDashboard from './pages/ClubDashboard';
 import Subscriptions from './pages/Subscriptions';
 import Ratings from './pages/Ratings';
 import BalanceTopUp from './pages/BalanceTopUp';
@@ -256,18 +255,18 @@ function App() {
               {/* Роуты для клубов */}
               <Route path="/club/login" element={<ClubLogin />} />
               <Route path="/club/register" element={<ClubRegister />} />
-              <Route path="/club/dashboard" element={<ClubDashboard />} />
+              {/* Дашборд клуба убран - функциональность интегрирована в основной интерфейс */}
               
               {/* Защищенные роуты */}
               <Route path="/" element={
-                <AuthGuard>
+                <AuthGuard requireUserAuth={false}>
                   <Navigation />
                   <Home />
                 </AuthGuard>
               } />
               
               <Route path="/catalog" element={
-                <AuthGuard>
+                <AuthGuard requireUserAuth={false}>
                   <Navigation />
                   <Catalog />
                 </AuthGuard>
@@ -304,11 +303,13 @@ function App() {
 
               
               <Route path="/clubs" element={
-                <AuthGuard>
+                <AuthGuard requireUserAuth={false}>
                   <Navigation />
                   <Clubs />
                 </AuthGuard>
               } />
+              
+
               
               <Route path="/subscriptions" element={
                 <AuthGuard>
