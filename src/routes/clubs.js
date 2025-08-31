@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Clubs, ClubApplications, Events, User, Notifications } = require('../models');
+const { Clubs, ClubApplications, Events, User, Notifications, Ads, EventParticipants } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { generateId } = require('../utils/helpers');
 const { APILogger } = require('../utils/logger');
@@ -1249,6 +1249,370 @@ router.get('/profiles/batch', authenticateToken, async (req, res) => {
       error: 'server_error',
       message: 'Ошибка при загрузке профилей'
     });
+  }
+});
+
+// API для объявлений клубов
+router.get('/ads', authenticateToken, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const userType = getUserType(req);
+    
+    // Проверяем, что запрос от клуба
+    if (userType !== 'club') {
+      return res.status(403).json({ error: 'Доступ только для клубов' });
+    }
+
+    logger.logBusinessLogic(1, 'Получение объявлений клуба', {
+      user_id: userId,
+      user_type: userType
+    });
+
+    // Получаем объявления клуба
+    const clubAds = await Ads.findAll({
+      where: { 
+        club_id: req.club.id,
+        is_club_ad: true 
+      },
+      include: [
+        {
+          model: Events,
+          as: 'event',
+          attributes: ['id', 'title', 'date', 'location', 'max_participants']
+        }
+      ],
+      order: [['created_at', 'DESC']]
+    });
+
+    // Форматируем данные для фронтенда
+    const formattedAds = await Promise.all(clubAds.map(async (ad) => {
+      const participants = ad.event ? await EventParticipants.count({ where: { event_id: ad.event.id } }) : 0;
+      
+      return {
+        id: ad.id,
+        title: ad.title,
+        description: ad.description,
+        type: ad.event_id ? 'event' : 'ad',
+        date: ad.event?.date || ad.created_at,
+        location: ad.event?.location || ad.location,
+        participants: participants,
+        maxParticipants: ad.event?.max_participants || null,
+        views: ad.views || 0,
+        likes: ad.likes || 0,
+        is_club_ad: ad.is_club_ad,
+        club_contact_info: ad.club_contact_info,
+        viral_share_enabled: ad.viral_share_enabled,
+        referral_bonus: ad.referral_bonus,
+        social_proof_count: ad.social_proof_count,
+        created_at: ad.created_at,
+        updated_at: ad.updated_at
+      };
+    }));
+
+    res.json(formattedAds);
+  } catch (error) {
+    logger.logError('Ошибка получения объявлений клуба', error);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Создание нового объявления клуба
+router.post('/ads', authenticateToken, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const userType = getUserType(req);
+    
+    // Проверяем, что запрос от клуба
+    if (userType !== 'club') {
+      return res.status(403).json({ error: 'Доступ только для клубов' });
+    }
+
+    const {
+      title,
+      description,
+      type, // 'event' или 'ad'
+      date,
+      location,
+      maxParticipants,
+      clubContactInfo,
+      viralShareEnabled = true,
+      referralBonus = 0
+    } = req.body;
+
+    // Валидация
+    if (!title || !description) {
+      return res.status(400).json({ error: 'Заголовок и описание обязательны' });
+    }
+
+    logger.logBusinessLogic(1, 'Создание объявления клуба', {
+      user_id: userId,
+      user_type: userType,
+      ad_title: title,
+      ad_type: type
+    });
+
+    // Создаем объявление
+    const ad = await Ads.create({
+      title,
+      description,
+      club_id: req.club.id,
+      is_club_ad: true,
+      club_contact_info: clubContactInfo,
+      viral_share_enabled: viralShareEnabled,
+      referral_bonus: referralBonus,
+      social_proof_count: 0,
+      views: 0,
+      likes: 0
+    });
+
+    // Если это мероприятие, создаем связанное событие
+    let event = null;
+    if (type === 'event') {
+      event = await Events.create({
+        title,
+        description,
+        date,
+        location,
+        max_participants: maxParticipants,
+        club_id: req.club.id,
+        ad_id: ad.id,
+        auto_invite_enabled: true,
+        event_type: 'party', // по умолчанию
+        price: 0,
+        is_premium: false
+      });
+
+      // Обновляем объявление с ссылкой на событие
+      await ad.update({ event_id: event.id });
+    }
+
+    res.status(201).json({
+      message: 'Объявление создано успешно',
+      ad: {
+        id: ad.id,
+        title: ad.title,
+        description: ad.description,
+        type: type,
+        date: event?.date || ad.created_at,
+        location: event?.location || location,
+        participants: 0,
+        maxParticipants: event?.max_participants || null,
+        views: 0,
+        likes: 0
+      }
+    });
+  } catch (error) {
+    logger.logError('Ошибка создания объявления клуба', error);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Обновление объявления клуба
+router.put('/ads/:adId', authenticateToken, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const userType = getUserType(req);
+    const { adId } = req.params;
+    
+    // Проверяем, что запрос от клуба
+    if (userType !== 'club') {
+      return res.status(403).json({ error: 'Доступ только для клубов' });
+    }
+
+    // Проверяем, что объявление принадлежит клубу
+    const ad = await Ads.findOne({
+      where: { 
+        id: adId,
+        club_id: req.club.id,
+        is_club_ad: true 
+      }
+    });
+
+    if (!ad) {
+      return res.status(404).json({ error: 'Объявление не найдено' });
+    }
+
+    const {
+      title,
+      description,
+      date,
+      location,
+      maxParticipants,
+      clubContactInfo,
+      viralShareEnabled,
+      referralBonus
+    } = req.body;
+
+    logger.logBusinessLogic(1, 'Обновление объявления клуба', {
+      user_id: userId,
+      user_type: userType,
+      ad_id: adId
+    });
+
+    // Обновляем объявление
+    await ad.update({
+      title: title || ad.title,
+      description: description || ad.description,
+      club_contact_info: clubContactInfo || ad.club_contact_info,
+      viral_share_enabled: viralShareEnabled !== undefined ? viralShareEnabled : ad.viral_share_enabled,
+      referral_bonus: referralBonus !== undefined ? referralBonus : ad.referral_bonus
+    });
+
+    // Если есть связанное событие, обновляем его
+    if (ad.event_id) {
+      const event = await Events.findByPk(ad.event_id);
+      if (event) {
+        await event.update({
+          title: title || event.title,
+          description: description || event.description,
+          date: date || event.date,
+          location: location || event.location,
+          max_participants: maxParticipants || event.max_participants
+        });
+      }
+    }
+
+    res.json({ message: 'Объявление обновлено успешно' });
+  } catch (error) {
+    logger.logError('Ошибка обновления объявления клуба', error);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Удаление объявления клуба
+router.delete('/ads/:adId', authenticateToken, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const userType = getUserType(req);
+    const { adId } = req.params;
+    
+    // Проверяем, что запрос от клуба
+    if (userType !== 'club') {
+      return res.status(403).json({ error: 'Доступ только для клубов' });
+    }
+
+    // Проверяем, что объявление принадлежит клубу
+    const ad = await Ads.findOne({
+      where: { 
+        id: adId,
+        club_id: req.club.id,
+        is_club_ad: true 
+      }
+    });
+
+    if (!ad) {
+      return res.status(404).json({ error: 'Объявление не найдено' });
+    }
+
+    logger.logBusinessLogic(1, 'Удаление объявления клуба', {
+      user_id: userId,
+      user_type: userType,
+      ad_id: adId
+    });
+
+    // Удаляем связанное событие, если есть
+    if (ad.event_id) {
+      await Events.destroy({ where: { id: ad.event_id } });
+    }
+
+    // Удаляем объявление
+    await ad.destroy();
+
+    res.json({ message: 'Объявление удалено успешно' });
+  } catch (error) {
+    logger.logError('Ошибка удаления объявления клуба', error);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Получение статистики объявления
+router.get('/ads/:adId/stats', authenticateToken, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const userType = getUserType(req);
+    const { adId } = req.params;
+    
+    // Проверяем, что запрос от клуба
+    if (userType !== 'club') {
+      return res.status(403).json({ error: 'Доступ только для клубов' });
+    }
+
+    // Проверяем, что объявление принадлежит клубу
+    const ad = await Ads.findOne({
+      where: { 
+        id: adId,
+        club_id: req.club.id,
+        is_club_ad: true 
+      }
+    });
+
+    if (!ad) {
+      return res.status(404).json({ error: 'Объявление не найдено' });
+    }
+
+    // Получаем статистику
+    const stats = {
+      views: ad.views || 0,
+      likes: ad.likes || 0,
+      social_proof_count: ad.social_proof_count || 0,
+      participants: 0,
+      max_participants: null
+    };
+
+    // Если это мероприятие, получаем статистику участников
+    if (ad.event_id) {
+      const event = await Events.findByPk(ad.event_id);
+      if (event) {
+        stats.participants = await EventParticipants.count({ where: { event_id: ad.event_id } });
+        stats.max_participants = event.max_participants;
+      }
+    }
+
+    res.json(stats);
+  } catch (error) {
+    logger.logError('Ошибка получения статистики объявления', error);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Получение профиля клуба
+router.get('/profile', authenticateToken, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const userType = getUserType(req);
+    
+    // Проверяем, что запрос от клуба
+    if (userType !== 'club') {
+      return res.status(403).json({ error: 'Доступ только для клубов' });
+    }
+
+    // Получаем данные клуба
+    const club = await Clubs.findByPk(req.club.id, {
+      attributes: [
+        'id', 
+        'name', 
+        'email', 
+        'description', 
+        'location', 
+        'contact_info',
+        'website',
+        'social_media',
+        'created_at',
+        'updated_at'
+      ]
+    });
+
+    if (!club) {
+      return res.status(404).json({ error: 'Клуб не найден' });
+    }
+
+    res.json({
+      club: club.toJSON(),
+      message: 'Профиль клуба получен успешно'
+    });
+  } catch (error) {
+    logger.logError('Ошибка получения профиля клуба', error);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
   }
 });
 

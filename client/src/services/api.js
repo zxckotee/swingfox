@@ -86,6 +86,25 @@ apiClient.interceptors.request.use(
     const clubToken = localStorage.getItem('clubToken');
     const userToken = getToken();
     
+    // Не добавляем токен для публичных эндпоинтов
+    const publicEndpoints = [
+      '/auth/login',
+      '/auth/register', 
+      '/auth/send-code',
+      '/auth/reset-password',
+      '/club/auth/login',
+      '/club/auth/register'
+    ];
+    
+    const isPublicEndpoint = publicEndpoints.some(endpoint => 
+      config.url.includes(endpoint)
+    );
+    
+    if (isPublicEndpoint) {
+      console.log('🔍 API Interceptor: Публичный эндпоинт, не добавляем токен:', config.url);
+      return config;
+    }
+    
     if (clubToken) {
       // Если есть токен клуба, используем его для всех запросов
       console.log('🔍 API Interceptor: Используем токен клуба для запроса:', config.url);
@@ -96,7 +115,13 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${userToken}`;
     } else {
       console.log('🔍 API Interceptor: Нет токенов для запроса:', config.url);
+      // Не прерываем запрос, просто не добавляем токен
     }
+    
+    console.log('🔍 API Interceptor: Финальные заголовки:', {
+      Authorization: config.headers.Authorization ? 'Bearer ***' : 'none',
+      url: config.url
+    });
     
     return config;
   },
@@ -220,15 +245,23 @@ export const authAPI = {
 
   // Новый метод для получения актуальных данных пользователя
   fetchCurrentUserData: async () => {
+    console.log('🔍 fetchCurrentUserData: Начинаем получение данных пользователя');
     const baseUser = authAPI.getCurrentUser();
-    if (!baseUser || !baseUser.login) return null;
+    console.log('🔍 fetchCurrentUserData: baseUser =', baseUser);
+    
+    if (!baseUser || !baseUser.login) {
+      console.log('🔍 fetchCurrentUserData: Нет базовых данных пользователя, возвращаем null');
+      return null;
+    }
 
     try {
+      console.log('🔍 fetchCurrentUserData: Делаем запрос к /users/profile/${baseUser.login}');
       const response = await apiClient.get(`/users/profile/${baseUser.login}`);
       const userData = response.data;
+      console.log('🔍 fetchCurrentUserData: Получены данные пользователя:', userData);
       
       // Обновляем кэш с актуальными данными
-      setUserCache({
+      const cacheData = {
         id: userData.id,
         login: userData.login,
         ava: userData.ava,
@@ -238,11 +271,17 @@ export const authAPI = {
         country: userData.country,
         viptype: userData.viptype,
         is_admin: baseUser.is_admin
-      });
+      };
+      
+      console.log('🔍 fetchCurrentUserData: Обновляем кэш:', cacheData);
+      setUserCache(cacheData);
 
-      return authAPI.getCurrentUser(); // Возвращаем обновленные данные
+      const result = authAPI.getCurrentUser(); // Возвращаем обновленные данные
+      console.log('🔍 fetchCurrentUserData: Возвращаем результат:', result);
+      return result;
     } catch (error) {
-      console.warn('Ошибка получения актуальных данных пользователя:', error);
+      console.error('🔍 fetchCurrentUserData: Ошибка получения данных пользователя:', error);
+      console.log('🔍 fetchCurrentUserData: Возвращаем базовые данные из токена:', baseUser);
       return baseUser; // Возвращаем данные из токена при ошибке
     }
   },
@@ -1449,5 +1488,182 @@ export const eventsAPI = {
     const queryString = new URLSearchParams({ club_id: clubId, ...params }).toString();
     const response = await apiClient.get(`/events?${queryString}`);
     return response.data;
+  }
+};
+
+// API для объявлений клубов
+export const clubAdsAPI = {
+  // Получить все объявления клуба
+  getClubAds: async () => {
+    try {
+      const response = await apiClient.get('/api/clubs/ads');
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка получения объявлений клуба:', error);
+      throw error;
+    }
+  },
+
+  // Создать новое объявление
+  createAd: async (adData) => {
+    try {
+      const response = await apiClient.post('/api/clubs/ads', adData);
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка создания объявления:', error);
+      throw error;
+    }
+  },
+
+  // Обновить объявление
+  updateAd: async (adId, adData) => {
+    try {
+      const response = await apiClient.put(`/api/clubs/ads/${adId}`, adData);
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка обновления объявления:', error);
+      throw error;
+    }
+  },
+
+  // Удалить объявление
+  deleteAd: async (adId) => {
+    try {
+      const response = await apiClient.delete(`/api/clubs/ads/${adId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка удаления объявления:', error);
+      throw error;
+    }
+  },
+
+  // Получить статистику объявления
+  getAdStats: async (adId) => {
+    try {
+      const response = await apiClient.get(`/api/clubs/ads/${adId}/stats`);
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка получения статистики объявления:', error);
+      throw error;
+    }
+  }
+};
+
+// API для чатов клубов
+export const clubChatAPI = {
+  // Получить список чатов клуба
+  getClubChats: async () => {
+    try {
+      const response = await apiClient.get('/api/clubs/chats');
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка получения чатов клуба:', error);
+      throw error;
+    }
+  },
+
+  // Получить сообщения чата
+  getChatMessages: async (chatId) => {
+    try {
+      const response = await apiClient.get(`/api/clubs/chats/${chatId}/messages`);
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка получения сообщений чата:', error);
+      throw error;
+    }
+  },
+
+  // Отправить сообщение
+  sendMessage: async (chatId, message) => {
+    try {
+      const response = await apiClient.post(`/api/clubs/chats/${chatId}/messages`, { message });
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка отправки сообщения:', error);
+      throw error;
+    }
+  }
+};
+
+// API для настроек клубов
+export const clubSettingsAPI = {
+  // Получить настройки клуба
+  getClubSettings: async () => {
+    try {
+      const response = await apiClient.get('/api/clubs/settings');
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка получения настроек клуба:', error);
+      throw error;
+    }
+  },
+
+  // Обновить настройки клуба
+  updateClubSettings: async (settings) => {
+    try {
+      const response = await apiClient.put('/api/clubs/settings', settings);
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка обновления настроек клуба:', error);
+      throw error;
+    }
+  },
+
+  // Получить настройки бота
+  getBotSettings: async () => {
+    try {
+      const response = await apiClient.get('/api/clubs/bot/settings');
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка получения настроек бота:', error);
+      throw error;
+    }
+  },
+
+  // Обновить настройки бота
+  updateBotSettings: async (botSettings) => {
+    try {
+      const response = await apiClient.put('/api/clubs/bot/settings', botSettings);
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка обновления настроек бота:', error);
+      throw error;
+    }
+  }
+};
+
+// API для аналитики клубов
+export const clubAnalyticsAPI = {
+  // Получить общую аналитику клуба
+  getClubAnalytics: async (period = 'week') => {
+    try {
+      const response = await apiClient.get(`/api/clubs/analytics?period=${period}`);
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка получения аналитики клуба:', error);
+      throw error;
+    }
+  },
+
+  // Получить топ мероприятий
+  getTopEvents: async () => {
+    try {
+      const response = await apiClient.get('/api/clubs/analytics/top-events');
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка получения топ мероприятий:', error);
+      throw error;
+    }
+  },
+
+  // Получить активность участников
+  getMemberActivity: async () => {
+    try {
+      const response = await apiClient.get('/api/clubs/analytics/member-activity');
+      return response.data;
+    } catch (error) {
+      console.error('Ошибка получения активности участников:', error);
+      throw error;
+    }
   }
 };

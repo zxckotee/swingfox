@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { User } = require('../models');
+const { User, Clubs } = require('../models');
 
 // Middleware для проверки JWT токена
 const authenticateToken = async (req, res, next) => {
@@ -60,7 +60,6 @@ const authenticateToken = async (req, res, next) => {
       console.log('🔍 Token decoded as club:', { clubId: decoded.clubId });
       
       // Проверяем, что клуб существует и активен
-      const { Clubs } = require('../models');
       const club = await Clubs.findOne({
         where: { 
           id: decoded.clubId,

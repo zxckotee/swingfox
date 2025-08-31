@@ -2,6 +2,13 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
+import { useQuery, useMutation, useQueryClient } from 'react-query';
+
+// API
+import { clubAdsAPI } from '../services/api';
+
+// Компоненты
+import CreateAdModal from './CreateAdModal';
 
 // Иконки
 import { 
@@ -217,143 +224,243 @@ const EmptyState = styled.div`
 `;
 
 const ClubAdsInterface = () => {
-  const [ads, setAds] = useState([
-    {
-      id: 1,
-      title: 'Вечеринка в стиле 80-х',
-      type: 'event',
-      description: 'Ночь ретро-музыки, диско-атмосфера и незабываемые знакомства!',
-      date: '2024-02-15',
-      location: 'Москва, ул. Тверская, 15',
-      participants: 45,
-      maxParticipants: 60,
-      views: 234,
-      likes: 67
-    },
-    {
-      id: 2,
-      title: 'Ужин для пар',
-      type: 'ad',
-      description: 'Романтический ужин в уютном ресторане для знакомства пар',
-      date: '2024-02-20',
-      location: 'Санкт-Петербург, Невский пр., 28',
-      participants: 12,
-      maxParticipants: 20,
-      views: 156,
-      likes: 34
+  const queryClient = useQueryClient();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingAd, setEditingAd] = useState(null);
+
+  // Получение объявлений клуба
+  const { data: ads = [], isLoading, error } = useQuery({
+    queryKey: ['clubAds'],
+    queryFn: clubAdsAPI.getClubAds,
+    onError: (error) => {
+      console.error('Ошибка загрузки объявлений:', error);
+      toast.error('Ошибка загрузки объявлений');
     }
-  ]);
+  });
+
+  // Мутация для создания объявления
+  const createAdMutation = useMutation({
+    mutationFn: clubAdsAPI.createAd,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['clubAds']);
+      toast.success('Объявление создано успешно!');
+    },
+    onError: (error) => {
+      console.error('Ошибка создания объявления:', error);
+      toast.error('Ошибка создания объявления');
+    }
+  });
+
+  // Мутация для обновления объявления
+  const updateAdMutation = useMutation({
+    mutationFn: ({ adId, adData }) => clubAdsAPI.updateAd(adId, adData),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['clubAds']);
+      toast.success('Объявление обновлено успешно!');
+    },
+    onError: (error) => {
+      console.error('Ошибка обновления объявления:', error);
+      toast.error('Ошибка обновления объявления');
+    }
+  });
+
+  // Мутация для удаления объявления
+  const deleteAdMutation = useMutation({
+    mutationFn: clubAdsAPI.deleteAd,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['clubAds']);
+      toast.success('Объявление удалено успешно!');
+    },
+    onError: (error) => {
+      console.error('Ошибка удаления объявления:', error);
+      toast.error('Ошибка удаления объявления');
+    }
+  });
 
   const handleCreateAd = () => {
-    toast.success('Функция создания объявления будет добавлена');
+    setEditingAd(null);
+    setIsModalOpen(true);
   };
 
-  const handleEditAd = (adId) => {
-    toast.success(`Редактирование объявления ${adId}`);
+  const handleEditAd = (ad) => {
+    setEditingAd(ad);
+    setIsModalOpen(true);
   };
 
   const handleDeleteAd = (adId) => {
     if (window.confirm('Вы уверены, что хотите удалить это объявление?')) {
-      setAds(ads.filter(ad => ad.id !== adId));
-      toast.success('Объявление удалено');
+      deleteAdMutation.mutate(adId);
     }
   };
 
   const handleViewAd = (adId) => {
+    // Здесь будет переход к просмотру объявления
     toast.success(`Просмотр объявления ${adId}`);
   };
 
-  return (
-    <Container>
-      <Header>
-        <Title>Мои объявления</Title>
-        <CreateButton onClick={handleCreateAd}>
-          <PlusIcon />
-          Создать объявление
-        </CreateButton>
-      </Header>
+  const handleModalSuccess = async (data) => {
+    if (editingAd) {
+      // Обновление существующего объявления
+      await updateAdMutation.mutateAsync({ adId: editingAd.id, adData: data });
+    } else {
+      // Создание нового объявления
+      await createAdMutation.mutateAsync(data);
+    }
+  };
 
-      {ads.length === 0 ? (
-        <EmptyState>
-          <div className="icon">📢</div>
-          <h3>У вас пока нет объявлений</h3>
-          <p>Создайте первое объявление, чтобы привлечь участников к вашим мероприятиям</p>
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setEditingAd(null);
+  };
+
+  if (isLoading) {
+    return (
+      <Container>
+        <Header>
+          <Title>Мои объявления</Title>
           <CreateButton onClick={handleCreateAd}>
             <PlusIcon />
-            Создать первое объявление
+            Создать объявление
           </CreateButton>
-        </EmptyState>
-      ) : (
-        <Grid>
-          {ads.map((ad) => (
-            <AdCard
-              key={ad.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <AdHeader>
-                <div>
-                  <AdTitle>{ad.title}</AdTitle>
-                  <AdType $isEvent={ad.type === 'event'}>
-                    {ad.type === 'event' ? 'Мероприятие' : 'Объявление'}
-                  </AdType>
-                </div>
-              </AdHeader>
+        </Header>
+        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+          <div>Загрузка объявлений...</div>
+        </div>
+      </Container>
+    );
+  }
 
-              <AdContent>
-                <AdDescription>{ad.description}</AdDescription>
-                
-                <AdDetails>
-                  <DetailItem>
-                    <CalendarIcon />
-                    {new Date(ad.date).toLocaleDateString('ru-RU')}
-                  </DetailItem>
-                  <DetailItem>
-                    <MapPinIcon />
-                    {ad.location}
-                  </DetailItem>
-                  <DetailItem>
-                    <UsersIcon />
-                    {ad.participants}/{ad.maxParticipants} участников
-                  </DetailItem>
-                </AdDetails>
+  if (error) {
+    return (
+      <Container>
+        <Header>
+          <Title>Мои объявления</Title>
+          <CreateButton onClick={handleCreateAd}>
+            <PlusIcon />
+            Создать объявление
+          </CreateButton>
+        </Header>
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#e53e3e' }}>
+          <div>Ошибка загрузки объявлений. Попробуйте обновить страницу.</div>
+        </div>
+      </Container>
+    );
+  }
 
-                <AdStats>
-                  <StatItem>
-                    <div className="number">{ad.views}</div>
-                    <div className="label">Просмотров</div>
-                  </StatItem>
-                  <StatItem>
-                    <div className="number">{ad.likes}</div>
-                    <div className="label">Лайков</div>
-                  </StatItem>
-                  <StatItem>
-                    <div className="number">{Math.round((ad.participants / ad.maxParticipants) * 100)}%</div>
-                    <div className="label">Заполненность</div>
-                  </StatItem>
-                </AdStats>
-              </AdContent>
+  return (
+    <>
+      <Container>
+        <Header>
+          <Title>Мои объявления</Title>
+          <CreateButton onClick={handleCreateAd}>
+            <PlusIcon />
+            Создать объявление
+          </CreateButton>
+        </Header>
 
-              <AdActions>
-                <ActionButton className="view" onClick={() => handleViewAd(ad.id)}>
-                  <EyeIcon />
-                  Просмотр
-                </ActionButton>
-                <ActionButton className="edit" onClick={() => handleEditAd(ad.id)}>
-                  <EditIcon />
-                  Редактировать
-                </ActionButton>
-                <ActionButton className="delete" onClick={() => handleDeleteAd(ad.id)}>
-                  <DeleteIcon />
-                  Удалить
-                </ActionButton>
-              </AdActions>
-            </AdCard>
-          ))}
-        </Grid>
-      )}
-    </Container>
+        {ads.length === 0 ? (
+          <EmptyState>
+            <div className="icon">📢</div>
+            <h3>У вас пока нет объявлений</h3>
+            <p>Создайте первое объявление, чтобы привлечь участников к вашим мероприятиям</p>
+            <CreateButton onClick={handleCreateAd}>
+              <PlusIcon />
+              Создать первое объявление
+            </CreateButton>
+          </EmptyState>
+        ) : (
+          <Grid>
+            {ads.map((ad) => (
+              <AdCard
+                key={ad.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <AdHeader>
+                  <div>
+                    <AdTitle>{ad.title}</AdTitle>
+                    <AdType $isEvent={ad.type === 'event'}>
+                      {ad.type === 'event' ? 'Мероприятие' : 'Объявление'}
+                    </AdType>
+                  </div>
+                </AdHeader>
+
+                <AdContent>
+                  <AdDescription>{ad.description}</AdDescription>
+                  
+                  <AdDetails>
+                    <DetailItem>
+                      <CalendarIcon />
+                      {new Date(ad.date).toLocaleDateString('ru-RU')}
+                    </DetailItem>
+                    <DetailItem>
+                      <MapPinIcon />
+                      {ad.location}
+                    </DetailItem>
+                    <DetailItem>
+                      <UsersIcon />
+                      {ad.participants}/{ad.maxParticipants} участников
+                    </DetailItem>
+                  </AdDetails>
+
+                  <AdStats>
+                    <StatItem>
+                      <div className="number">{ad.views || 0}</div>
+                      <div className="label">Просмотров</div>
+                    </StatItem>
+                    <StatItem>
+                      <div className="number">{ad.likes || 0}</div>
+                      <div className="label">Лайков</div>
+                    </StatItem>
+                    <StatItem>
+                      <div className="number">
+                        {ad.maxParticipants ? Math.round((ad.participants / ad.maxParticipants) * 100) : 0}%
+                      </div>
+                      <div className="label">Заполненность</div>
+                    </StatItem>
+                  </AdStats>
+                </AdContent>
+
+                <AdActions>
+                  <ActionButton 
+                    className="view" 
+                    onClick={() => handleViewAd(ad.id)}
+                    disabled={deleteAdMutation.isLoading}
+                  >
+                    <EyeIcon />
+                    Просмотр
+                  </ActionButton>
+                  <ActionButton 
+                    className="edit" 
+                    onClick={() => handleEditAd(ad)}
+                    disabled={deleteAdMutation.isLoading}
+                  >
+                    <EditIcon />
+                    Редактировать
+                  </ActionButton>
+                  <ActionButton 
+                    className="delete" 
+                    onClick={() => handleDeleteAd(ad.id)}
+                    disabled={deleteAdMutation.isLoading}
+                  >
+                    <DeleteIcon />
+                    {deleteAdMutation.isLoading ? 'Удаление...' : 'Удалить'}
+                  </ActionButton>
+                </AdActions>
+              </AdCard>
+            ))}
+          </Grid>
+        )}
+      </Container>
+
+      <CreateAdModal
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        onSuccess={handleModalSuccess}
+        editAd={editingAd}
+      />
+    </>
   );
 };
 
