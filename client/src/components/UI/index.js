@@ -798,4 +798,21 @@ export const LockIcon = () => (
   </svg>
 );
 
+export const CreditCardIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+    <line x1="1" y1="10" x2="23" y2="10"/>
+  </svg>
+);
+
+export const WalletIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/>
+    <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/>
+    <path d="M18 12a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h4v-6Z"/>
+  </svg>
+);
+
 export { default as Checkbox } from './Checkbox';
+
+export { default as BalanceTopUp } from './BalanceTopUp';

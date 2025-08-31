@@ -37,7 +37,10 @@ import {
   StarIcon,
   MessageIcon,
   SendIcon,
-  CrownIcon
+  CrownIcon,
+  CreditCardIcon,
+  WalletIcon,
+  CheckIcon
 } from '../components/UI';
 
 // Дополнительные иконки
@@ -1058,7 +1061,7 @@ const Profile = () => {
           <BalanceSection>
             <BalanceTitle>💰 Ваш баланс</BalanceTitle>
             <BalanceAmount>{profile.balance || 0} 🦊</BalanceAmount>
-            <BalanceButton onClick={() => navigate('/subscriptions')}>
+            <BalanceButton onClick={() => navigate('/balance-topup')}>
               Пополнить баланс
             </BalanceButton>
           </BalanceSection>

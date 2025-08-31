@@ -21,6 +21,7 @@ import Notifications from './pages/Notifications';
 import Clubs from './pages/Clubs';
 import Subscriptions from './pages/Subscriptions';
 import Ratings from './pages/Ratings';
+import BalanceTopUp from './pages/BalanceTopUp';
 
 // Стили и тема
 const theme = {
@@ -325,6 +326,12 @@ function App() {
               <Route path="/admin/*" element={
                 <AuthGuard>
                   <Admin />
+                </AuthGuard>
+              } />
+              
+              <Route path="/balance-topup" element={
+                <AuthGuard>
+                  <BalanceTopUp />
                 </AuthGuard>
               } />
               

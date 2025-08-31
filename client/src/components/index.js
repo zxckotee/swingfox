@@ -15,3 +15,4 @@ export { default as MatchNotification } from './MatchNotification';
 export { default as MatchPopup } from './MatchPopup';
 export { default as Navigation } from './Navigation';
 export { default as RatingDisplay } from './RatingDisplay';
+export { default as BalanceTopUp } from './UI/BalanceTopUp';
