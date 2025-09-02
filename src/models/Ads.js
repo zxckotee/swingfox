@@ -99,6 +99,42 @@ const Ads = sequelize.define('Ads', {
     type: DataTypes.BOOLEAN,
     allowNull: false,
     defaultValue: false
+  },
+  club_id: {
+    type: DataTypes.BIGINT,
+    allowNull: true,
+    references: {
+      model: 'clubs',
+      key: 'id'
+    }
+  },
+  is_club_ad: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  club_contact_info: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  viral_share_enabled: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  },
+  referral_bonus: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0
+  },
+  social_proof_count: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
+  event_id: {
+    type: DataTypes.BIGINT,
+    allowNull: true,
+    references: {
+      model: 'club_events',
+      key: 'id'
+    }
   }
 }, {
   tableName: 'ads',
@@ -123,6 +159,15 @@ const Ads = sequelize.define('Ads', {
     },
     {
       fields: ['expires_at']
+    },
+    {
+      fields: ['club_id']
+    },
+    {
+      fields: ['is_club_ad']
+    },
+    {
+      fields: ['event_id']
     }
   ]
 });
@@ -199,6 +244,19 @@ Ads.prototype.canEdit = function(userLogin) {
 
 Ads.prototype.canView = function() {
   return this.status === 'approved' && !this.isExpired();
+};
+
+Ads.prototype.isClubAd = function() {
+  return this.is_club_ad === true;
+};
+
+Ads.prototype.getClubContactInfo = function() {
+  return this.club_contact_info || this.contact_info;
+};
+
+Ads.prototype.incrementSocialProof = async function() {
+  this.social_proof_count += 1;
+  await this.save();
 };
 
 // Hooks

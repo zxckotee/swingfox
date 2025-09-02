@@ -1,238 +1,246 @@
 const { DataTypes } = require('sequelize');
+const bcrypt = require('bcryptjs');
 
 module.exports = (sequelize) => {
   const Clubs = sequelize.define('Clubs', {
     id: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       primaryKey: true,
       autoIncrement: true
     },
     name: {
       type: DataTypes.STRING(255),
       allowNull: false,
-      comment: 'Название клуба'
+      validate: {
+        notEmpty: true,
+        len: [2, 255]
+      }
+    },
+    login: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+      unique: true,
+      validate: {
+        notEmpty: true,
+        len: [3, 255],
+        is: /^[a-zA-Z0-9_]+$/
+      }
+    },
+    email: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+      unique: true,
+      validate: {
+        isEmail: true
+      }
+    },
+    password: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+      validate: {
+        len: [6, 255]
+      }
     },
     description: {
       type: DataTypes.TEXT,
-      allowNull: true,
-      comment: 'Описание клуба'
+      allowNull: true
     },
-    owner: {
-      type: DataTypes.STRING(50),
-      allowNull: false,
-      comment: 'Владелец клуба'
+    location: {
+      type: DataTypes.STRING(255),
+      allowNull: true
     },
-    admins: {
+    contact_info: {
       type: DataTypes.TEXT,
-      allowNull: true,
-      comment: 'Администраторы через &&'
+      allowNull: true
     },
-    links: {
+    website: {
+      type: DataTypes.STRING(255),
+      allowNull: true
+    },
+    social_links: {
       type: DataTypes.TEXT,
-      allowNull: true,
-      comment: 'Ссылки на соцсети и сайты'
-    },
-
-    country: {
-      type: DataTypes.STRING(255),
-      allowNull: false,
-      comment: 'Страна клуба'
-    },
-    city: {
-      type: DataTypes.STRING(255),
-      allowNull: false,
-      comment: 'Город клуба'
-    },
-    address: {
-      type: DataTypes.STRING(255),
-      allowNull: false,
-      comment: 'Адрес клуба'
-    },
-    avatar: {
-      type: DataTypes.STRING(255),
-      defaultValue: 'no_photo.jpg',
-      comment: 'Аватар клуба'
+      allowNull: true
     },
     is_active: {
       type: DataTypes.BOOLEAN,
-      defaultValue: true,
-      comment: 'Активен ли клуб'
+      defaultValue: true
+    },
+    type: {
+      type: DataTypes.ENUM('swing', 'bdsm', 'fetish', 'lgbt', 'general', 'other'),
+      allowNull: true
+    },
+    country: {
+      type: DataTypes.TEXT,
+      allowNull: false
+    },
+    city: {
+      type: DataTypes.TEXT,
+      allowNull: false
+    },
+    address: {
+      type: DataTypes.TEXT,
+      allowNull: false
+    },
+    admins: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    links: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    avatar: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      defaultValue: 'no_photo.jpg'
     },
     date_created: {
       type: DataTypes.DATEONLY,
+      allowNull: false
+    },
+    is_verified: {
+      type: DataTypes.BOOLEAN,
       allowNull: false,
-      comment: 'Дата создания клуба'
+      defaultValue: false
     },
-    created_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-      comment: 'Дата создания'
+    max_members: {
+      type: DataTypes.INTEGER,
+      allowNull: true
     },
-    updated_at: {
+    current_members: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 1
+    },
+    balance: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0
+    },
+    membership_fee: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      defaultValue: 0
+    },
+    age_restriction: {
+      type: DataTypes.STRING(20),
+      allowNull: true
+    },
+    rules: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    tags: {
+      type: DataTypes.STRING(500),
+      allowNull: true
+    },
+    cover_image: {
+      type: DataTypes.STRING(255),
+      allowNull: true
+    },
+    verification_date: {
       type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-      comment: 'Дата последнего обновления'
+      allowNull: true
+    },
+    verified_by: {
+      type: DataTypes.STRING(50),
+      allowNull: true
+    },
+    email_verified: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    },
+    email_verification_token: {
+      type: DataTypes.STRING(255),
+      allowNull: true
+    },
+    email_verification_expires: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    verification_sent_at: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    category: {
+      type: DataTypes.STRING(100),
+      allowNull: true
+    },
+    rating: {
+      type: DataTypes.DECIMAL(3, 2),
+      allowNull: false,
+      defaultValue: 0
+    },
+    member_count: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0
+    },
+    is_premium: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    },
+    referral_code: {
+      type: DataTypes.STRING(50),
+      allowNull: true
     }
   }, {
     tableName: 'clubs',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',
-    indexes: [
-      {
-        fields: ['owner']
+    hooks: {
+      beforeCreate: async (club) => {
+        if (club.password) {
+          club.password = await bcrypt.hash(club.password, 10);
+        }
       },
-
-      {
-        fields: ['country', 'city']
-      },
-      {
-        fields: ['is_active']
-      },
-      {
-        fields: ['date_created']
-      },
-      {
-        fields: ['created_at']
+      beforeUpdate: async (club) => {
+        if (club.changed('password')) {
+          club.password = await bcrypt.hash(club.password, 10);
+        }
       }
-    ]
+    }
   });
 
-
-
-  Clubs.prototype.canJoin = function(userVipType = 'FREE') {
-    if (!this.is_active) return false;
-    return true;
+  // Методы экземпляра
+  Clubs.prototype.comparePassword = async function(candidatePassword) {
+    return bcrypt.compare(candidatePassword, this.password);
   };
 
-  // Статические методы
-  Clubs.getActiveClubs = async function(options = {}) {
-    const {
-      limit = 20,
-      offset = 0,
-      city = null,
-      search = null
-    } = options;
-
-    const whereClause = { is_active: true };
-    
-    if (city) {
-      whereClause.city = {
-        [sequelize.Sequelize.Op.iLike]: `%${city}%`
-      };
-    }
-    
-
-    
-    if (search) {
-      whereClause[sequelize.Sequelize.Op.or] = [
-        {
-          name: {
-            [sequelize.Sequelize.Op.iLike]: `%${search}%`
-          }
-        },
-        {
-          description: {
-            [sequelize.Sequelize.Op.iLike]: `%${search}%`
-          }
-        }
-      ];
-    }
-
-    try {
-      const clubs = await this.findAll({
-        where: whereClause,
-        include: [
-          {
-            model: sequelize.models.User,
-            as: 'OwnerUser',
-            attributes: ['login', 'name', 'ava']
-          }
-        ],
-        order: [['created_at', 'DESC']],
-        limit,
-        offset
-      });
-
-      return clubs;
-    } catch (error) {
-      console.error('Error getting active clubs:', error);
-      throw error;
-    }
-  };
-
-  Clubs.getUserClubs = async function(userId, role = 'all') {
-    const whereClause = { is_active: true };
-    
-    if (role === 'owner') {
-      whereClause.owner = userId;
-    }
-
-    try {
-      const clubs = await this.findAll({
-        where: whereClause,
-        include: [
-          {
-            model: sequelize.models.User,
-            as: 'OwnerUser',
-            attributes: ['login', 'name', 'ava']
-          }
-        ],
-        order: [['created_at', 'DESC']]
-      });
-
-      return clubs;
-    } catch (error) {
-      console.error('Error getting user clubs:', error);
-      throw error;
-    }
-  };
-
-  Clubs.getPopularClubs = async function(limit = 10) {
-    try {
-      const clubs = await this.findAll({
-        where: { is_active: true },
-        include: [
-          {
-            model: sequelize.models.User,
-            as: 'OwnerUser',
-            attributes: ['login', 'name', 'ava']
-          }
-        ],
-        order: [
-          ['created_at', 'DESC']
-        ],
-        limit
-      });
-
-      return clubs;
-    } catch (error) {
-      console.error('Error getting popular clubs:', error);
-      throw error;
-    }
+  Clubs.prototype.toJSON = function() {
+    const values = Object.assign({}, this.get());
+    delete values.password;
+    return values;
   };
 
   // Ассоциации
-  Clubs.associate = function(models) {
-    // Клуб принадлежит владельцу
-    Clubs.belongsTo(models.User, {
-      foreignKey: 'owner',
-      targetKey: 'login',
-      as: 'OwnerUser'
+  Clubs.associate = (models) => {
+    Clubs.hasMany(models.ClubEvents, {
+      foreignKey: 'club_id',
+      as: 'events'
     });
 
-    // Клуб имеет много заявок
+    Clubs.hasMany(models.ClubBots, {
+      foreignKey: 'club_id',
+      as: 'bots'
+    });
+
     Clubs.hasMany(models.ClubApplications, {
       foreignKey: 'club_id',
-      sourceKey: 'id',
-      as: 'Applications'
+      as: 'applications'
     });
 
-    // Клуб имеет много событий
-    Clubs.hasMany(models.Events, {
+    Clubs.hasMany(models.Ads, {
       foreignKey: 'club_id',
-      sourceKey: 'id',
-      as: 'Events'
+      as: 'ads'
+    });
+
+    Clubs.hasMany(models.Chat, {
+      foreignKey: 'club_id',
+      as: 'chats'
     });
   };
 

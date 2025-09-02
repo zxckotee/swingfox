@@ -698,8 +698,16 @@ router.get('/my/list', authenticateToken, async (req, res) => {
 
 // GET /api/clubs/my/ownership - Проверка владения активным клубом
 router.get('/my/ownership', authenticateToken, async (req, res) => {
+  const logger = new APILogger('CLUBS');
+  
   try {
+    logger.logRequest(req, 'GET /clubs/my/ownership');
+    
     const userId = req.user.login;
+
+    logger.logBusinessLogic(1, 'Проверка владения активным клубом', {
+      user_id: userId
+    }, req);
     
     const club = await Clubs.findOne({
       where: {
@@ -708,15 +716,23 @@ router.get('/my/ownership', authenticateToken, async (req, res) => {
       }
     });
     
-    res.json({
+    const responseData = {
       hasActiveClub: !!club,
       club: club ? {
         id: club.id,
         name: club.name,
         is_verified: club.is_verified
       } : null
+    };
+
+    logger.logSuccess(req, 200, {
+      has_active_club: !!club,
+      club_id: club?.id
     });
+    
+    res.json(responseData);
   } catch (error) {
+    logger.logError(req, error);
     res.status(500).json({ 
       error: 'server_error',
       message: 'Ошибка при проверке владения клубом'

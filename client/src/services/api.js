@@ -930,8 +930,20 @@ export const clubsAPI = {
   },
 
   checkClubOwnership: async () => {
-    const response = await apiClient.get('/clubs/my/ownership');
-    return response.data;
+    try {
+      const response = await apiClient.get('/clubs/my/ownership');
+      // Преобразуем ответ в ожидаемый формат
+      return {
+        isOwner: response.data.hasActiveClub,
+        club: response.data.club
+      };
+    } catch (error) {
+      // Если пользователь не владеет клубом или эндпоинт не существует
+      if (error.response?.status === 404 || error.response?.status === 500) {
+        return { isOwner: false, club: null };
+      }
+      throw error;
+    }
   }
 };
 

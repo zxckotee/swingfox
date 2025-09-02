@@ -1103,6 +1103,10 @@ const Navigation = () => {
                 <SettingsIcon />
                 Настройки
               </DropdownItem>
+              <DropdownItem onClick={() => navigate('/club/login')}>
+                <UsersIcon />
+                Вход для клубов
+              </DropdownItem>
               <DropdownItem className="danger" onClick={handleLogout}>
                 <LogoutIcon />
                 Выйти

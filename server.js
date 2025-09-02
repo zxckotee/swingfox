@@ -58,8 +58,19 @@ const photoCommentsRoutes = require('./src/routes/photo-comments');
 const profileCommentsRoutes = require('./src/routes/profile-comments');
 const reactionsRoutes = require('./src/routes/reactions');
 
+// Импорт роутов клубной системы
+const clubAuthRoutes = require('./src/routes/clubAuth');
+const clubEventsRoutes = require('./src/routes/clubEvents');
+const clubAdsRoutes = require('./src/routes/clubAds');
+const clubAnalyticsRoutes = require('./src/routes/clubAnalytics');
+const clubApplicationsRoutes = require('./src/routes/clubApplications');
+const clubUserEventsRoutes = require('./src/routes/clubUserEvents');
+const clubBotsRoutes = require('./src/routes/clubBots');
+
 // Импорт cron-задач для подписок
 const SubscriptionCron = require('./src/cron/subscriptionCron');
+// Импорт cron-задач для клубов
+const ClubCron = require('./src/cron/clubCron');
 
 // Подключение роутов
 app.use('/api/auth', authRoutes);
@@ -81,6 +92,15 @@ app.use('/api/profiles', profilesRoutes);
 app.use('/api/photo-comments', photoCommentsRoutes);
 app.use('/api/profile-comments', profileCommentsRoutes);
 app.use('/api/reactions', reactionsRoutes);
+
+// Подключение роутов клубной системы
+app.use('/api/club/auth', clubAuthRoutes);
+app.use('/api/club/events', clubEventsRoutes);
+app.use('/api/club/ads', clubAdsRoutes);
+app.use('/api/club/analytics', clubAnalyticsRoutes);
+app.use('/api/club/applications', clubApplicationsRoutes);
+app.use('/api/club/user-events', clubUserEventsRoutes);
+app.use('/api/club/bots', clubBotsRoutes);
 
 // Проверка статуса API
 app.get('/api/status', (req, res) => {
@@ -132,6 +152,12 @@ const startServer = async () => {
     const subscriptionCron = new SubscriptionCron();
     subscriptionCron.start();
     console.log('✅ Cron-задачи для подписок запущены');
+    
+    // Запускаем cron-задачи для клубов
+    console.log('🕐 Запуск cron-задач для автоматизации клубов...');
+    const clubCron = new ClubCron();
+    clubCron.start();
+    console.log('✅ Cron-задачи для клубов запущены');
     
     // Настройка HTTPS для разработки
     if (process.env.NODE_ENV === 'development') {

@@ -471,8 +471,13 @@ const Ads = () => {
     clubsAPI.checkClubOwnership,
     {
       retry: false,
-      onError: () => {
-        // Пользователь не владеет клубом
+      onError: (error) => {
+        // Пользователь не владеет клубом или эндпоинт недоступен
+        console.log('Club ownership check failed:', error.message);
+      },
+      onSuccess: (data) => {
+        // Успешная проверка владения клубом
+        console.log('Club ownership check successful:', data);
       }
     }
   );

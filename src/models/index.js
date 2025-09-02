@@ -13,6 +13,9 @@ const Status = require('./Status');
 const Notifications = require('./Notifications');
 const Clubs = require('./Clubs');
 const ClubApplications = require('./ClubApplications');
+const ClubEvents = require('./ClubEvents');
+const EventParticipants = require('./EventParticipants');
+const ClubBots = require('./ClubBots');
 const Subscriptions = require('./Subscriptions');
 const SubscriptionPlans = require('./SubscriptionPlans');
 const SubscriptionPayments = require('./SubscriptionPayments');
@@ -155,6 +158,9 @@ const StatusModel = Status(sequelize);
 const NotificationsModel = Notifications(sequelize);
 const ClubsModel = Clubs(sequelize);
 const ClubApplicationsModel = ClubApplications(sequelize);
+const ClubEventsModel = ClubEvents(sequelize);
+const EventParticipantsModel = EventParticipants(sequelize);
+const ClubBotsModel = ClubBots(sequelize);
 const SubscriptionsModel = Subscriptions(sequelize);
 const SubscriptionPlansModel = SubscriptionPlans(sequelize);
 const SubscriptionPaymentsModel = SubscriptionPayments(sequelize);
@@ -170,8 +176,25 @@ if (ImageLikesModel.associate) ImageLikesModel.associate({ User });
 if (RatingModel.associate) RatingModel.associate({ User });
 if (StatusModel.associate) StatusModel.associate({ User });
 if (NotificationsModel.associate) NotificationsModel.associate({ User });
-if (ClubsModel.associate) ClubsModel.associate({ User, ClubApplications: ClubApplicationsModel, Events });
+if (ClubsModel.associate) ClubsModel.associate({ 
+  User, 
+  ClubApplications: ClubApplicationsModel, 
+  ClubEvents: ClubEventsModel,
+  ClubBots: ClubBotsModel,
+  Ads,
+  Chat
+});
 if (ClubApplicationsModel.associate) ClubApplicationsModel.associate({ User, Clubs: ClubsModel });
+if (ClubEventsModel.associate) ClubEventsModel.associate({ 
+  Clubs: ClubsModel, 
+  EventParticipants: EventParticipantsModel,
+  Ads
+});
+if (EventParticipantsModel.associate) EventParticipantsModel.associate({ 
+  User, 
+  ClubEvents: ClubEventsModel 
+});
+if (ClubBotsModel.associate) ClubBotsModel.associate({ Clubs: ClubsModel });
 if (Events.associate) Events.associate({ User, Clubs: ClubsModel });
 if (SubscriptionsModel.associate) SubscriptionsModel.associate({ User, SubscriptionPlans: SubscriptionPlansModel });
 if (SubscriptionPlansModel.associate) SubscriptionPlansModel.associate({ User });
@@ -198,6 +221,9 @@ module.exports = {
   Notifications: NotificationsModel,
   Clubs: ClubsModel,
   ClubApplications: ClubApplicationsModel,
+  ClubEvents: ClubEventsModel,
+  EventParticipants: EventParticipantsModel,
+  ClubBots: ClubBotsModel,
   Subscriptions: SubscriptionsModel,
   SubscriptionPlans: SubscriptionPlansModel,
   SubscriptionPayments: SubscriptionPaymentsModel,

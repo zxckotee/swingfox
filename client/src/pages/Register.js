@@ -6,6 +6,7 @@ import styled from 'styled-components';
 import toast from 'react-hot-toast';
 import { authAPI, apiUtils } from '../services/api';
 import { LocationSelector } from '../components/Geography';
+import '../styles/AuthPages.css';
 
 // Иконки для глаза (показать/скрыть пароль)
 const EyeIcon = () => (
@@ -819,6 +820,10 @@ const Register = () => {
 
   return (
     <RegisterContainer>
+      {/* Декоративные круги */}
+      <div className="auth-decoration auth-decoration-top-right"></div>
+      <div className="auth-decoration auth-decoration-bottom-left"></div>
+      
       <RegisterCard>
         <LogoSection>
           <Logo>SF</Logo>
@@ -1286,6 +1291,80 @@ const Register = () => {
         <LoginLink>
           Уже есть аккаунт? <Link to="/login">Войти</Link>
         </LoginLink>
+
+        {/* Кнопки для клубов */}
+        <div style={{ 
+          marginTop: '30px', 
+          paddingTop: '20px', 
+          borderTop: '1px solid #e2e8f0',
+          textAlign: 'center'
+        }}>
+          <p style={{ 
+            color: '#718096', 
+            fontSize: '14px', 
+            marginBottom: '15px',
+            fontWeight: '500'
+          }}>
+            Вы представляете клуб?
+          </p>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            gap: '15px',
+            flexWrap: 'wrap'
+          }}>
+            <Link 
+              to="/club/login" 
+              style={{ 
+                background: 'linear-gradient(135deg, #dc3522 0%, #ff6b58 100%)',
+                color: 'white',
+                textDecoration: 'none',
+                fontWeight: '600',
+                fontSize: '14px',
+                padding: '10px 20px',
+                borderRadius: '8px',
+                transition: 'all 0.3s ease',
+                boxShadow: '0 4px 15px rgba(220, 53, 34, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = '0 6px 20px rgba(220, 53, 34, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = '0 4px 15px rgba(220, 53, 34, 0.3)';
+              }}
+            >
+              Вход для клубов
+            </Link>
+            <Link 
+              to="/club/register" 
+              style={{ 
+                background: 'white',
+                color: '#dc3522',
+                textDecoration: 'none',
+                fontWeight: '600',
+                fontSize: '14px',
+                padding: '10px 20px',
+                borderRadius: '8px',
+                border: '2px solid #dc3522',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = '#dc3522';
+                e.target.style.color = 'white';
+                e.target.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'white';
+                e.target.style.color = '#dc3522';
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              Регистрация клуба
+            </Link>
+          </div>
+        </div>
       </RegisterCard>
     </RegisterContainer>
   );

@@ -6,6 +6,7 @@ import styled, { ThemeProvider, createGlobalStyle } from 'styled-components';
 
 // Компоненты
 import AuthGuard from './components/AuthGuard';
+import ClubAuthGuard from './components/ClubAuthGuard';
 import Navigation from './components/Navigation';
 import { NotificationProvider } from './contexts/NotificationContext';
 import Login from './pages/Login';
@@ -22,6 +23,14 @@ import Clubs from './pages/Clubs';
 import Subscriptions from './pages/Subscriptions';
 import Ratings from './pages/Ratings';
 import BalanceTopUp from './pages/BalanceTopUp';
+
+// Клубные страницы
+import ClubLogin from './pages/ClubLogin';
+import ClubRegister from './pages/ClubRegister';
+import ClubDashboard from './pages/ClubDashboard';
+import ClubEvents from './pages/ClubEvents';
+import ClubAnalytics from './pages/ClubAnalytics';
+import ClubLayout from './components/ClubLayout';
 
 // Стили и тема
 const theme = {
@@ -249,6 +258,35 @@ function App() {
               {/* Публичные роуты */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              
+              {/* Клубные роуты */}
+              <Route path="/club/login" element={<ClubLogin />} />
+              <Route path="/club/register" element={<ClubRegister />} />
+              
+              {/* Защищенные клубные роуты */}
+              <Route path="/club/dashboard" element={
+                <ClubAuthGuard>
+                  <ClubLayout>
+                    <ClubDashboard />
+                  </ClubLayout>
+                </ClubAuthGuard>
+              } />
+              
+              <Route path="/club/events" element={
+                <ClubAuthGuard>
+                  <ClubLayout>
+                    <ClubEvents />
+                  </ClubLayout>
+                </ClubAuthGuard>
+              } />
+              
+              <Route path="/club/analytics" element={
+                <ClubAuthGuard>
+                  <ClubLayout>
+                    <ClubAnalytics />
+                  </ClubLayout>
+                </ClubAuthGuard>
+              } />
               
               {/* Защищенные роуты */}
               <Route path="/" element={

@@ -196,3 +196,6 @@ const profile = await response.json();
 docker run -d -p 1025:1025 -p 8025:8025 --name mailhog mailhog/mailhog - запуска почтового сервера
 docker stop mailhog - его остановка
 docker rm mailhog - его удаление
+
+sudo docker exec -it swingfox-backend-1 npx sequelize-cli db:migrate:status - проверка миграций
+sudo docker exec -it swingfox-backend-1 npx sequelize-cli db:migrate - запуск недостающих

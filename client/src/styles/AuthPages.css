@@ -1,0 +1,221 @@
+/* Auth Pages Styles - Общие стили для страниц входа и регистрации */
+
+/* Декоративные круги */
+.auth-decoration {
+  position: fixed;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(220, 53, 34, 0.3) 0%, rgba(255, 107, 88, 0.3) 100%);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(220, 53, 34, 0.4);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.auth-decoration-top-right {
+  width: 200px;
+  height: 200px;
+  top: -100px;
+  right: -100px;
+  animation: float 6s ease-in-out infinite;
+  background: linear-gradient(135deg, rgba(220, 53, 34, 0.4) 0%, rgba(255, 107, 88, 0.4) 100%);
+  border: 3px solid rgba(220, 53, 34, 0.6);
+}
+
+.auth-decoration-bottom-left {
+  width: 150px;
+  height: 150px;
+  bottom: -75px;
+  left: -75px;
+  animation: float 8s ease-in-out infinite reverse;
+  background: linear-gradient(135deg, rgba(220, 53, 34, 0.4) 0%, rgba(255, 107, 88, 0.4) 100%);
+  border: 3px solid rgba(220, 53, 34, 0.6);
+}
+
+@keyframes float {
+  0%, 100% { 
+    transform: translateY(0px) rotate(0deg); 
+  }
+  50% { 
+    transform: translateY(-20px) rotate(180deg); 
+  }
+}
+
+/* Анимация появления */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Улучшенные стили для форм */
+.auth-form {
+  animation: slideUp 0.4s ease-out;
+}
+
+.auth-form .form-group {
+  margin-bottom: 20px;
+}
+
+.auth-form .input {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.auth-form .input:focus {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(220, 53, 34, 0.15);
+}
+
+.auth-form .input.error {
+  border-color: #ef4444;
+  background: #fef2f2;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+}
+
+/* Стили для кнопок */
+.auth-button {
+  background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-weight: 600;
+  padding: 14px 24px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.auth-button:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 40px rgba(220, 53, 34, 0.3);
+}
+
+.auth-button:hover:not(:disabled)::before {
+  left: 100%;
+}
+
+.auth-button:active:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.auth-button:disabled {
+  background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Стили для ссылок */
+.auth-link {
+  color: #dc3522;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.auth-link:hover {
+  color: #991b1b;
+  text-decoration: underline;
+}
+
+.auth-link-secondary {
+  color: #718096;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.auth-link-secondary:hover {
+  color: #4a5568;
+  transform: translateX(-4px);
+}
+
+/* Стили для логотипа */
+.auth-logo {
+  background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
+  box-shadow: 0 10px 30px rgba(220, 53, 34, 0.3);
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+  .auth-decoration-top-right {
+    width: 150px;
+    height: 150px;
+    top: -75px;
+    right: -75px;
+  }
+  
+  .auth-decoration-bottom-left {
+    width: 100px;
+    height: 100px;
+    bottom: -50px;
+    left: -50px;
+  }
+  
+  .auth-form .input {
+    font-size: 16px; /* Предотвращает зум на iOS */
+  }
+  
+  .auth-button {
+    padding: 16px 20px;
+    font-size: 16px;
+  }
+}
+
+/* Темная тема */
+@media (prefers-color-scheme: dark) {
+  .auth-decoration {
+    background: linear-gradient(135deg, rgba(220, 53, 34, 0.2) 0%, rgba(255, 107, 88, 0.2) 100%);
+    border-color: rgba(220, 53, 34, 0.3);
+  }
+}
+
+/* Уменьшенная анимация для пользователей с ограниченными возможностями */
+@media (prefers-reduced-motion: reduce) {
+  .auth-decoration {
+    animation: none;
+  }
+  
+  .auth-button::before {
+    display: none;
+  }
+  
+  .auth-button:hover {
+    transform: none;
+  }
+  
+  .auth-link-secondary:hover {
+    transform: none;
+  }
+}
+
+/* Высокий контраст */
+@media (prefers-contrast: high) {
+  .auth-decoration {
+    background: rgba(220, 53, 34, 0.8);
+    border-color: rgba(220, 53, 34, 1);
+  }
+  
+  .auth-button {
+    background: #dc3522;
+    border: 2px solid #dc3522;
+  }
+}
+

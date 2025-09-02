@@ -30,6 +30,22 @@ const Chat = sequelize.define('Chat', {
   is_read: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
+  },
+  club_id: {
+    type: DataTypes.BIGINT,
+    allowNull: true,
+    references: {
+      model: 'clubs',
+      key: 'id'
+    }
+  },
+  is_club_chat: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  chat_type: {
+    type: DataTypes.ENUM('user', 'club', 'event'),
+    defaultValue: 'user'
   }
 }, {
   tableName: 'chat',
@@ -71,6 +87,25 @@ Chat.getUnreadCount = function(user) {
       is_read: false
     }
   });
+};
+
+Chat.getClubChat = function(clubId, limit = 50) {
+  return this.findAll({
+    where: {
+      club_id: clubId,
+      is_club_chat: true
+    },
+    order: [['date', 'DESC']],
+    limit
+  });
+};
+
+Chat.isClubChat = function() {
+  return this.is_club_chat === true;
+};
+
+Chat.isEventChat = function() {
+  return this.chat_type === 'event';
 };
 
 module.exports = Chat;
