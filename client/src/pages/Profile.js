@@ -642,7 +642,7 @@ const Profile = () => {
   // const [superlikeMessage, setSuperlikeMessage] = useState('');
 
   // Получение полученных подарков
-  const { data: receivedGiftsData = [] } = useQuery(
+  const { data: receivedGiftsData = { gifts: [] } } = useQuery(
     ['receivedGifts', targetLogin],
     () => giftsAPI.getReceivedGifts(20, 0, targetLogin),
     {
@@ -669,7 +669,7 @@ const Profile = () => {
   useEffect(() => {
     if (receivedGiftsData) {
       console.log('Received gifts data:', receivedGiftsData);
-      console.log('Received gifts:', receivedGiftsData);
+      console.log('Received gifts:', receivedGiftsData.gifts);
     }
   }, [receivedGiftsData]);
 
@@ -1216,7 +1216,7 @@ const Profile = () => {
             $active={activeTab === 'gifts'}
             onClick={() => setActiveTab('gifts')}
           >
-            🎁 Подарки {receivedGiftsData.length > 0 && `(${receivedGiftsData.length})`}
+                              🎁 Подарки {receivedGiftsData.gifts && receivedGiftsData.gifts.length > 0 && `(${receivedGiftsData.gifts.length})`}
           </Tab>
           {isOwnProfile && (
             <Tab
@@ -1444,7 +1444,7 @@ const Profile = () => {
                   )}
 
                   {/* Подарки (для всех профилей) */}
-                  {receivedGiftsData.length > 0 && (
+                  {receivedGiftsData.gifts && receivedGiftsData.gifts.length > 0 && (
                     <InfoSection>
                       <h3>🎁 Полученные подарки</h3>
                       <div style={{ 
@@ -1453,7 +1453,7 @@ const Profile = () => {
                         gap: '15px',
                         marginTop: '15px'
                       }}>
-                        {receivedGiftsData.slice(0, 6).map((gift, index) => (
+                        {receivedGiftsData.gifts.slice(0, 6).map((gift, index) => (
                           <div key={index} style={{
                             background: 'linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%)',
                             border: '2px solid #fed7d7',
@@ -1491,7 +1491,7 @@ const Profile = () => {
                             </div>
                           </div>
                         ))}
-                        {receivedGiftsData.length > 6 && (
+                        {receivedGiftsData.gifts && receivedGiftsData.gifts.length > 6 && (
                           <div style={{
                             background: 'rgba(220, 53, 34, 0.1)',
                             border: '2px dashed #dc3522',
@@ -1504,7 +1504,7 @@ const Profile = () => {
                             cursor: 'pointer'
                           }} onClick={() => setActiveTab('gifts')}>
                             <div style={{ color: '#dc3522', fontSize: '14px', fontWeight: '600' }}>
-                              +{receivedGiftsData.length - 6} еще
+                              +{receivedGiftsData.gifts.length - 6} еще
                             </div>
                           </div>
                         )}
@@ -1643,7 +1643,7 @@ const Profile = () => {
                 🎁 Подарки
               </h3>
               
-              {receivedGiftsData.length === 0 ? (
+                                {receivedGiftsData.gifts && receivedGiftsData.gifts.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 20px', color: '#718096' }}>
                   <div style={{ fontSize: '64px', marginBottom: '20px', opacity: 0.5 }}>🎁</div>
                   <h4 style={{ margin: '0 0 10px 0', color: '#2d3748' }}>
@@ -1677,19 +1677,19 @@ const Profile = () => {
                     }}>
                       <div>
                         <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc3522' }}>
-                          {receivedGiftsData.length}
+                          {receivedGiftsData.gifts ? receivedGiftsData.gifts.length : 0}
                         </div>
                         <div style={{ fontSize: '12px', color: '#4a5568' }}>Всего получено</div>
                       </div>
                       <div>
                         <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc3522' }}>
-                          {receivedGiftsData.filter(g => g.message).length}
+                          {receivedGiftsData.gifts ? receivedGiftsData.gifts.filter(g => g.message).length : 0}
                         </div>
                         <div style={{ fontSize: '12px', color: '#4a5568' }}>С сообщениями</div>
                       </div>
                       <div>
                         <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc3522' }}>
-                          {new Set(receivedGiftsData.map(g => g.from_user)).size}
+                          {receivedGiftsData.gifts ? new Set(receivedGiftsData.gifts.map(g => g.from_user)).size : 0}
                         </div>
                         <div style={{ fontSize: '12px', color: '#4a5568' }}>Отправителей</div>
                       </div>
@@ -1698,7 +1698,7 @@ const Profile = () => {
 
                   {/* Список подарков */}
                   <Grid $columns="repeat(auto-fill, minmax(280px, 1fr))" $gap="20px">
-                    {receivedGiftsData.map((gift, index) => (
+                    {receivedGiftsData.gifts && receivedGiftsData.gifts.map((gift, index) => (
                       <GiftCard key={index}>
                         <GiftEmoji>{GIFT_CONFIG[gift.gift_type]?.emoji || '🎁'}</GiftEmoji>
                         <GiftSender onClick={() => handleGiftSenderClick(gift.from_user)}>
