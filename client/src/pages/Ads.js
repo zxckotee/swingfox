@@ -284,41 +284,81 @@ const NoAds = styled.div`
   text-align: center;
   color: #718096;
   padding: 80px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px; /* Добавляем как в других компонентах */
   
   .icon {
-    font-size: 64px;
-    margin-bottom: 20px;
-    opacity: 0.5;
+    font-size: 72px; /* Увеличиваем с 64px до 72px */
+    margin-bottom: 54px; /* Увеличиваем с 20px до 54px для поднятия эмодзи на 30px */
+    opacity: 0.7; /* Увеличиваем с 0.5 до 0.7 */
+    line-height: 1;
+    display: block;
+    text-align: center;
+    width: 100%;
+    transform: translateX(-2px); /* Компенсация для визуального центра эмодзи */
   }
   
   h3 {
-    margin: 0 0 15px 0;
-    font-size: 24px;
+    margin: 0 0 16px 0; /* Увеличиваем с 15px до 16px */
+    font-size: 28px; /* Увеличиваем с 24px до 28px */
     color: #2d3748;
+    font-weight: 700; /* Добавляем font-weight */
+    line-height: 1.2;
+    text-align: center;
+    width: 100%;
   }
   
   p {
     margin: 0 0 30px 0;
     font-size: 16px;
-    line-height: 1.5;
+    line-height: 1.6;
     max-width: 400px;
     margin-left: auto;
     margin-right: auto;
   }
   
   @media (max-width: 768px) {
+    min-height: 300px;
     padding: 60px 20px;
     
     .icon {
-      font-size: 48px;
+      font-size: 56px; /* Увеличиваем с 48px до 56px */
+      margin-bottom: 50px;
+      transform: translateX(-1px);
     }
     
     h3 {
-      font-size: 20px;
+      font-size: 24px; /* Увеличиваем с 20px до 24px */
+      margin-bottom: 14px;
+    }
+    
+    p {
+      font-size: 15px;
+      max-width: 350px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    min-height: 250px;
+    padding: 40px 16px;
+    
+    .icon {
+      font-size: 48px;
+      margin-bottom: 48px;
+      transform: translateX(-1px);
+    }
+    
+    h3 {
+      font-size: 22px;
+      margin-bottom: 12px;
     }
     
     p {
       font-size: 14px;
+      max-width: 300px;
     }
   }
 `;

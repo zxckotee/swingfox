@@ -211,25 +211,84 @@ const NoResults = styled.div`
   text-align: center;
   padding: 60px 20px;
   color: #718096;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px; /* Увеличиваем с 300px до 400px как в NoMoreProfiles */
   
   .icon {
-    font-size: 64px;
-    margin-bottom: 20px;
-    opacity: 0.5;
+    font-size: 72px;
+    margin-bottom: 54px;
+    opacity: 0.7;
+    line-height: 1;
+    display: block;
+    text-align: center;
+    width: 100%;
+    transform: translateX(-2px);
   }
   
   h3 {
-    margin: 0 0 15px 0;
-    font-size: 24px;
+    margin: 0 0 16px 0;
+    font-size: 28px;
     color: #2d3748;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    width: 100%;
   }
   
   p {
     margin: 0;
     font-size: 16px;
-    max-width: 300px;
+    max-width: 320px;
     margin-left: auto;
     margin-right: auto;
+    color: #718096;
+    text-align: center;
+    line-height: 1.6;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 40px 20px;
+    min-height: 300px; /* Увеличиваем с 250px до 300px */
+    
+    .icon {
+      font-size: 56px;
+      margin-bottom: 50px;
+      transform: translateX(-1px);
+    }
+    
+    h3 {
+      font-size: 24px;
+      margin-bottom: 14px;
+    }
+    
+    p {
+      font-size: 15px;
+      max-width: 280px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    padding: 30px 16px;
+    min-height: 250px; /* Увеличиваем с 200px до 250px */
+    
+    .icon {
+      font-size: 48px;
+      margin-bottom: 48px;
+      transform: translateX(-1px);
+    }
+    
+    h3 {
+      font-size: 22px;
+      margin-bottom: 12px;
+    }
+    
+    p {
+      font-size: 14px;
+      max-width: 260px;
+    }
   }
 `;
 

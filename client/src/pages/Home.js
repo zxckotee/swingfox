@@ -926,29 +926,45 @@ const NoMoreProfiles = styled.div`
   color: #718096;
   padding: 60px 20px;
   animation: fadeInUp 0.6s ease-out;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
   
   .icon {
-    font-size: 64px;
-    margin-bottom: 20px;
-    opacity: 0.5;
+    font-size: 72px;
+    margin-bottom: 54px; /* Увеличиваем с 24px до 54px (24 + 30) */
+    opacity: 0.7;
     animation: bounce 2s ease-in-out infinite;
+    line-height: 1;
+    display: block;
+    text-align: center;
+    width: 100%;
+    transform: translateX(-2px);
   }
   
   h3 {
-    margin: 0 0 15px 0;
-    font-size: 24px;
+    margin: 0 0 16px 0;
+    font-size: 28px;
     color: #2d3748;
+    font-weight: 700;
     animation: slideInUp 0.8s ease-out 0.2s both;
+    line-height: 1.2;
+    text-align: center;
+    width: 100%;
   }
   
   p {
-    margin: 0 0 30px 0;
+    margin: 0 0 32px 0;
     font-size: 16px;
-    line-height: 1.5;
-    max-width: 300px;
+    line-height: 1.6;
+    max-width: 320px;
     margin-left: auto;
     margin-right: auto;
     animation: slideInUp 0.8s ease-out 0.4s both;
+    color: #718096;
+    text-align: center;
   }
   
   @keyframes fadeInUp {
@@ -975,29 +991,57 @@ const NoMoreProfiles = styled.div`
   
   @keyframes bounce {
     0%, 20%, 50%, 80%, 100% {
-      transform: translateY(0);
+      transform: translateY(0) translateX(-2px);
     }
     40% {
-      transform: translateY(-10px);
+      transform: translateY(-10px) translateX(-2px);
     }
     60% {
-      transform: translateY(-5px);
+      transform: translateY(-5px) translateX(-2px);
     }
   }
   
   @media (max-width: 768px) {
     padding: 40px 20px;
+    min-height: 300px;
     
     .icon {
-      font-size: 48px;
+      font-size: 56px;
+      margin-bottom: 50px; /* Увеличиваем с 20px до 50px (20 + 30) */
+      transform: translateX(-1px);
     }
     
     h3 {
-      font-size: 20px;
+      font-size: 24px;
+      margin-bottom: 14px;
+    }
+    
+    p {
+      font-size: 15px;
+      margin-bottom: 28px;
+      max-width: 280px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    padding: 30px 16px;
+    min-height: 250px;
+    
+    .icon {
+      font-size: 48px;
+      margin-bottom: 48px; /* Увеличиваем с 18px до 48px (18 + 30) */
+      transform: translateX(-1px);
+    }
+    
+    h3 {
+      font-size: 22px;
+      margin-bottom: 12px;
     }
     
     p {
       font-size: 14px;
+      margin-bottom: 24px;
+      max-width: 260px;
     }
   }
 `;

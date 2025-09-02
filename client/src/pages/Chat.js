@@ -9,7 +9,7 @@ import {
   Avatar,
   IconButton,
   FlexContainer,
-  SearchIcon,
+  // SearchIcon, // Убираем этот импорт
   SendIcon,
   PlusIcon
 } from '../components/UI';
@@ -100,32 +100,38 @@ const SearchContainer = styled.div`
 const SearchInput = styled.div`
   position: relative;
   
-      input {
-      width: 100%;
-      padding: 15px 20px 15px 50px;
-      border: 2px solid rgba(220, 53, 34, 0.2);
-      border-radius: 25px;
-      font-size: 16px;
-      background: white;
-      transition: all 0.3s ease;
-      
-      &:focus {
-        outline: none;
-        border-color: #dc3522;
-        box-shadow: 0 0 0 3px rgba(220, 53, 34, 0.1);
-      }
+  input {
+    width: 100%;
+    padding: 15px 50px 15px 20px;
+    border: 2px solid rgba(220, 53, 34, 0.2);
+    border-radius: 25px;
+    font-size: 16px;
+    background: white;
+    transition: all 0.3s ease;
+    
+    &:focus {
+      outline: none;
+      border-color: #dc3522;
+      box-shadow: 0 0 0 3px rgba(220, 53, 34, 0.1);
+    }
     
     &::placeholder {
       color: #a0aec0;
     }
   }
   
-  .search-icon {
+  /* Используем псевдоэлемент для иконки */
+  &::after {
+    content: "🔍";
     position: absolute;
-    left: 18px;
+    right: 18px;
     top: 50%;
     transform: translateY(-50%);
     color: #a0aec0;
+    font-size: 18px;
+    z-index: 2;
+    cursor: pointer;
+    pointer-events: none;
   }
 `;
 
@@ -482,27 +488,88 @@ const EmptyState = styled.div`
   text-align: center;
   color: #718096;
   padding: 40px 20px;
+  min-height: 400px;
   
   .content {
     max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     
     .icon {
       font-size: 80px;
-      margin-bottom: 20px;
-      opacity: 0.5;
+      margin-bottom: 74px; /* Увеличиваем с 54px до 74px - поднимаем эмодзи еще на 20px выше */
+      opacity: 0.7;
+      line-height: 1;
+      display: block;
+      text-align: center;
+      width: 100%;
+      transform: translateX(-2px);
     }
     
     h3 {
-      font-size: 24px;
-      font-weight: 600;
+      font-size: 28px;
+      font-weight: 700;
       color: #2d3748;
-      margin: 0 0 10px 0;
+      margin: 0 0 16px 0;
+      line-height: 1.2;
+      text-align: center;
+      width: 100%;
     }
     
     p {
       font-size: 16px;
       line-height: 1.6;
       margin: 0;
+      max-width: 320px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    min-height: 300px;
+    padding: 30px 16px;
+    
+    .content {
+      .icon {
+        font-size: 64px;
+        margin-bottom: 70px; /* Увеличиваем с 50px до 70px */
+        transform: translateX(-1px);
+      }
+      
+      h3 {
+        font-size: 24px;
+        margin-bottom: 14px;
+      }
+      
+      p {
+        font-size: 15px;
+        max-width: 280px;
+      }
+    }
+  }
+  
+  @media (max-width: 480px) {
+    min-height: 250px;
+    padding: 25px 12px;
+    
+    .content {
+      .icon {
+        font-size: 56px;
+        margin-bottom: 68px; /* Увеличиваем с 48px до 68px */
+        transform: translateX(-1px);
+      }
+      
+      h3 {
+        font-size: 22px;
+        margin-bottom: 12px;
+      }
+      
+      p {
+        font-size: 14px;
+        max-width: 260px;
+      }
     }
   }
 `;
@@ -999,13 +1066,13 @@ const Chat = () => {
         
         <SearchContainer>
           <SearchInput>
-            <SearchIcon className="search-icon" />
             <input
               type="text"
               placeholder="Поиск чатов..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+            {/* Убираем <span className="search-icon">🔍</span> */}
           </SearchInput>
         </SearchContainer>
         
