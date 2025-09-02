@@ -545,7 +545,8 @@ export const Avatar = styled.div`
   border-radius: 50%;
   background-image: url(${props => props.$src});
   background-size: cover;
-  background-position: center;
+  background-position: center center;
+  background-repeat: no-repeat;
   background-color: ${props => props.$bgColor || '#dc3522'};
   color: white;
   display: flex;
@@ -557,6 +558,7 @@ export const Avatar = styled.div`
   cursor: ${props => props.$clickable ? 'pointer' : 'default'};
   transition: all 0.2s ease;
   position: relative;
+  overflow: hidden;
   
   &:hover {
     ${props => props.$clickable && `
@@ -636,16 +638,6 @@ export const Avatar = styled.div`
       width: 38px;
       height: 38px;
       font-size: 15px;
-      border-width: 1.5px;
-    `}
-  }
-  
-  /* Мобильные - аватарка 36px */
-  @media (max-width: 480px) {
-    ${props => props.$size === '45px' && `
-      width: 36px;
-      height: 36px;
-      font-size: 14px;
       border-width: 1.5px;
     `}
   }
@@ -816,3 +808,4 @@ export const WalletIcon = () => (
 export { default as Checkbox } from './Checkbox';
 
 export { default as BalanceTopUp } from './BalanceTopUp';
+export { default as AvatarCropper } from './AvatarCropper';

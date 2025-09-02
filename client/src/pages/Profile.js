@@ -40,7 +40,8 @@ import {
   CrownIcon,
   CreditCardIcon,
   WalletIcon,
-  CheckIcon
+  CheckIcon,
+  AvatarCropper
 } from '../components/UI';
 
 // Дополнительные иконки
@@ -107,26 +108,49 @@ const AvatarSection = styled.div`
   display: inline-block;
   margin-bottom: 20px;
   z-index: 1;
+  text-align: center;
+  
+  /* Центрируем аватарку */
+  .avatar-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto;
+  }
 `;
 
 const AvatarOverlay = styled.div`
   position: absolute;
-  bottom: 0;
+  top: 0;
+  left: 0;
   right: 0;
-  width: 36px;
-  height: 36px;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 50%;
-  padding: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.3s ease;
+  z-index: 2;
   
   &:hover {
-    background: white;
-    transform: scale(1.1);
+    opacity: 1;
+    background: rgba(220, 53, 34, 0.8);
+  }
+  
+  svg {
+    color: white;
+    width: 24px;
+    height: 24px;
+  }
+  
+  @media (max-width: 768px) {
+    svg {
+      width: 20px;
+      height: 20px;
+    }
   }
 `;
 
@@ -538,6 +562,32 @@ const GiftMessage = styled.div`
   justify-content: center;
 `;
 
+const AvatarHint = styled.div`
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 3;
+  
+  ${AvatarSection}:hover & {
+    opacity: 1;
+  }
+  
+  @media (max-width: 768px) {
+    font-size: 11px;
+    padding: 6px 10px;
+    bottom: -25px;
+  }
+`;
+
 const Profile = () => {
   const { login } = useParams();
   const navigate = useNavigate();
@@ -632,6 +682,10 @@ const Profile = () => {
 
   const avatarInputRef = useRef();
   const imagesInputRef = useRef();
+
+  // Добавляем состояние для кропа аватарки
+  const [showAvatarCropper, setShowAvatarCropper] = useState(false);
+  const [avatarFileToCrop, setAvatarFileToCrop] = useState(null);
 
   // Функция для перехода в профиль отправителя подарка
   const handleGiftSenderClick = (senderLogin) => {
@@ -888,13 +942,30 @@ const Profile = () => {
     updateProfileMutation.mutate(data);
   };
 
+  // Обновляем функцию загрузки аватарки
   const handleAvatarUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
-      const formData = new FormData();
-      formData.append('avatar', file);
-      uploadAvatarMutation.mutate(formData);
+      // Проверяем, что это изображение
+      if (!file.type.startsWith('image/')) {
+        toast.error('Пожалуйста, выберите файл изображения');
+        return;
+      }
+      
+      // Открываем кроппер
+      setAvatarFileToCrop(file);
+      setShowAvatarCropper(true);
+      
+      // Очищаем input
+      event.target.value = '';
     }
+  };
+
+  // Добавляем функцию обработки обрезанной аватарки
+  const handleAvatarCrop = (croppedFile) => {
+    const formData = new FormData();
+    formData.append('avatar', croppedFile);
+    uploadAvatarMutation.mutate(formData);
   };
 
   const handleImageUpload = (event) => {
@@ -1027,32 +1098,37 @@ const Profile = () => {
       <ContentCard $maxWidth="1000px" $padding="0">
         <ProfileHeader>
           <AvatarSection>
-            <Avatar
-              $src={profile.ava ? `/uploads/${profile.ava}` : ''}
-              $size="120px"
-              $fontSize="48px"
-              $clickable={isOwnProfile}
-            >
-              {!profile.ava && profile.login?.charAt(0).toUpperCase()}
-            </Avatar>
-            {isOwnProfile && (
-              <>
-                <AvatarOverlay onClick={() => avatarInputRef.current?.click()}>
-                  <CameraIcon />
-                </AvatarOverlay>
-                <HiddenInput
-                  ref={avatarInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarUpload}
-                />
-              </>
-            )}
+            <div className="avatar-container">
+              <Avatar
+                $src={profile.ava ? `/uploads/${profile.ava}` : ''}
+                $size="120px"
+                $fontSize="48px"
+                $clickable={isOwnProfile}
+              >
+                {!profile.ava && profile.login?.charAt(0).toUpperCase()}
+              </Avatar>
+              {isOwnProfile && (
+                <>
+                  <AvatarOverlay onClick={() => avatarInputRef.current?.click()}>
+                    <CameraIcon />
+                  </AvatarOverlay>
+                  <HiddenInput
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                  />
+                  <AvatarHint>
+                    Нажмите для загрузки аватарки
+                  </AvatarHint>
+                </>
+              )}
+            </div>
           </AvatarSection>
           
           <UserInfo>
             <h2>@{profile.login}</h2>
-                            <p>{profile.city} • {profile.status} {profile.distance > 0 && `• ${profile.distance}км от вас`}</p>
+            <p>{profile.city} • {profile.status} {profile.distance > 0 && `• ${profile.distance}км от вас`}</p>
           </UserInfo>
         </ProfileHeader>
 
@@ -1961,6 +2037,18 @@ const Profile = () => {
             </Button>
           </ModalContent>
         </Modal>
+      )}
+
+      {/* Модальное окно кропа аватарки */}
+      {showAvatarCropper && (
+        <AvatarCropper
+          isOpen={showAvatarCropper}
+          onClose={() => setShowAvatarCropper(false)}
+          imageFile={avatarFileToCrop}
+          onCrop={handleAvatarCrop}
+          aspectRatio={1}
+          minSize={100}
+        />
       )}
     </ProfileContainer>
   );
