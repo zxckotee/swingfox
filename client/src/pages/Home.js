@@ -1123,9 +1123,71 @@ const Home = () => {
   // ДОБАВИТЬ ЭТО: уникальный ключ для каждого показа профиля
   const [profileShowKey, setProfileShowKey] = useState(0);
   
+  // Состояние для отслеживания восстановления
+  const [isRestoring, setIsRestoring] = useState(true);
+  
   const queryClient = useQueryClient();
   const currentUser = apiUtils.getCurrentUser();
   const { showMatchPopup } = useNotifications();
+
+  // Функции для сохранения и восстановления состояния
+  const saveProfilesState = () => {
+    try {
+      const stateToSave = {
+        currentProfile,
+        profileQueue,
+        profileHistory,
+        historyIndex,
+        profileShowKey,
+        timestamp: Date.now()
+      };
+      sessionStorage.setItem('home-profiles-state', JSON.stringify(stateToSave));
+      console.log('💾 Состояние анкет сохранено в sessionStorage');
+    } catch (error) {
+      console.error('Ошибка сохранения состояния:', error);
+    }
+  };
+
+  const restoreProfilesState = () => {
+    try {
+      const savedState = sessionStorage.getItem('home-profiles-state');
+      if (savedState) {
+        const parsedState = JSON.parse(savedState);
+        const now = Date.now();
+        const timeDiff = now - parsedState.timestamp;
+        
+        // Восстанавливаем состояние только если оно не старше 30 минут
+        if (timeDiff < 30 * 60 * 1000) {
+          setCurrentProfile(parsedState.currentProfile);
+          setProfileQueue(parsedState.profileQueue || []);
+          setProfileHistory(parsedState.profileHistory || []);
+          setHistoryIndex(parsedState.historyIndex || -1);
+          setProfileShowKey(parsedState.profileShowKey || 0);
+          console.log('🔄 Состояние анкет восстановлено из sessionStorage');
+          return true;
+        } else {
+          console.log('⏰ Сохраненное состояние устарело, очищаем');
+          sessionStorage.removeItem('home-profiles-state');
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка восстановления состояния:', error);
+      sessionStorage.removeItem('home-profiles-state');
+    }
+    
+    // Устанавливаем флаг восстановления в false
+    setIsRestoring(false);
+    return false;
+  };
+
+  const clearProfilesState = () => {
+    try {
+      sessionStorage.removeItem('home-profiles-state');
+      console.log('🗑️ Состояние анкет очищено из sessionStorage');
+    } catch (error) {
+      console.error('Ошибка очистки состояния:', error);
+    }
+  };
 
   // Функция для форматирования возраста партнеров
   const formatPartnerAge = (dateString) => {
@@ -1336,6 +1398,7 @@ const Home = () => {
     'initial-profiles',
     () => swipeAPI.getProfilesBatch(10, []), // Не исключаем анкеты
     {
+      enabled: !currentProfile && profileQueue.length === 0, // Загружаем только если нет восстановленного состояния
       onSuccess: (data) => {
         if (data && data.length > 0) {
           // Первый профиль становится текущим
@@ -1505,6 +1568,211 @@ const Home = () => {
     }
   }, [currentProfile]);
 
+  // Автоматическое сохранение состояния при изменениях
+  useEffect(() => {
+    if (currentProfile || profileQueue.length > 0 || profileHistory.length > 0) {
+      saveProfilesState();
+    }
+  }, [currentProfile, profileQueue, profileHistory, historyIndex, profileShowKey]);
+
+  // Восстановление состояния при монтировании компонента
+  useEffect(() => {
+    const stateRestored = restoreProfilesState();
+    
+    // Если состояние не восстановлено, загружаем начальные профили
+    if (!stateRestored) {
+      console.log('🔄 Состояние не восстановлено, загружаем начальные профили');
+      setIsRestoring(false);
+    } else {
+      console.log('✅ Состояние восстановлено, проверяем необходимость предзагрузки');
+      // Если в очереди мало профилей, подгружаем еще
+      if (profileQueue.length <= 3) {
+        preloadProfiles(10);
+      }
+      setIsRestoring(false);
+    }
+
+    // Очистка состояния при размонтировании
+    return () => {
+      // Сохраняем состояние перед размонтированием
+      saveProfilesState();
+    };
+  }, []);
+
+  // Очистка состояния при выходе пользователя
+  useEffect(() => {
+    const handleAuthLogout = () => {
+      console.log('🚪 Пользователь вышел, очищаем состояние анкет');
+      clearProfilesState();
+    };
+
+    const handleAuthLogin = () => {
+      console.log('🔑 Пользователь вошел, очищаем состояние анкет');
+      clearProfilesState();
+    };
+
+    const handleProfileUpdate = () => {
+      console.log('⚙️ Профиль обновлен, очищаем состояние анкет');
+      clearProfilesState();
+    };
+
+    const handleLocationChange = () => {
+      console.log('📍 Местоположение изменилось, очищаем состояние анкет');
+      clearProfilesState();
+    };
+
+    const handleFiltersChange = () => {
+      console.log('🔍 Фильтры изменились, очищаем состояние анкет');
+      clearProfilesState();
+    };
+
+    const handleSubscriptionChange = () => {
+      console.log('💎 Подписка изменилась, очищаем состояние анкет');
+      clearProfilesState();
+    };
+
+    const handlePrivacyChange = () => {
+      console.log('🔒 Настройки приватности изменились, очищаем состояние анкет');
+      clearProfilesState();
+    };
+
+    const handleNotificationsChange = () => {
+      console.log('🔔 Настройки уведомлений изменились, очищаем состояние анкет');
+      clearProfilesState();
+    };
+
+    const handleLanguageChange = () => {
+      console.log('🌐 Язык изменился, очищаем состояние анкет');
+      clearProfilesState();
+    };
+
+    const handleThemeChange = () => {
+      console.log('🎨 Тема изменилась, очищаем состояние анкет');
+      clearProfilesState();
+    };
+
+    const handleMessageNotificationsChange = () => {
+      console.log('💬 Настройки уведомлений о сообщениях изменились, очищаем состояние анкет');
+      clearProfilesState();
+    };
+
+    const handleLikeNotificationsChange = () => {
+      console.log('❤️ Настройки уведомлений о лайках изменились, очищаем состояние анкет');
+      clearProfilesState();
+    };
+
+    const handleMatchNotificationsChange = () => {
+      console.log('💕 Настройки уведомлений о мэтчах изменились, очищаем состояние анкет');
+      clearProfilesState();
+    };
+
+    const handleVisitNotificationsChange = () => {
+      console.log('👁️ Настройки уведомлений о посещениях изменились, очищаем состояние анкет');
+      clearProfilesState();
+    };
+
+    const handleCommentNotificationsChange = () => {
+      console.log('💭 Настройки уведомлений о комментариях изменились, очищаем состояние анкет');
+      clearProfilesState();
+    };
+
+    const handleGiftNotificationsChange = () => {
+      console.log('🎁 Настройки уведомлений о подарках изменились, очищаем состояние анкет');
+      clearProfilesState();
+    };
+
+    const handleEventNotificationsChange = () => {
+      console.log('🎉 Настройки уведомлений о событиях изменились, очищаем состояние анкет');
+      clearProfilesState();
+    };
+
+    const handleClubNotificationsChange = () => {
+      console.log('🏢 Настройки уведомлений о клубах изменились, очищаем состояние анкет');
+      clearProfilesState();
+    };
+
+    const handleRatingNotificationsChange = () => {
+      console.log('⭐ Настройки уведомлений о рейтингах изменились, очищаем состояние анкет');
+      clearProfilesState();
+    };
+
+    const handleReportNotificationsChange = () => {
+      console.log('🚨 Настройки уведомлений о репортах изменились, очищаем состояние анкет');
+      clearProfilesState();
+    };
+
+    const handleModerationNotificationsChange = () => {
+      console.log('🛡️ Настройки уведомлений о модерации изменились, очищаем состояние анкет');
+      clearProfilesState();
+    };
+
+    const handleSystemNotificationsChange = () => {
+      console.log('⚙️ Настройки уведомлений о системных событиях изменились, очищаем состояние анкет');
+      clearProfilesState();
+    };
+
+    window.addEventListener('auth-logout', handleAuthLogout);
+    window.addEventListener('auth-login', handleAuthLogin);
+    window.addEventListener('profile-updated', handleProfileUpdate);
+    window.addEventListener('location-changed', handleLocationChange);
+    window.addEventListener('filters-changed', handleFiltersChange);
+    window.addEventListener('subscription-changed', handleSubscriptionChange);
+    window.addEventListener('privacy-changed', handlePrivacyChange);
+    window.addEventListener('notifications-changed', handleNotificationsChange);
+    window.addEventListener('language-changed', handleLanguageChange);
+    window.addEventListener('theme-changed', handleThemeChange);
+    window.addEventListener('message-notifications-changed', handleMessageNotificationsChange);
+    window.addEventListener('like-notifications-changed', handleLikeNotificationsChange);
+    window.addEventListener('match-notifications-changed', handleMatchNotificationsChange);
+    window.addEventListener('visit-notifications-changed', handleVisitNotificationsChange);
+    window.addEventListener('comment-notifications-changed', handleCommentNotificationsChange);
+    window.addEventListener('gift-notifications-changed', handleGiftNotificationsChange);
+    window.addEventListener('event-notifications-changed', handleEventNotificationsChange);
+    window.addEventListener('club-notifications-changed', handleClubNotificationsChange);
+    window.addEventListener('rating-notifications-changed', handleRatingNotificationsChange);
+    window.addEventListener('report-notifications-changed', handleReportNotificationsChange);
+    window.addEventListener('moderation-notifications-changed', handleModerationNotificationsChange);
+    window.addEventListener('system-notifications-changed', handleSystemNotificationsChange);
+    
+    return () => {
+      window.removeEventListener('auth-logout', handleAuthLogout);
+      window.removeEventListener('auth-login', handleAuthLogin);
+      window.removeEventListener('profile-updated', handleProfileUpdate);
+      window.removeEventListener('location-changed', handleLocationChange);
+      window.removeEventListener('filters-changed', handleFiltersChange);
+      window.removeEventListener('subscription-changed', handleSubscriptionChange);
+      window.removeEventListener('privacy-changed', handlePrivacyChange);
+      window.removeEventListener('notifications-changed', handleNotificationsChange);
+      window.removeEventListener('language-changed', handleLanguageChange);
+      window.removeEventListener('theme-changed', handleThemeChange);
+      window.removeEventListener('message-notifications-changed', handleMessageNotificationsChange);
+      window.removeEventListener('like-notifications-changed', handleLikeNotificationsChange);
+      window.removeEventListener('match-notifications-changed', handleMatchNotificationsChange);
+      window.removeEventListener('visit-notifications-changed', handleVisitNotificationsChange);
+      window.removeEventListener('comment-notifications-changed', handleCommentNotificationsChange);
+      window.removeEventListener('gift-notifications-changed', handleGiftNotificationsChange);
+      window.removeEventListener('event-notifications-changed', handleEventNotificationsChange);
+      window.removeEventListener('club-notifications-changed', handleClubNotificationsChange);
+      window.removeEventListener('rating-notifications-changed', handleRatingNotificationsChange);
+      window.removeEventListener('report-notifications-changed', handleReportNotificationsChange);
+      window.removeEventListener('moderation-notifications-changed', handleModerationNotificationsChange);
+      window.removeEventListener('system-notifications-changed', handleSystemNotificationsChange);
+    };
+  }, []);
+
+  // Обработчик принудительной перезагрузки профилей
+  const handleRefreshProfiles = () => {
+    console.log('🔄 Принудительная перезагрузка профилей');
+    clearProfilesState(); // Очищаем сохраненное состояние
+    setCurrentProfile(null);
+    setProfileQueue([]);
+    setProfileHistory([]);
+    setHistoryIndex(-1);
+    setProfileShowKey(0);
+    setIsRestoring(false);
+    refetch(); // Запускаем загрузку заново
+  };
+
   // Обработчики действий
   const handleLike = () => {
     if (currentProfile) {
@@ -1600,14 +1868,14 @@ const Home = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isRestoring) {
     return (
       <HomeContainer>
         <Header>
           <HeaderContent>
             <WelcomeText>
               <h1>SwingFox</h1>
-              <p>Загружаем профили...</p>
+              <p>{isRestoring ? 'Восстанавливаем состояние...' : 'Загружаем профили...'}</p>
             </WelcomeText>
           </HeaderContent>
         </Header>
@@ -1912,7 +2180,7 @@ const Home = () => {
               <div className="icon">🎯</div>
               <h3>Профили закончились!</h3>
               <p>Попробуйте позже или расширьте критерии поиска в настройках</p>
-              <Button onClick={() => refetch()}>
+              <Button onClick={handleRefreshProfiles}>
                 Обновить
               </Button>
             </NoMoreProfiles>
