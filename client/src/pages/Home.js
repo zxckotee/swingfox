@@ -1120,6 +1120,9 @@ const Home = () => {
   const [profileHistory, setProfileHistory] = useState([]); // История предыдущих профилей (максимум 3)
   const [historyIndex, setHistoryIndex] = useState(-1); // Индекс в истории (-1 = нет истории)
   
+  // ДОБАВИТЬ ЭТО: уникальный ключ для каждого показа профиля
+  const [profileShowKey, setProfileShowKey] = useState(0);
+  
   const queryClient = useQueryClient();
   const currentUser = apiUtils.getCurrentUser();
   const { showMatchPopup } = useNotifications();
@@ -1179,13 +1182,10 @@ const Home = () => {
       return null;
     }
     
-    // Отладочная информация
-    console.log('Парсинг дат:', { dateField, parsed: dates });
     
     const manAge = formatPartnerAge(dates.manDate);
     const womanAge = formatPartnerAge(dates.womanDate);
     
-    console.log('Возраст рассчитан:', { manAge, womanAge });
     
     return {
       manAge,
@@ -1220,22 +1220,57 @@ const Home = () => {
     try {
       // Не исключаем уже просмотренные анкеты, разрешаем дублирование
       
+      console.log('🔄 === ПРЕДЗАГРУЗКА ПРОФИЛЕЙ ===');
+      console.log('📊 Запрашиваем профили:', { count, currentQueueLength: profileQueue.length });
+      
       // Загружаем профили одним batch запросом
       const newProfiles = await swipeAPI.getProfilesBatch(count, []);
       
+      console.log('📥 === ПРОФИЛИ ПОЛУЧЕНЫ С БЭКЕНДА ===');
+      console.log('📋 Общее количество полученных профилей:', newProfiles?.length || 0);
+      
       if (newProfiles && newProfiles.length > 0) {
+        // Логируем каждый полученный профиль
+        newProfiles.forEach((profile, index) => {
+          console.log(`👤 Профиль ${index + 1}:`, {
+            id: profile.id,
+            login: profile.login,
+            ava: profile.ava,
+            status: profile.status,
+            city: profile.city,
+            distance: profile.distance,
+            age: profile.age,
+            viptype: profile.viptype,
+            isCouple: profile.isCouple,
+            height: profile.height,
+            weight: profile.weight,
+            smoking: profile.smoking,
+            alko: profile.alko
+          });
+        });
+        
         if (profileQueue.length === 0 && !currentProfile) {
           // Если нет текущего профиля, первый становится текущим
+          console.log('🎯 Устанавливаем первый профиль как текущий:', newProfiles[0].login);
           setCurrentProfile(newProfiles[0]);
           setProfileQueue(newProfiles.slice(1));
+          console.log('📚 Остальные профили добавлены в очередь:', newProfiles.slice(1).map(p => p.login));
         } else {
           // Иначе добавляем в очередь
+          console.log('📚 Добавляем профили в существующую очередь');
+          const oldQueueLength = profileQueue.length;
           setProfileQueue(prev => [...prev, ...newProfiles]);
+          console.log(`📊 Размер очереди: ${oldQueueLength} → ${oldQueueLength + newProfiles.length}`);
         }
+      } else {
+        console.warn('⚠️ Получен пустой массив профилей или null');
       }
+      
+      console.log('✅ === ПРЕДЗАГРУЗКА ЗАВЕРШЕНА ===');
+      
     } catch (error) {
       // Игнорируем ошибки предзагрузки, но логируем для отладки
-      console.warn('Ошибка предзагрузки профилей:', error);
+      console.error('❌ Ошибка предзагрузки профилей:', error);
     } finally {
       setIsPreloading(false);
     }
@@ -1243,30 +1278,56 @@ const Home = () => {
 
   // Функция получения следующего профиля
   const getNextProfile = () => {
+    console.log('🔄 === ПОЛУЧЕНИЕ СЛЕДУЮЩЕГО ПРОФИЛЯ ===');
+    console.log('📊 Текущее состояние:', {
+      currentProfile: currentProfile?.login || 'null',
+      profileQueueLength: profileQueue.length,
+      historyLength: profileHistory.length,
+      historyIndex
+    });
+    
     if (profileQueue.length > 0) {
       // Сохраняем текущий профиль в историю
       if (currentProfile) {
+        console.log('📚 Добавляем в историю:', currentProfile.login);
         addToHistory(currentProfile);
       }
       
       // Берем профиль из очереди
       const nextProfile = profileQueue[0];
+      console.log('👉 Следующий профиль из очереди:', nextProfile.login);
       
       // Мгновенно обновляем состояние
       setProfileQueue(prev => prev.slice(1));
       setCurrentProfile(nextProfile);
       
+      // ДОБАВИТЬ ЭТО: генерируем новый уникальный ключ
+      setProfileShowKey(prev => prev + 1);
+      
+      console.log('📊 Обновленное состояние:', {
+        newCurrentProfile: nextProfile.login,
+        newQueueLength: profileQueue.length - 1,
+        newProfileShowKey: profileShowKey + 1
+      });
+      
       // Если в очереди осталось 3 профиля, подгружаем еще 10
       if (profileQueue.length <= 3) {
+        console.log('🔄 Запускаем предзагрузку (очередь <= 3)');
         preloadProfiles(10);
       }
       
+      console.log('✅ === ПРОФИЛЬ УСПЕШНО ПОЛУЧЕН ===');
       return nextProfile;
     } else {
-      // Если очередь пуста, загружаем новую партию и возвращаем текущий профиль
-      // чтобы анимация не сломалась
+      // Если очередь пуста, загружаем новую партию
+      console.log('⚠️ Очередь пуста, запускаем предзагрузку');
       preloadProfiles(10);
-      return currentProfile; // Возвращаем текущий профиль вместо null
+      
+      // ВАЖНО: возвращаем текущий профиль, чтобы анимация не сломалась
+      // Это позволит показать ту же анкету снова (что нормально для пары)
+      console.log('🔄 Возвращаем текущий профиль для предотвращения дергания:', currentProfile?.login);
+      console.log('✅ === ПРОФИЛЬ ВОЗВРАЩЕН (ДУБЛИРОВАНИЕ) ===');
+      return currentProfile;
     }
   };
 
@@ -1281,6 +1342,8 @@ const Home = () => {
           setCurrentProfile(data[0]);
           // Остальные идут в очередь
           setProfileQueue(data.slice(1));
+          // ДОБАВИТЬ ЭТО: устанавливаем начальный ключ
+          setProfileShowKey(1);
           // Запускаем предзагрузку следующей партии
           preloadProfiles(10);
         } else {
@@ -1342,10 +1405,12 @@ const Home = () => {
         }
         // Мгновенно получаем следующий профиль
         setSwipeDirection(null);
-        const nextProfile = getNextProfile();
-        if (!nextProfile) {
-          // Если нет следующего профиля, сбрасываем направление
-          setSwipeDirection(null);
+        getNextProfile(); // Теперь всегда возвращает валидный профиль
+        
+        if (!currentProfile) {
+          // Если нет следующего профиля, показываем состояние загрузки
+          setCurrentProfile(null);
+          // Или можно показать спиннер загрузки
         }
       },
       onError: (error) => {
@@ -1361,7 +1426,7 @@ const Home = () => {
       onSuccess: () => {
         // Мгновенно получаем следующий профиль
         setSwipeDirection(null);
-        getNextProfile();
+        getNextProfile(); // Теперь всегда возвращает валидный профиль
       },
       onError: (error) => {
         toast.error(apiUtils.handleError(error));
@@ -1413,7 +1478,7 @@ const Home = () => {
         
         // Мгновенно получаем следующий профиль
         setSwipeDirection(null);
-        getNextProfile();
+        getNextProfile(); // Теперь всегда возвращает валидный профиль
       },
       onError: (error) => {
         toast.error(apiUtils.handleError(error));
@@ -1583,7 +1648,8 @@ const Home = () => {
         <AnimatePresence mode="wait">
           {currentProfile ? (
             <ProfileCard
-              key={currentProfile.login}
+              // ИЗМЕНИТЬ ЭТО: использовать комбинацию login + profileShowKey
+              key={`${currentProfile.login}-${profileShowKey}`}
               drag="x"
               dragConstraints={{ left: 0, right: 0 }}
               onDragEnd={handleDragEnd}
@@ -1603,11 +1669,11 @@ const Home = () => {
                 rotate: swipeDirection === 'left' ? -20 : 20
               }}
               transition={{ 
-                duration: swipeDirection ? 0.1 : 0.2, // Ускоряем анимации
+                duration: swipeDirection ? 0.1 : 0.2,
                 type: swipeDirection ? "tween" : "spring",
-                stiffness: swipeDirection ? undefined : 200 // Увеличиваем жесткость
+                stiffness: swipeDirection ? undefined : 200
               }}
-              whileDrag={{ scale: 1.02, rotate: 2 }} // Уменьшаем эффект при перетаскивании
+              whileDrag={{ scale: 1.02, rotate: 2 }}
               onLoad={() => {
                 console.log('=== ПРОФИЛЬ ЗАГРУЖЕН ===');
                 console.log('Основные данные:', {
@@ -1622,14 +1688,7 @@ const Home = () => {
                   partnerData: currentProfile.partnerData
                 });
                 
-                // Проверяем наличие разделителей
-                console.log('Проверка разделителей:', {
-                  dateHasUnderscore: currentProfile.date && currentProfile.date.includes('_'),
-                  heightHasUnderscore: currentProfile.height && currentProfile.height.includes('_'),
-                  weightHasUnderscore: currentProfile.weight && currentProfile.weight.includes('_'),
-                  smokingHasUnderscore: currentProfile.smoking && currentProfile.smoking.includes('_'),
-                  alkoHasUnderscore: currentProfile.alko && currentProfile.alko.includes('_')
-                });
+                
                 
                 // Парсим даты если есть
                 if (currentProfile.date && currentProfile.date.includes('_')) {
@@ -1745,10 +1804,10 @@ const Home = () => {
                         <span className="emoji">📏</span>
                         <span className="text">
                           {(() => {
-                            console.log('Рост для парсинга:', { height: currentProfile.height, hasUnderscore: currentProfile.height.includes('_') });
+                           
                             if (currentProfile.height.includes('_')) {
                               const [manHeight, womanHeight] = currentProfile.height.split('_');
-                              console.log('Рост разделен:', { manHeight, womanHeight });
+
                               return (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                   <span style={{ fontSize: '11px', color: '#4a5568' }}>Мужчина: {manHeight}см</span>
@@ -1766,10 +1825,10 @@ const Home = () => {
                         <span className="emoji">⚖️</span>
                         <span className="text">
                           {(() => {
-                            console.log('Вес для парсинга:', { weight: currentProfile.weight, hasUnderscore: currentProfile.weight.includes('_') });
+                      
                             if (currentProfile.weight.includes('_')) {
                               const [manWeight, womanWeight] = currentProfile.weight.split('_');
-                              console.log('Вес разделен:', { manWeight, womanWeight });
+                             
                               return (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                   <span style={{ fontSize: '11px', color: '#4a5568' }}>Мужчина: {manWeight}кг</span>
@@ -1787,10 +1846,10 @@ const Home = () => {
                         <span className="emoji">🚬</span>
                         <span className="text">
                           {(() => {
-                            console.log('Курение для парсинга:', { smoking: currentProfile.smoking, hasUnderscore: currentProfile.smoking.includes('_') });
+                        
                             if (currentProfile.smoking.includes('_')) {
                               const [manSmoking, womanSmoking] = currentProfile.smoking.split('_');
-                              console.log('Курение разделено:', { manSmoking, womanSmoking });
+                  
                               return (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                   <span style={{ fontSize: '11px', color: '#4a5568' }}>
@@ -1814,10 +1873,10 @@ const Home = () => {
                         <span className="emoji">🍷</span>
                         <span className="text">
                           {(() => {
-                            console.log('Алкоголь для парсинга:', { alko: currentProfile.alko, hasUnderscore: currentProfile.alko.includes('_') });
+                            
                             if (currentProfile.alko.includes('_')) {
                               const [manAlko, womanAlko] = currentProfile.alko.split('_');
-                              console.log('Алкоголь разделен:', { manAlko, womanAlko });
+                            
                               return (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                   <span style={{ fontSize: '11px', color: '#4a5568' }}>

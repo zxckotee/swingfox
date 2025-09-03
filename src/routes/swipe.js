@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
 const { User, Likes, Status, Gifts, Notifications, Rating } = require('../models');
+const sequelize = require('../models/index').sequelize; // ДОБАВИТЬ ЭТО
 const { authenticateToken, requireVip } = require('../middleware/auth');
 const { generateId, calculateDistance, formatAge, parseGeo, formatOnlineTime } = require('../utils/helpers');
 const MatchChecker = require('../utils/matchChecker');
@@ -42,44 +43,89 @@ const getRecommendedProfile = async (currentUserId) => {
       return null;
     }
 
-    // Простая загрузка случайного пользователя
-    const targetUser = await User.findOne({
-      where: {
-        login: { [Op.ne]: currentUserId },
-        status: { [Op.ne]: 'BANNED' }
-        // Убираем ограничение на VIP пользователей
-      },
-      order: User.sequelize.random()
-    });
-
-    if (targetUser) {
-      logger.logResult('Выбран пользователь', true, {
-        selected_user: targetUser.login,
-        total_candidates: 1
+    // Получаем batch профилей и берем первый (самый совместимый)
+    const batchProfiles = await getRecommendedProfilesBatch(currentUserId, 5);
+    
+    if (batchProfiles && batchProfiles.length > 0) {
+      const selectedProfile = batchProfiles[0]; // Берем самый совместимый
+      
+      logger.logResult('Выбран пользователь по совместимости', true, {
+        selected_user: selectedProfile.login,
+        compatibility_score: selectedProfile.compatibility.totalScore,
+        total_candidates: batchProfiles.length
       });
-      return targetUser;
+      
+      return selectedProfile;
     }
 
-    logger.logWarning('Нет доступных VIP пользователей', { current_user: currentUserId });
+    logger.logWarning('Нет доступных профилей', { current_user: currentUserId });
     return null;
 
   } catch (error) {
     logger.logError('Ошибка в алгоритме рекомендаций', error);
-    
-    // Fallback: обычный случайный выбор VIP пользователя
-    try {
-      return await User.findOne({
-        where: {
-          login: { [Op.ne]: currentUserId },
-          status: { [Op.ne]: 'BANNED' },
-          viptype: { [Op.ne]: 'FREE' }
-        },
-        order: User.sequelize.random()
-      });
-    } catch (fallbackError) {
-      logger.logError('Ошибка в fallback алгоритме', fallbackError);
-      return null;
+    return null;
+  }
+};
+
+// Вспомогательная функция для получения отсортированных профилей
+const getRecommendedProfilesBatch = async (userId, count = 5) => {
+  try {
+    const currentUser = await User.findOne({ where: { login: userId } });
+    if (!currentUser) return [];
+
+    // Получаем случайные профили
+    const allCandidates = await User.findAll({
+      where: {
+        login: { [Op.ne]: userId },
+        status: { [Op.ne]: 'BANNED' },
+        viptype: { [Op.ne]: 'FREE' }
+      },
+      attributes: [
+        'id', 'login', 'ava', 'status', 'city', 'country', 'date', 'info', 
+        'registration', 'online', 'viptype', 'geo', 'search_status', 'search_age',
+        'height', 'weight', 'smoking', 'alko', 'location'
+      ],
+      order: User.sequelize.random()
+    });
+
+    if (allCandidates.length === 0) return [];
+
+    // Выбираем случайные
+    let selectedUsers = [];
+    for (let i = 0; i < Math.min(count * 2, allCandidates.length); i++) {
+      const randomIndex = Math.floor(Math.random() * allCandidates.length);
+      selectedUsers.push(allCandidates[randomIndex]);
     }
+
+    // Рассчитываем совместимость и сортируем
+    const profilesWithCompatibility = [];
+    
+    for (const targetUser of selectedUsers) {
+      if (!targetUser || !targetUser.login || !targetUser.ava) continue;
+      
+      let compatibility = { totalScore: 0.5 };
+      try {
+        compatibility = compatibilityCalculator.calculateCompatibility(currentUser, targetUser);
+      } catch (error) {
+        // Игнорируем ошибки
+      }
+
+      profilesWithCompatibility.push({
+        ...targetUser.toJSON(),
+        compatibility
+      });
+    }
+
+    // Сортируем по совместимости
+    profilesWithCompatibility.sort((a, b) => {
+      return b.compatibility.totalScore - a.compatibility.totalScore;
+    });
+
+    return profilesWithCompatibility.slice(0, count);
+    
+  } catch (error) {
+    console.error('Error in getRecommendedProfilesBatch:', error);
+    return [];
   }
 };
 
@@ -238,10 +284,9 @@ router.get('/profiles', authenticateToken, async (req, res) => {
 // GET /api/swipe/profiles/batch - Массовая загрузка профилей для предзагрузки
 router.get('/profiles/batch', authenticateToken, async (req, res) => {
   try {
-    const { count = 10 } = req.query; // Убираем exclude параметр
+    const { count = 10 } = req.query;
     const userId = req.user.login;
-    const profiles = [];
-
+    
     // Получаем данные текущего пользователя
     const currentUser = await User.findOne({ where: { login: userId } });
     if (!currentUser) {
@@ -251,62 +296,320 @@ router.get('/profiles/batch', authenticateToken, async (req, res) => {
       });
     }
 
-    // Простая загрузка профилей без сложной логики рекомендаций
-    const allCandidates = await User.findAll({
-      where: {
-        login: { [Op.ne]: userId }, // Исключаем только текущего пользователя
-        status: { [Op.ne]: 'BANNED' },
-        viptype: { [Op.ne]: 'FREE' }
+   
+    // SQL запрос с расчетом совместимости прямо в базе (PostgreSQL версия, универсальный split)
+    const profiles = await sequelize.query(`
+      WITH candidate_profiles AS (
+        SELECT 
+          u.id,
+          u.login,
+          u.ava,
+          u.status,
+          u.city,
+          u.country,
+          u.date,
+          u.info,
+          u.registration,
+          u.online,
+          u.viptype,
+          u.geo,
+          u.search_status,
+          u.search_age,
+          u.height,
+          u.weight,
+          u.smoking,
+          u.alko,
+          u.location,
+          
+          -- Расчет совместимости по статусам (самый важный критерий)
+          CASE 
+            WHEN (
+              u.search_status LIKE '%' || :currentUserStatus || '%' 
+              AND :currentUserSearchStatus LIKE '%' || u.status || '%'
+            ) THEN 1.0
+            WHEN (
+              u.search_status LIKE '%' || :currentUserStatus || '%' 
+              OR :currentUserSearchStatus LIKE '%' || u.status || '%'
+            ) THEN 0.5
+            ELSE 0.0
+          END AS status_compatibility,
+          
+          -- Расчет совместимости по возрасту с универсальным split по "_"
+          CASE 
+            WHEN u.date IS NOT NULL AND :currentUserDate IS NOT NULL THEN
+              CASE 
+                WHEN ABS(
+                  -- Средний возраст пользователя из базы (универсальный split)
+                  (SELECT AVG(EXTRACT(YEAR FROM date_part::DATE))
+                  FROM unnest(string_to_array(u.date, '_')) AS date_part) -
+                  -- Средний возраст текущего пользователя (универсальный split)
+                  (SELECT AVG(EXTRACT(YEAR FROM date_part::DATE))
+                  FROM unnest(string_to_array(:currentUserDate, '_')) AS date_part)
+                ) <= 5 THEN 1.0
+                WHEN ABS(
+                  (SELECT AVG(EXTRACT(YEAR FROM date_part::DATE))
+                  FROM unnest(string_to_array(u.date, '_')) AS date_part) -
+                  (SELECT AVG(EXTRACT(YEAR FROM date_part::DATE))
+                  FROM unnest(string_to_array(:currentUserDate, '_')) AS date_part)
+                ) <= 10 THEN 0.8
+                WHEN ABS(
+                  (SELECT AVG(EXTRACT(YEAR FROM date_part::DATE))
+                  FROM unnest(string_to_array(u.date, '_')) AS date_part) -
+                  (SELECT AVG(EXTRACT(YEAR FROM date_part::DATE))
+                  FROM unnest(string_to_array(:currentUserDate, '_')) AS date_part)
+                ) <= 20 THEN 0.6
+                ELSE 0.4
+              END
+            ELSE 0.5
+          END AS age_compatibility,
+          
+          -- Расчет совместимости по расстоянию (универсальный split для координат по "&&")
+          CASE 
+            WHEN u.geo IS NOT NULL AND :currentUserGeo IS NOT NULL THEN
+              CASE 
+                WHEN SQRT(
+                  POW(
+                    (SELECT AVG(CAST(coord AS DECIMAL))
+                    FROM unnest(string_to_array(u.geo, '&&')) AS coord) - 
+                    (SELECT AVG(CAST(coord AS DECIMAL))
+                    FROM unnest(string_to_array(:currentUserGeo, '&&')) AS coord), 2) +
+                  POW(
+                    (SELECT AVG(CAST(coord AS DECIMAL))
+                    FROM unnest(string_to_array(u.geo, '&&')) AS coord) - 
+                    (SELECT AVG(CAST(coord AS DECIMAL))
+                    FROM unnest(string_to_array(:currentUserGeo, '&&')) AS coord), 2)
+                ) <= 0.1 THEN 1.0  -- ~10км
+                WHEN SQRT(
+                  POW(
+                    (SELECT AVG(CAST(coord AS DECIMAL))
+                    FROM unnest(string_to_array(u.geo, '&&')) AS coord) - 
+                    (SELECT AVG(CAST(coord AS DECIMAL))
+                    FROM unnest(string_to_array(:currentUserGeo, '&&')) AS coord), 2) +
+                  POW(
+                    (SELECT AVG(CAST(coord AS DECIMAL))
+                    FROM unnest(string_to_array(u.geo, '&&')) AS coord) - 
+                    (SELECT AVG(CAST(coord AS DECIMAL))
+                    FROM unnest(string_to_array(:currentUserGeo, '&&')) AS coord), 2)
+                ) <= 0.5 THEN 0.8  -- ~50км
+                WHEN SQRT(
+                  POW(
+                    (SELECT AVG(CAST(coord AS DECIMAL))
+                    FROM unnest(string_to_array(u.geo, '&&')) AS coord) - 
+                    (SELECT AVG(CAST(coord AS DECIMAL))
+                    FROM unnest(string_to_array(:currentUserGeo, '&&')) AS coord), 2) +
+                  POW(
+                    (SELECT AVG(CAST(coord AS DECIMAL))
+                    FROM unnest(string_to_array(u.geo, '&&')) AS coord) - 
+                    (SELECT AVG(CAST(coord AS DECIMAL))
+                    FROM unnest(string_to_array(:currentUserGeo, '&&')) AS coord), 2)
+                ) <= 1.0 THEN 0.6 -- ~100км
+                ELSE 0.4
+              END
+            ELSE 0.5
+          END AS distance_compatibility,
+          
+          -- Расчет совместимости по местам встреч (универсальный split по "&&")
+          CASE 
+            WHEN u.location IS NOT NULL AND :currentUserLocation IS NOT NULL THEN
+              CASE 
+                WHEN u.location = :currentUserLocation THEN 1.0
+                WHEN EXISTS (
+                  SELECT 1 FROM unnest(string_to_array(u.location, '&&')) AS loc_part
+                  WHERE loc_part = ANY(string_to_array(:currentUserLocation, '&&'))
+                ) THEN 0.8
+                ELSE 0.3
+              END
+            ELSE 0.5
+          END AS location_compatibility,
+          
+          -- Расчет совместимости по образу жизни (универсальный split по "_")
+          CASE 
+            WHEN u.smoking IS NOT NULL AND :currentUserSmoking IS NOT NULL THEN
+              CASE 
+                WHEN u.smoking = :currentUserSmoking THEN 1.0
+                WHEN EXISTS (
+                  SELECT 1 FROM unnest(string_to_array(u.smoking, '_')) AS smoking_part
+                  WHERE smoking_part = ANY(string_to_array(:currentUserSmoking, '_'))
+                ) THEN 0.7
+                ELSE 0.4
+              END
+            ELSE 0.5
+          END AS lifestyle_compatibility,
+          
+          -- Общий балл совместимости
+          (
+            CASE 
+              WHEN (
+                u.search_status LIKE '%' || :currentUserStatus || '%' 
+                AND :currentUserSearchStatus LIKE '%' || u.status || '%'
+              ) THEN 1.0
+              WHEN (
+                u.search_status LIKE '%' || :currentUserStatus || '%' 
+                OR :currentUserSearchStatus LIKE '%' || u.status || '%'
+              ) THEN 0.5
+              ELSE 0.0
+            END * 0.25 +
+            
+            CASE 
+              WHEN u.date IS NOT NULL AND :currentUserDate IS NOT NULL THEN
+                CASE 
+                  WHEN ABS(
+                    (SELECT AVG(EXTRACT(YEAR FROM date_part::DATE))
+                    FROM unnest(string_to_array(u.date, '_')) AS date_part) -
+                    (SELECT AVG(EXTRACT(YEAR FROM date_part::DATE))
+                    FROM unnest(string_to_array(:currentUserDate, '_')) AS date_part)
+                  ) <= 5 THEN 1.0
+                  WHEN ABS(
+                    (SELECT AVG(EXTRACT(YEAR FROM date_part::DATE))
+                    FROM unnest(string_to_array(u.date, '_')) AS date_part) -
+                    (SELECT AVG(EXTRACT(YEAR FROM date_part::DATE))
+                    FROM unnest(string_to_array(:currentUserDate, '_')) AS date_part)
+                  ) <= 10 THEN 0.8
+                  WHEN ABS(
+                    (SELECT AVG(EXTRACT(YEAR FROM date_part::DATE))
+                    FROM unnest(string_to_array(u.date, '_')) AS date_part) -
+                    (SELECT AVG(EXTRACT(YEAR FROM date_part::DATE))
+                    FROM unnest(string_to_array(:currentUserDate, '_')) AS date_part)
+                  ) <= 20 THEN 0.6
+                  ELSE 0.4
+                END
+              ELSE 0.5
+            END * 0.20 +
+            
+            CASE 
+              WHEN u.geo IS NOT NULL AND :currentUserGeo IS NOT NULL THEN
+                CASE 
+                  WHEN SQRT(
+                    POW(
+                      (SELECT AVG(CAST(coord AS DECIMAL))
+                      FROM unnest(string_to_array(u.geo, '&&')) AS coord) - 
+                      (SELECT AVG(CAST(coord AS DECIMAL))
+                      FROM unnest(string_to_array(:currentUserGeo, '&&')) AS coord), 2) +
+                    POW(
+                      (SELECT AVG(CAST(coord AS DECIMAL))
+                      FROM unnest(string_to_array(u.geo, '&&')) AS coord) - 
+                      (SELECT AVG(CAST(coord AS DECIMAL))
+                      FROM unnest(string_to_array(:currentUserGeo, '&&')) AS coord), 2)
+                  ) <= 0.1 THEN 1.0
+                  WHEN SQRT(
+                    POW(
+                      (SELECT AVG(CAST(coord AS DECIMAL))
+                      FROM unnest(string_to_array(u.geo, '&&')) AS coord) - 
+                      (SELECT AVG(CAST(coord AS DECIMAL))
+                      FROM unnest(string_to_array(:currentUserGeo, '&&')) AS coord), 2) +
+                    POW(
+                      (SELECT AVG(CAST(coord AS DECIMAL))
+                      FROM unnest(string_to_array(u.geo, '&&')) AS coord) - 
+                      (SELECT AVG(CAST(coord AS DECIMAL))
+                      FROM unnest(string_to_array(:currentUserGeo, '&&')) AS coord), 2)
+                  ) <= 0.5 THEN 0.8
+                  WHEN SQRT(
+                    POW(
+                      (SELECT AVG(CAST(coord AS DECIMAL))
+                      FROM unnest(string_to_array(u.geo, '&&')) AS coord) - 
+                      (SELECT AVG(CAST(coord AS DECIMAL))
+                      FROM unnest(string_to_array(:currentUserGeo, '&&')) AS coord), 2) +
+                    POW(
+                      (SELECT AVG(CAST(coord AS DECIMAL))
+                      FROM unnest(string_to_array(u.geo, '&&')) AS coord) - 
+                      (SELECT AVG(CAST(coord AS DECIMAL))
+                      FROM unnest(string_to_array(:currentUserGeo, '&&')) AS coord), 2)
+                  ) <= 1.0 THEN 0.6
+                  ELSE 0.4
+                END
+              ELSE 0.5
+            END * 0.15 +
+            
+            CASE 
+              WHEN u.location IS NOT NULL AND :currentUserLocation IS NOT NULL THEN
+                CASE 
+                  WHEN u.location = :currentUserLocation THEN 1.0
+                  WHEN EXISTS (
+                    SELECT 1 FROM unnest(string_to_array(u.location, '&&')) AS loc_part
+                    WHERE loc_part = ANY(string_to_array(:currentUserLocation, '&&'))
+                  ) THEN 0.8
+                  ELSE 0.3
+                END
+              ELSE 0.5
+            END * 0.15 +
+            
+            CASE 
+              WHEN u.smoking IS NOT NULL AND :currentUserSmoking IS NOT NULL THEN
+                CASE 
+                  WHEN u.smoking = :currentUserSmoking THEN 1.0
+                  WHEN EXISTS (
+                    SELECT 1 FROM unnest(string_to_array(u.smoking, '_')) AS smoking_part
+                    WHERE smoking_part = ANY(string_to_array(:currentUserSmoking, '_'))
+                  ) THEN 0.7
+                  ELSE 0.4
+                END
+              ELSE 0.5
+            END * 0.10 +
+            
+            0.5 * 0.15 -- Фиксированный балл для остальных критериев
+          ) AS total_compatibility_score
+          
+        FROM users u
+        WHERE u.login != :userId
+          AND u.status != 'BANNED'
+          AND u.viptype != 'FREE'
+      )
+      SELECT 
+        *,
+        RANDOM() as random_sort
+      FROM candidate_profiles
+      ORDER BY total_compatibility_score DESC, random_sort
+      LIMIT :count
+    `, {
+      replacements: {
+        userId: userId,
+        currentUserStatus: currentUser.status,
+        currentUserSearchStatus: currentUser.search_status || '',
+        currentUserDate: currentUser.date,
+        currentUserGeo: currentUser.geo,
+        currentUserLocation: currentUser.location || '',
+        currentUserSmoking: currentUser.smoking || '',
+        count: count * 2 // Берем в 2 раза больше для лучшего выбора
       },
-      attributes: [
-        'id', 'login', 'ava', 'status', 'city', 'country', 'date', 'info', 
-        'registration', 'online', 'viptype', 'geo', 'search_status', 'search_age',
-        'height', 'weight', 'smoking', 'alko', 'location'
-      ],
-      order: User.sequelize.random() // Случайный порядок
+      type: sequelize.QueryTypes.SELECT
     });
 
-    if (allCandidates.length === 0) {
+    if (profiles.length === 0) {
       return res.status(404).json({ 
         error: 'no_profiles',
         message: 'Нет доступных VIP профилей' 
       });
     }
 
-    // Выбираем случайные анкеты (разрешаем дублирование)
-    let selectedUsers = [];
-    for (let i = 0; i < count; i++) {
-      const randomIndex = Math.floor(Math.random() * allCandidates.length);
-      selectedUsers.push(allCandidates[randomIndex]);
-    }
-
-    // Формируем ответ для каждого профиля
-    for (const targetUser of selectedUsers) {
+    // Формируем финальный ответ
+    const finalProfiles = [];
+    
+    for (const profile of profiles) {
       // Проверяем, что у нас есть все необходимые поля
-      if (!targetUser || !targetUser.login || !targetUser.ava) {
+      if (!profile.login || !profile.ava) {
         continue;
       }
       
       // Вычисляем расстояние
       const currentGeo = parseGeo(currentUser.geo);
-      const targetGeo = parseGeo(targetUser.geo);
+      const targetGeo = parseGeo(profile.geo);
       const distance = currentGeo && targetGeo ? 
         calculateDistance(currentGeo.lat, currentGeo.lng, targetGeo.lat, targetGeo.lng) : 
         null;
 
       // Форматируем возраст
-      const age = targetUser.date ? formatAge(targetUser.date) : null;
+      const age = profile.date ? formatAge(profile.date) : null;
 
       // Форматируем время онлайн
-      const onlineTime = targetUser.online ? formatOnlineTime(targetUser.online) : null;
+      const onlineTime = profile.online ? formatOnlineTime(profile.online) : null;
 
       // Проверяем, является ли пара
-      const isCouple = targetUser.status === 'Семейная пара(М+Ж)' || targetUser.status === 'Несемейная пара(М+Ж)';
+      const isCouple = profile.status === 'Семейная пара(М+Ж)' || profile.status === 'Несемейная пара(М+Ж)';
       let partnerData = null;
       
-      if (isCouple && targetUser.info) {
+      if (isCouple && profile.info) {
         try {
-          const infoData = JSON.parse(targetUser.info);
+          const infoData = JSON.parse(profile.info);
           if (infoData.manDate && infoData.womanDate) {
             partnerData = {
               manDate: infoData.manDate,
@@ -318,61 +621,66 @@ router.get('/profiles/batch', authenticateToken, async (req, res) => {
         }
       }
 
-      // Простой расчет совместимости
-      let compatibility = {
-        totalScore: 0.5,
-        scores: {},
-        weights: {},
-        recommendations: ['Совместимость рассчитана']
+      // Формируем объект совместимости
+      const compatibility = {
+        totalScore: Math.round(profile.total_compatibility_score * 100) / 100,
+        scores: {
+          mutualStatus: profile.status_compatibility,
+          age: profile.age_compatibility,
+          distance: profile.distance_compatibility,
+          location: profile.location_compatibility,
+          lifestyle: profile.lifestyle_compatibility
+        },
+        weights: {
+          mutualStatus: 0.25,
+          age: 0.20,
+          distance: 0.15,
+          location: 0.15,
+          lifestyle: 0.10,
+          physical: 0.10,
+          activity: 0.05
+        },
+        recommendations: ['Совместимость рассчитана в SQL']
       };
 
-      try {
-        compatibility = compatibilityCalculator.calculateCompatibility(currentUser, targetUser);
-      } catch (error) {
-        // Игнорируем ошибки расчета совместимости
-      }
-
-      profiles.push({
-        id: targetUser.id,
-        login: targetUser.login,
-        ava: targetUser.ava,
-        status: targetUser.status,
-        city: targetUser.city,
-        country: targetUser.country,
+      finalProfiles.push({
+        id: profile.id,
+        login: profile.login,
+        ava: profile.ava,
+        status: profile.status,
+        city: profile.city,
+        country: profile.country,
         distance: distance ? Math.round(distance) : null,
         age: age,
-        info: targetUser.info,
+        info: profile.info,
         online: onlineTime,
-        viptype: targetUser.viptype,
+        viptype: profile.viptype,
         isCouple: isCouple,
         partnerData: partnerData,
-        height: targetUser.height,
-        weight: targetUser.weight,
-        smoking: targetUser.smoking,
-        alko: targetUser.alko,
-        search_status: targetUser.search_status,
-        search_age: targetUser.search_age,
-        location: targetUser.location,
-        registration: targetUser.registration,
+        height: profile.height,
+        weight: profile.weight,
+        smoking: profile.smoking,
+        alko: profile.alko,
+        search_status: profile.search_status,
+        search_age: profile.search_age,
+        location: profile.location,
+        registration: profile.registration,
         compatibility: compatibility
       });
     }
 
-    // Проверяем, что у нас есть хотя бы один профиль
-    if (profiles.length === 0) {
-      return res.status(404).json({ 
-        error: 'no_profiles',
-        message: 'Не удалось загрузить профили' 
-      });
-    }
+    // Применяем финальную рандомизацию для разнообразия
+    const shuffledProfiles = finalProfiles
+      .sort(() => Math.random() - 0.5)
+      .slice(0, count);
 
-    res.json(profiles);
-
+    res.json(shuffledProfiles);
+    
   } catch (error) {
-    console.error('Batch profiles error:', error);
+    console.error('Error in batch profiles:', error);
     res.status(500).json({ 
       error: 'server_error',
-      message: 'Ошибка при получении профилей' 
+      message: 'Ошибка при загрузке профилей' 
     });
   }
 });
