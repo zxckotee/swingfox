@@ -264,6 +264,7 @@ module.exports = {
   debounce,
   parseGeo,
   formatAge,
+  formatWomanAge,
   formatOnlineTime
 };
 
@@ -294,7 +295,7 @@ function parseGeo(geoString) {
 
 /**
  * Форматирование возраста по дате рождения
- * @param {string|Date} birthDate - Дата рождения
+ * @param {string|Date} birthDate - Дата рождения (формат: "2000-02-20" для одиночки или "2000-09-12_2000-02-20" для пары)
  * @returns {number|null} Возраст в годах или null
  */
 function formatAge(birthDate) {
@@ -302,21 +303,58 @@ function formatAge(birthDate) {
     return null;
   }
   
-  let date;
-  if (typeof birthDate === 'string') {
-    // Пробуем парсить разные форматы дат
-    if (birthDate.includes('-')) {
-      date = new Date(birthDate);
-    } else if (birthDate.length === 4) {
-      // Если это просто год
-      date = new Date(parseInt(birthDate), 0, 1);
-    } else {
-      date = new Date(birthDate);
-    }
-  } else {
-    date = new Date(birthDate);
+  // Если это пара (содержит _), берем первую дату (мужчина)
+  let dateString = birthDate;
+  if (typeof birthDate === 'string' && birthDate.includes('_')) {
+    dateString = birthDate.split('_')[0];
   }
   
+  let date;
+  if (typeof dateString === 'string') {
+    // Пробуем парсить разные форматы дат
+    if (dateString.includes('-')) {
+      date = new Date(dateString);
+    } else if (dateString.length === 4) {
+      // Если это просто год
+      date = new Date(parseInt(dateString), 0, 1);
+    } else {
+      date = new Date(dateString);
+    }
+  } else {
+    date = new Date(dateString);
+  }
+  
+  if (isNaN(date.getTime())) {
+    return null;
+  }
+  
+  const today = new Date();
+  let age = today.getFullYear() - date.getFullYear();
+  const monthDiff = today.getMonth() - date.getMonth();
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) {
+    age--;
+  }
+  
+  return age >= 0 ? age : null;
+}
+
+/**
+ * Получение возраста женщины в паре
+ * @param {string} birthDate - Дата рождения пары (формат: "2000-09-12_2000-02-20")
+ * @returns {number|null} Возраст женщины в годах или null
+ */
+function formatWomanAge(birthDate) {
+  if (!birthDate || typeof birthDate !== 'string' || !birthDate.includes('_')) {
+    return null;
+  }
+  
+  const womanDateString = birthDate.split('_')[1];
+  if (!womanDateString) {
+    return null;
+  }
+  
+  const date = new Date(womanDateString);
   if (isNaN(date.getTime())) {
     return null;
   }

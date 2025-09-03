@@ -4,7 +4,29 @@ const { Op } = require('sequelize');
 const { User, Likes, Status, Gifts, Notifications, Rating } = require('../models');
 const sequelize = require('../models/index').sequelize; // ДОБАВИТЬ ЭТО
 const { authenticateToken, requireVip } = require('../middleware/auth');
-const { generateId, calculateDistance, formatAge, parseGeo, formatOnlineTime } = require('../utils/helpers');
+const { generateId, calculateDistance, formatAge, formatWomanAge, parseGeo, formatOnlineTime } = require('../utils/helpers');
+
+// Функция для правильного склонения слова "год"
+function getAgeWord(age) {
+  if (!age || age < 0) return 'лет';
+  
+  const lastDigit = age % 10;
+  const lastTwoDigits = age % 100;
+  
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 19) {
+    return 'лет';
+  }
+  
+  if (lastDigit === 1) {
+    return 'год';
+  }
+  
+  if (lastDigit >= 2 && lastDigit <= 4) {
+    return 'года';
+  }
+  
+  return 'лет';
+}
 const MatchChecker = require('../utils/matchChecker');
 const { APILogger } = require('../utils/logger');
 const compatibilityCalculator = require('../utils/compatibilityCalculator');
@@ -191,16 +213,36 @@ router.get('/profiles', authenticateToken, async (req, res) => {
     const currentGeo = parseGeo(currentUser.geo);
     const targetGeo = parseGeo(targetUser.geo);
     
+
+    
     let distance = 0;
     if (currentGeo && targetGeo) {
       distance = Math.round(calculateDistance(
         currentGeo.lat, currentGeo.lng,
         targetGeo.lat, targetGeo.lng
       ));
+      console.log('Расстояние рассчитано:', distance, 'км');
+    } else {
+      console.log('Не удалось рассчитать расстояние - отсутствуют координаты');
     }
+    console.log('=== КОНЕЦ РАСЧЕТА РАССТОЯНИЯ ===');
 
     // Форматируем возраст
-    const age = formatAge(targetUser.date);
+    let age;
+    if (targetUser.date && targetUser.date.includes('_')) {
+      // Для пар показываем возраст мужчины и женщины
+      const manAge = formatAge(targetUser.date);
+      const womanAge = formatWomanAge(targetUser.date);
+      const manWord = getAgeWord(manAge);
+      const womanWord = getAgeWord(womanAge);
+      age = `${manAge} ${manWord} (Мужчина), ${womanAge} ${womanWord} (Женщина)`;
+    } else {
+      // Для одиночек показываем обычный возраст
+      const singleAge = formatAge(targetUser.date);
+      const singleWord = getAgeWord(singleAge);
+      age = singleAge ? `${singleAge} ${singleWord}` : null;
+    }
+
 
     // Форматируем время онлайн
     const onlineStatus = formatOnlineTime(targetUser.online);
@@ -249,6 +291,15 @@ router.get('/profiles', authenticateToken, async (req, res) => {
     if (targetUser.search_age) profileData.searchAge = targetUser.search_age;
     if (targetUser.location) profileData.location = targetUser.location;
 
+    // Логируем что читается из базы
+    console.log('=== ДАННЫЕ ИЗ БАЗЫ ===');
+    console.log('Поля поиска из БД:', {
+      search_status: targetUser.search_status,
+      search_age: targetUser.search_age,
+      location: targetUser.location
+    });
+    console.log('=== КОНЕЦ ДАННЫХ ИЗ БАЗЫ ===');
+
     // Добавляем информацию о совместимости
     try {
       const compatibility = compatibilityCalculator.calculateCompatibility(currentUser, targetUser);
@@ -269,6 +320,15 @@ router.get('/profiles', authenticateToken, async (req, res) => {
     if (!profileData.login || !profileData.ava) {
       console.warn('Обнаружен пустой профиль в основном endpoint:', profileData.login);
     }
+
+    // Логируем поля поиска для отладки
+    console.log('=== ОСНОВНОЙ ПРОФИЛЬ ОТПРАВЛЯЕТСЯ ===');
+    console.log('Поля поиска:', {
+      searchStatus: profileData.searchStatus,
+      searchAge: profileData.searchAge,
+      location: profileData.location
+    });
+    console.log('=== КОНЕЦ ОСНОВНОГО ПРОФИЛЯ ===');
 
     res.json(profileData);
 
@@ -590,15 +650,40 @@ router.get('/profiles/batch', authenticateToken, async (req, res) => {
         continue;
       }
       
+      // Логируем что читается из базы для первого профиля
+      if (finalProfiles.length === 0) {
+        console.log('=== BATCH ДАННЫЕ ИЗ БАЗЫ ===');
+        console.log('Поля поиска из БД:', {
+          search_status: profile.search_status,
+          search_age: profile.search_age,
+          location: profile.location
+        });
+        console.log('=== КОНЕЦ BATCH ДАННЫХ ИЗ БАЗЫ ===');
+      }
+
       // Вычисляем расстояние
       const currentGeo = parseGeo(currentUser.geo);
       const targetGeo = parseGeo(profile.geo);
+      
       const distance = currentGeo && targetGeo ? 
-        calculateDistance(currentGeo.lat, currentGeo.lng, targetGeo.lat, targetGeo.lng) : 
+        Math.round(calculateDistance(currentGeo.lat, currentGeo.lng, targetGeo.lat, targetGeo.lng)) : 
         null;
 
       // Форматируем возраст
-      const age = profile.date ? formatAge(profile.date) : null;
+      let age;
+      if (profile.date && profile.date.includes('_')) {
+        // Для пар показываем возраст мужчины и женщины
+        const manAge = formatAge(profile.date);
+        const womanAge = formatWomanAge(profile.date);
+        const manWord = getAgeWord(manAge);
+        const womanWord = getAgeWord(womanAge);
+        age = `${manAge} ${manWord} (Мужчина), ${womanAge} ${womanWord} (Женщина)`;
+      } else {
+        // Для одиночек показываем обычный возраст
+        const singleAge = profile.date ? formatAge(profile.date) : null;
+        const singleWord = getAgeWord(singleAge);
+        age = singleAge ? `${singleAge} ${singleWord}` : null;
+      }
 
       // Форматируем время онлайн
       const onlineTime = profile.online ? formatOnlineTime(profile.online) : null;
@@ -650,7 +735,7 @@ router.get('/profiles/batch', authenticateToken, async (req, res) => {
         status: profile.status,
         city: profile.city,
         country: profile.country,
-        distance: distance ? Math.round(distance) : null,
+        distance: distance !== null ? Math.round(distance) : null,
         age: age,
         info: profile.info,
         online: onlineTime,
@@ -661,8 +746,8 @@ router.get('/profiles/batch', authenticateToken, async (req, res) => {
         weight: profile.weight,
         smoking: profile.smoking,
         alko: profile.alko,
-        search_status: profile.search_status,
-        search_age: profile.search_age,
+        searchStatus: profile.search_status,
+        searchAge: profile.search_age,
         location: profile.location,
         registration: profile.registration,
         compatibility: compatibility
@@ -673,6 +758,17 @@ router.get('/profiles/batch', authenticateToken, async (req, res) => {
     const shuffledProfiles = finalProfiles
       .sort(() => Math.random() - 0.5)
       .slice(0, count);
+
+    // Логируем первый профиль для отладки
+    if (shuffledProfiles.length > 0) {
+      console.log('=== BATCH ПРОФИЛЬ ОТПРАВЛЯЕТСЯ ===');
+      console.log('Поля поиска:', {
+        searchStatus: shuffledProfiles[0].searchStatus,
+        searchAge: shuffledProfiles[0].searchAge,
+        location: shuffledProfiles[0].location
+      });
+      console.log('=== КОНЕЦ BATCH ПРОФИЛЯ ===');
+    }
 
     res.json(shuffledProfiles);
     

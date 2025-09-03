@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { swipeAPI, apiUtils } from '../services/api';
 import { useNotifications } from '../contexts/NotificationContext';
+// Импортируем функции из бэкенда через API
+// import { formatAge, formatWomanAge } from '../../src/utils/helpers';
 // Убираем импорт getStatusDisplayName, так как теперь статусы уже русские
 import {
   PageContainer,
@@ -437,10 +439,10 @@ const ProfileImage = styled.div`
     
     &::before {
       background: linear-gradient(
-        to right,
+        to bottom,
         transparent 0%,
-        transparent 60%,
-        rgba(0,0,0,0.2) 80%,
+        transparent 40%,
+        rgba(0,0,0,0.2) 70%,
         rgba(0,0,0,0.8) 100%
       );
     }
@@ -607,6 +609,86 @@ const ProfileDetails = styled.div`
     .details {
       opacity: 0.9;
       font-size: 11px;
+      
+      div {
+        margin-bottom: 2px;
+        
+        &:last-child {
+          margin-bottom: 0;
+        }
+        
+        strong {
+          color: #e2e8f0;
+        }
+      }
+    }
+    
+    /* Специальные стили для блока поиска */
+    &.search-info {
+      background: linear-gradient(135deg, #805ad5 0%, #6b46c1 100%);
+      box-shadow: 0 4px 12px rgba(128, 90, 213, 0.3);
+      
+      .title {
+        color: #f7fafc;
+      }
+      
+      .details {
+        div {
+          strong {
+            color: #e2e8f0;
+          }
+          
+          /* Стили для списка мест встречи */
+          div {
+            margin-top: 4px;
+            margin-left: 8px;
+            
+            div {
+              margin-bottom: 2px;
+              font-size: 10px;
+              color: #e2e8f0;
+              
+              &:last-child {
+                margin-bottom: 0;
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    /* Специальные стили для блока места встречи */
+    &.location-info {
+      background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+      box-shadow: 0 4px 12px rgba(56, 161, 105, 0.3);
+      
+      .title {
+        color: #f7fafc;
+      }
+      
+      .details {
+        div {
+          strong {
+            color: #e2e8f0;
+          }
+          
+          /* Стили для списка мест встречи */
+          div {
+            margin-top: 4px;
+            margin-left: 8px;
+            
+            div {
+              margin-bottom: 2px;
+              font-size: 10px;
+              color: #e2e8f0;
+              
+              &:last-child {
+                margin-bottom: 0;
+              }
+            }
+          }
+        }
+      }
     }
   }
   
@@ -686,6 +768,28 @@ const ProfileDetails = styled.div`
     .compatibility-badge, .partner-info {
       font-size: 11px;
       padding: 6px 10px;
+    }
+    
+    .partner-info.search-info {
+      .details div {
+        font-size: 10px;
+        
+        /* Стили для списка мест встречи */
+        div div {
+          font-size: 9px;
+        }
+      }
+    }
+    
+    .partner-info.location-info {
+      .details div {
+        font-size: 9px;
+        
+        /* Стили для списка мест встречи */
+        div div {
+          font-size: 8px;
+        }
+      }
     }
     
     .additional-info {
@@ -771,6 +875,28 @@ const ProfileDetails = styled.div`
       
       .details {
         font-size: 13px;
+      }
+      
+      &.search-info {
+        .details div {
+          font-size: 12px;
+          
+          /* Стили для списка мест встречи */
+          div div {
+            font-size: 11px;
+          }
+        }
+      }
+      
+      &.location-info {
+        .details div {
+          font-size: 12px;
+          
+          /* Стили для списка мест встречи */
+          div div {
+            font-size: 11px;
+          }
+        }
       }
     }
     
@@ -1189,71 +1315,7 @@ const Home = () => {
     }
   };
 
-  // Функция для форматирования возраста партнеров
-  const formatPartnerAge = (dateString) => {
-    if (!dateString) return 'Возраст не указан';
-    
-    try {
-      const birthDate = new Date(dateString);
-      const today = new Date();
-      const age = today.getFullYear() - birthDate.getFullYear();
-      const monthDiff = today.getMonth() - birthDate.getMonth();
-      
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-        return age - 1;
-      }
-      
-      return age;
-    } catch (error) {
-      return 'Возраст не указан';
-    }
-  };
 
-  // Функция для парсинга дат из поля date (формат: "2000-02-12_2000-01-02")
-  const parseDateField = (dateField) => {
-    console.log('parseDateField вызвана с:', dateField);
-    
-    if (!dateField) {
-      console.log('dateField пустой');
-      return null;
-    }
-    
-    if (!dateField.includes('_')) {
-      console.log('dateField не содержит "_"');
-      return null;
-    }
-    
-    const [manDate, womanDate] = dateField.split('_');
-    console.log('Разделено на:', { manDate, womanDate });
-    
-    return {
-      manDate: manDate.trim(),
-      womanDate: womanDate.trim()
-    };
-  };
-
-  // Функция для получения возраста из поля date
-  const getAgeFromDate = (dateField) => {
-    console.log('getAgeFromDate вызвана с:', dateField);
-    
-    const dates = parseDateField(dateField);
-    console.log('parseDateField результат:', dates);
-    
-    if (!dates) {
-      console.log('parseDateField вернул null');
-      return null;
-    }
-    
-    
-    const manAge = formatPartnerAge(dates.manDate);
-    const womanAge = formatPartnerAge(dates.womanDate);
-    
-    
-    return {
-      manAge,
-      womanAge
-    };
-  };
 
   // Функция для добавления профиля в историю
   const addToHistory = (profile) => {
@@ -1448,7 +1510,7 @@ const Home = () => {
                 });
                 toast.success('Взаимная симпатия! 💕', { duration: 6000 });
               } else {
-                toast.success('Лайк отправлен! 💖');
+                toast.success('Лайк отправлен! ��');
               }
             } catch (error) {
               console.error('Error checking existing match:', error);
@@ -1948,6 +2010,8 @@ const Home = () => {
                   login: currentProfile.login,
                   date: currentProfile.date,
                   age: currentProfile.age,
+                  distance: currentProfile.distance,
+                  city: currentProfile.city,
                   height: currentProfile.height,
                   weight: currentProfile.weight,
                   smoking: currentProfile.smoking,
@@ -1956,7 +2020,12 @@ const Home = () => {
                   partnerData: currentProfile.partnerData
                 });
                 
-                
+                // Логируем поля поиска
+                console.log('Поля поиска:', {
+                  searchStatus: currentProfile.searchStatus,
+                  searchAge: currentProfile.searchAge,
+                  location: currentProfile.location
+                });
                 
                 // Парсим даты если есть
                 if (currentProfile.date && currentProfile.date.includes('_')) {
@@ -1978,28 +2047,7 @@ const Home = () => {
                     {currentProfile.city}, {currentProfile.distance}км
                   </div>
                   <div className="age">
-                    {(() => {
-                      console.log('Возраст для парсинга:', { 
-                        date: currentProfile.date, 
-                        age: currentProfile.age,
-                        hasUnderscore: currentProfile.date && currentProfile.date.includes('_')
-                      });
-                      
-                      if (currentProfile.date && currentProfile.date.includes('_')) {
-                        const ages = getAgeFromDate(currentProfile.date);
-                        console.log('Возраст разделен:', ages);
-                        if (ages) {
-                          return (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                              <span style={{ fontSize: '12px', color: 'white' }}>Мужчина: {ages.manAge} лет</span>
-                              <span style={{ fontSize: '12px', color: 'white' }}>Женщина: {ages.womanAge} лет</span>
-                            </div>
-                          );
-                        }
-                        return 'Возраст не указан';
-                      }
-                      return `${currentProfile.age || '?'} лет`;
-                    })()}
+                    {currentProfile.age || 'Возраст не указан'}
                   </div>
                 </ProfileOverlay>
               </ProfileImage>
@@ -2030,140 +2078,50 @@ const Home = () => {
                     </div>
                   )}
                   
-                  {/* Информация о паре */}
-                  {(() => {
-                    const isCouple = currentProfile.date && currentProfile.date.includes('_');
-                    console.log('Проверка на пару:', { 
-                      date: currentProfile.date, 
-                      isCouple,
-                      hasUnderscore: currentProfile.date && currentProfile.date.includes('_')
-                    });
-                    
-                    if (isCouple) {
-                      const ages = getAgeFromDate(currentProfile.date);
-                      console.log('Возраст пары:', ages);
-                      if (ages) {
-                        return (
-                          <div className="partner-info">
-                            <div className="title">👫 Семейная пара (М+Ж)</div>
-                            <div className="details">
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                <span style={{ fontSize: '11px', color: 'white' }}>Мужчина: {ages.manAge} лет</span>
-                                <span style={{ fontSize: '11px', color: 'white' }}>Женщина: {ages.womanAge} лет</span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      }
-                      return (
-                        <div className="partner-info">
-                          <div className="title">👫 Семейная пара (М+Ж)</div>
-                          <div className="details">Возраст не указан</div>
+                  {/* Информация о том, кого ищет пользователь */}
+                  {currentProfile.searchStatus && (
+                    <div className="partner-info search-info">
+                      <div className="title">🔍 Кого ищет</div>
+                      <div className="details">
+                        <div>
+                          <strong>Ищет:</strong> {currentProfile.searchStatus}
                         </div>
-                      );
-                    }
-                    return null;
-                  })()}
+                      </div>
+                    </div>
+                  )}
                   
-                  {/* Дополнительная информация */}
-                  <div className="additional-info">
-                    {currentProfile.height && (
-                      <div className="info-item">
-                        <span className="emoji">📏</span>
-                        <span className="text">
-                          {(() => {
-                           
-                            if (currentProfile.height.includes('_')) {
-                              const [manHeight, womanHeight] = currentProfile.height.split('_');
-
-                              return (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                  <span style={{ fontSize: '11px', color: '#4a5568' }}>Мужчина: {manHeight}см</span>
-                                  <span style={{ fontSize: '11px', color: '#4a5568' }}>Женщина: {womanHeight}см</span>
-                                </div>
-                              );
-                            }
-                            return `${currentProfile.height}см`;
-                          })()}
-                        </span>
+                  {/* Предпочитаемое место встречи */}
+                  {currentProfile.location && (
+                    <div className="partner-info location-info">
+                      <div className="title">📍 Где знакомиться</div>
+                      <div className="details">
+                        <div>
+                          <strong>Предпочитает:</strong>
+                          <div style={{ marginTop: '4px', marginLeft: '8px' }}>
+                            {currentProfile.location.split('&&').map((place, index) => (
+                              <div key={index} style={{ marginBottom: '2px' }}>
+                                • {place.trim()}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
-                    )}
-                    {currentProfile.weight && (
-                      <div className="info-item">
-                        <span className="emoji">⚖️</span>
-                        <span className="text">
-                          {(() => {
-                      
-                            if (currentProfile.weight.includes('_')) {
-                              const [manWeight, womanWeight] = currentProfile.weight.split('_');
-                             
-                              return (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                  <span style={{ fontSize: '11px', color: '#4a5568' }}>Мужчина: {manWeight}кг</span>
-                                  <span style={{ fontSize: '11px', color: '#4a5568' }}>Женщина: {womanWeight}кг</span>
-                                </div>
-                              );
-                            }
-                            return `${currentProfile.weight}кг`;
-                          })()}
-                        </span>
-                      </div>
-                    )}
-                    {currentProfile.smoking && (
-                      <div className="info-item">
-                        <span className="emoji">🚬</span>
-                        <span className="text">
-                          {(() => {
-                        
-                            if (currentProfile.smoking.includes('_')) {
-                              const [manSmoking, womanSmoking] = currentProfile.smoking.split('_');
+                    </div>
+                  )}
                   
-                              return (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                  <span style={{ fontSize: '11px', color: '#4a5568' }}>
-                                    <strong>М:</strong> {manSmoking.length > 25 ? manSmoking.substring(0, 25) + '...' : manSmoking}
-                                  </span>
-                                  <span style={{ fontSize: '11px', color: '#4a5568' }}>
-                                    <strong>Ж:</strong> {womanSmoking.length > 25 ? womanSmoking.substring(0, 25) + '...' : womanSmoking}
-                                  </span>
-                                </div>
-                              );
-                            }
-                            return currentProfile.smoking.length > 20 
-                              ? currentProfile.smoking.substring(0, 20) + '...' 
-                              : currentProfile.smoking;
-                          })()}
-                        </span>
+                  {/* Информация о паре - показываем только если это действительно пара */}
+                  {currentProfile.isCouple && (
+                    <div className="partner-info">
+                      <div className="title">👫 Семейная пара (М+Ж)</div>
+                      <div className="details">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{ fontSize: '11px', color: 'white' }}>Возраст: {currentProfile.age}</span>
+                        </div>
                       </div>
-                    )}
-                    {currentProfile.alko && (
-                      <div className="info-item">
-                        <span className="emoji">🍷</span>
-                        <span className="text">
-                          {(() => {
-                            
-                            if (currentProfile.alko.includes('_')) {
-                              const [manAlko, womanAlko] = currentProfile.alko.split('_');
-                            
-                              return (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                  <span style={{ fontSize: '11px', color: '#4a5568' }}>
-                                    <strong>М:</strong> {manAlko.length > 25 ? manAlko.substring(0, 25) + '...' : manAlko}
-                                  </span>
-                                  <span style={{ fontSize: '11px', color: '#4a5568' }}>
-                                    <strong>Ж:</strong> {womanAlko.length > 25 ? womanAlko.substring(0, 25) + '...' : womanAlko}
-                                  </span>
-                                </div>
-                              );
-                            }
-                            return currentProfile.alko.length > 20 
-                              ? currentProfile.alko.substring(0, 20) + '...' 
-                              : currentProfile.alko;
-                          })()}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
+                  
+                  {/* Дополнительная информация - убрана для упрощения интерфейса */}
                   
                   {/* Основная информация */}
                   <div className="info">
