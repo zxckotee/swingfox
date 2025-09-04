@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { clubApi } from '../services/clubApi';
+import EventForm from '../components/EventForm';
+import EventParticipants from '../components/EventParticipants';
 import '../styles/ClubEvents.css';
 
 // Иконки
@@ -83,6 +85,10 @@ const ClubEvents = () => {
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
+  const [clubId, setClubId] = useState(null);
+  const [showParticipants, setShowParticipants] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState(null);
 
   useEffect(() => {
     loadEvents();
@@ -91,7 +97,7 @@ const ClubEvents = () => {
   const loadEvents = async () => {
     try {
       const eventsData = await clubApi.getEvents();
-      setEvents(Array.isArray(eventsData) ? eventsData : []);
+      setEvents(Array.isArray(eventsData.events) ? eventsData.events : (Array.isArray(eventsData) ? eventsData : []));
     } catch (error) {
       console.error('Ошибка загрузки мероприятий:', error);
       setEvents([]);
@@ -109,6 +115,37 @@ const ClubEvents = () => {
         console.error('Ошибка удаления мероприятия:', error);
       }
     }
+  };
+
+  const handleEditEvent = (event) => {
+    setEditingEvent(event);
+    setShowCreateModal(true);
+  };
+
+  const handleCreateEvent = () => {
+    setEditingEvent(null);
+    setShowCreateModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowCreateModal(false);
+    setEditingEvent(null);
+  };
+
+  const handleEventSaved = () => {
+    setShowCreateModal(false);
+    setEditingEvent(null);
+    loadEvents(); // Перезагружаем список событий
+  };
+
+  const handleShowParticipants = (eventId) => {
+    setSelectedEventId(eventId);
+    setShowParticipants(true);
+  };
+
+  const handleCloseParticipants = () => {
+    setShowParticipants(false);
+    setSelectedEventId(null);
   };
 
   const filteredEvents = (events || []).filter(event => {
@@ -152,7 +189,7 @@ const ClubEvents = () => {
         </div>
         <button 
           className="btn btn-primary create-event-btn"
-          onClick={() => setShowCreateModal(true)}
+          onClick={handleCreateEvent}
         >
           <PlusIcon className="icon" />
           Создать мероприятие
@@ -209,7 +246,7 @@ const ClubEvents = () => {
             <p>Создайте первое мероприятие для вашего клуба</p>
             <button 
               className="btn btn-primary"
-              onClick={() => setShowCreateModal(true)}
+              onClick={handleCreateEvent}
             >
               <PlusIcon className="icon" />
               Создать мероприятие
@@ -229,9 +266,19 @@ const ClubEvents = () => {
                     <Link to={`/club/events/${event.id}`} className="action-btn view">
                       <EyeIcon className="icon" />
                     </Link>
-                    <Link to={`/club/events/${event.id}/edit`} className="action-btn edit">
+                    <button 
+                      className="action-btn participants"
+                      onClick={() => handleShowParticipants(event.id)}
+                      title="Управление участниками"
+                    >
+                      <UsersIcon className="icon" />
+                    </button>
+                    <button 
+                      className="action-btn edit"
+                      onClick={() => handleEditEvent(event)}
+                    >
                       <PencilIcon className="icon" />
-                    </Link>
+                    </button>
                     <button 
                       className="action-btn delete"
                       onClick={() => handleDeleteEvent(event.id)}
@@ -304,36 +351,22 @@ const ClubEvents = () => {
         )}
       </div>
 
-      {/* Create Event Modal */}
+      {/* Event Form Modal */}
       {showCreateModal && (
-        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Создать новое мероприятие</h2>
-              <button 
-                className="modal-close"
-                onClick={() => setShowCreateModal(false)}
-              >
-                ×
-              </button>
-            </div>
-            <div className="modal-body">
-              <p>Форма создания мероприятия будет здесь...</p>
-              <p>Для полной реализации нужно создать компонент EventForm</p>
-            </div>
-            <div className="modal-footer">
-              <button 
-                className="btn btn-secondary"
-                onClick={() => setShowCreateModal(false)}
-              >
-                Отмена
-              </button>
-              <button className="btn btn-primary">
-                Создать
-              </button>
-            </div>
-          </div>
-        </div>
+        <EventForm
+          event={editingEvent}
+          onSave={handleEventSaved}
+          onCancel={handleCloseModal}
+          clubId={clubId}
+        />
+      )}
+
+      {/* Event Participants Modal */}
+      {showParticipants && (
+        <EventParticipants
+          eventId={selectedEventId}
+          onClose={handleCloseParticipants}
+        />
       )}
     </div>
   );

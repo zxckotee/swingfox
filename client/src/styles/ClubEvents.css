@@ -276,6 +276,15 @@
   background: #9ae6b4;
 }
 
+.action-btn.participants {
+  background: #e9d8fd;
+  color: #553c9a;
+}
+
+.action-btn.participants:hover {
+  background: #d6bcfa;
+}
+
 .action-btn.delete {
   background: #fed7d7;
   color: #742a2a;

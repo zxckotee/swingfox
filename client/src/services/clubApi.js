@@ -100,8 +100,40 @@ export const clubApi = {
     });
   },
 
+  // Event Participants
   getEventParticipants: async (eventId) => {
     return apiCall(`/events/${eventId}/participants`);
+  },
+
+  updateParticipantStatus: async (eventId, participantId, status) => {
+    return apiCall(`/events/${eventId}/participants/${participantId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ status })
+    });
+  },
+
+  removeParticipant: async (eventId, participantId) => {
+    return apiCall(`/events/${eventId}/participants/${participantId}`, {
+      method: 'DELETE'
+    });
+  },
+
+  // Event Applications
+  applyToEvent: async (eventId, applicationData) => {
+    return apiCall(`/events/${eventId}/apply`, {
+      method: 'POST',
+      body: JSON.stringify(applicationData)
+    });
+  },
+
+  getMyApplications: async () => {
+    return apiCall('/user-events/applications');
+  },
+
+  cancelApplication: async (eventId) => {
+    return apiCall(`/user-events/events/${eventId}/cancel`, {
+      method: 'POST'
+    });
   },
 
   inviteParticipants: async (eventId, userIds) => {

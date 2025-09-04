@@ -89,11 +89,15 @@ const ClubDashboard = () => {
         clubApi.getEvents({ limit: 5 })
       ]);
       
-      setClub(clubData);
-      setStats(statsData);
-      setRecentEvents(Array.isArray(eventsData) ? eventsData : []);
+      setClub(clubData.club || clubData);
+      setStats(statsData.analytics || statsData);
+      setRecentEvents(Array.isArray(eventsData.events) ? eventsData.events : (Array.isArray(eventsData) ? eventsData : []));
     } catch (error) {
       console.error('Ошибка загрузки данных:', error);
+      // Устанавливаем fallback данные
+      setClub(null);
+      setStats({});
+      setRecentEvents([]);
     } finally {
       setLoading(false);
     }
@@ -104,6 +108,18 @@ const ClubDashboard = () => {
       <div className="club-dashboard-loading">
         <div className="loading-spinner"></div>
         <p>Загрузка дашборда...</p>
+      </div>
+    );
+  }
+
+  if (!club) {
+    return (
+      <div className="club-dashboard-error">
+        <h2>Ошибка загрузки данных клуба</h2>
+        <p>Не удалось загрузить информацию о клубе. Проверьте подключение к интернету и попробуйте снова.</p>
+        <button onClick={loadDashboardData} className="btn btn-primary">
+          Попробовать снова
+        </button>
       </div>
     );
   }

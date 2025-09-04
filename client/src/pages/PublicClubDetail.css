@@ -1,0 +1,480 @@
+.public-club-detail {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+/* Header */
+.club-detail-header {
+  background: white;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.club-detail-back {
+  margin-bottom: 20px;
+}
+
+.back-link {
+  color: #dc3522;
+  text-decoration: none;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: color 0.2s ease;
+}
+
+.back-link:hover {
+  color: #ff6b58;
+}
+
+.club-detail-hero {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.club-hero-avatar {
+  flex-shrink: 0;
+}
+
+.club-hero-avatar img {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid #fff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.club-hero-info {
+  flex: 1;
+}
+
+.club-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 8px rgba(220, 53, 34, 0.3);
+}
+
+.club-type-icon {
+  font-size: 16px;
+}
+
+.club-hero-name {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0 0 15px 0;
+  line-height: 1.2;
+}
+
+.club-hero-location {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: #4a5568;
+  font-size: 16px;
+}
+
+.location-icon {
+  font-size: 18px;
+}
+
+.club-hero-website {
+  margin-top: 10px;
+}
+
+.website-link {
+  color: #dc3522;
+  text-decoration: none;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s ease;
+}
+
+.website-link:hover {
+  color: #ff6b58;
+  text-decoration: underline;
+}
+
+/* Tabs */
+.club-detail-tabs {
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.tab-button {
+  background: none;
+  border: none;
+  padding: 20px 30px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #718096;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.tab-button:hover {
+  color: #4a5568;
+}
+
+.tab-button.active {
+  color: #dc3522;
+  border-bottom-color: #dc3522;
+}
+
+/* Content */
+.club-detail-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 30px 20px;
+}
+
+/* Info Tab */
+.club-info-tab {
+  background: white;
+  border-radius: 16px;
+  padding: 30px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.club-info-tab h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 15px 0;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.club-description p,
+.club-contact p {
+  color: #4a5568;
+  line-height: 1.6;
+  margin: 0 0 25px 0;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 15px;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f7fafc;
+  border-radius: 8px;
+  border-left: 4px solid #dc3522;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.detail-value {
+  color: #2d3748;
+  font-weight: 500;
+}
+
+/* Events Tab */
+.club-events-tab {
+  background: white;
+  border-radius: 16px;
+  padding: 30px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.club-events-tab h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 25px 0;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.no-events {
+  text-align: center;
+  padding: 60px 20px;
+  color: #718096;
+}
+
+.no-events-icon {
+  font-size: 4rem;
+  margin-bottom: 20px;
+}
+
+.no-events p {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.event-card {
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+  background: #f7fafc;
+  border-radius: 12px;
+  border-left: 4px solid #dc3522;
+  transition: all 0.2s ease;
+}
+
+.event-card:hover {
+  background: #edf2f7;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.event-date {
+  flex-shrink: 0;
+  width: 120px;
+  text-align: center;
+  padding: 10px;
+  background: white;
+  border-radius: 8px;
+  font-weight: 600;
+  color: #dc3522;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.event-info {
+  flex: 1;
+}
+
+.event-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 8px 0;
+}
+
+.event-description {
+  color: #4a5568;
+  line-height: 1.5;
+  margin: 0 0 12px 0;
+}
+
+.event-details {
+  display: flex;
+  gap: 20px;
+  font-size: 14px;
+  margin-bottom: 15px;
+}
+
+.event-price {
+  color: #dc3522;
+  font-weight: 600;
+}
+
+.event-participants {
+  color: #718096;
+}
+
+.event-actions {
+  margin-top: 15px;
+}
+
+.btn {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 11px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #c42e1f 0%, #e55a47 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(220, 53, 34, 0.3);
+}
+
+/* Loading & Error */
+.public-club-detail-loading,
+.public-club-detail-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.public-club-detail-loading {
+  color: #718096;
+}
+
+.public-club-detail-error {
+  color: #e53e3e;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e2e8f0;
+  border-top: 4px solid #dc3522;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.public-club-detail-error h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 10px 0;
+}
+
+.public-club-detail-error p {
+  font-size: 1rem;
+  margin: 0 0 20px 0;
+  color: #718096;
+}
+
+/* Buttons */
+.btn {
+  display: inline-block;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+  min-width: 120px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #c42e1f 0%, #e55a47 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 53, 34, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .club-detail-hero {
+    flex-direction: column;
+    text-align: center;
+    gap: 20px;
+  }
+  
+  .club-hero-avatar img {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .club-hero-name {
+    font-size: 2rem;
+  }
+  
+  .club-detail-tabs {
+    padding: 0 15px;
+  }
+  
+  .tab-button {
+    padding: 15px 20px;
+    font-size: 14px;
+  }
+  
+  .club-detail-content {
+    padding: 20px 15px;
+  }
+  
+  .club-info-tab,
+  .club-events-tab {
+    padding: 20px;
+  }
+  
+  .details-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .event-card {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .event-date {
+    width: auto;
+    text-align: left;
+  }
+  
+  .event-details {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .club-detail-header {
+    padding: 15px;
+  }
+  
+  .club-hero-name {
+    font-size: 1.8rem;
+  }
+  
+  .club-info-tab,
+  .club-events-tab {
+    padding: 15px;
+  }
+  
+  .event-card {
+    padding: 15px;
+  }
+}

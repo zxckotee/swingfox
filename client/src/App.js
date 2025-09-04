@@ -32,6 +32,10 @@ import ClubEvents from './pages/ClubEvents';
 import ClubAnalytics from './pages/ClubAnalytics';
 import ClubLayout from './components/ClubLayout';
 
+// Публичные страницы клубов
+import PublicClubs from './pages/PublicClubs';
+import PublicClubDetail from './pages/PublicClubDetail';
+
 // Стили и тема
 const theme = {
   colors: {
@@ -259,6 +263,11 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               
+              {/* Публичные страницы клубов */}
+              <Route path="/clubs" element={<PublicClubs />} />
+              <Route path="/clubs/:id" element={<PublicClubDetail />} />
+              <Route path="/clubs/:id/events" element={<PublicClubDetail />} />
+              
               {/* Клубные роуты */}
               <Route path="/club/login" element={<ClubLogin />} />
               <Route path="/club/register" element={<ClubRegister />} />
@@ -333,12 +342,6 @@ function App() {
               
 
               
-              <Route path="/clubs" element={
-                <AuthGuard>
-                  <Navigation />
-                  <Clubs />
-                </AuthGuard>
-              } />
               
               <Route path="/subscriptions" element={
                 <AuthGuard>

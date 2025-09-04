@@ -13,16 +13,17 @@ module.exports = {
         email: 'elite@example.com',
         password: await bcrypt.hash('password123', 10),
         description: 'Премиальный ночной клуб в центре города с лучшей музыкой и атмосферой',
+        country: 'Россия',
+        city: 'Москва',
+        address: 'ул. Тверская, 15',
+        owner: 'elite_club',
         location: 'Москва, ул. Тверская, 15',
         contact_info: 'Телефон: +7 (495) 123-45-67\nEmail: info@elite-club.ru',
         website: 'https://elite-club.ru',
-        social_media: JSON.stringify({
-          instagram: '@elite_club',
-          facebook: 'eliteclub',
-          vk: 'elite_club'
-        }),
         is_active: true,
         type: 'nightclub',
+        date_created: new Date().toISOString().split('T')[0],
+        email_verified: true,
         created_at: new Date(),
         updated_at: new Date()
       },
@@ -33,15 +34,17 @@ module.exports = {
         email: 'vkus@example.com',
         password: await bcrypt.hash('password123', 10),
         description: 'Уютный ресторан с авторской кухней и отличным обслуживанием',
+        country: 'Россия',
+        city: 'Санкт-Петербург',
+        address: 'Невский пр., 25',
+        owner: 'vkus_restaurant',
         location: 'Санкт-Петербург, Невский пр., 25',
         contact_info: 'Телефон: +7 (812) 987-65-43\nEmail: info@vkus-rest.ru',
         website: 'https://vkus-rest.ru',
-        social_media: JSON.stringify({
-          instagram: '@vkus_restaurant',
-          facebook: 'vkusrestaurant'
-        }),
         is_active: true,
         type: 'restaurant',
+        date_created: new Date().toISOString().split('T')[0],
+        email_verified: true,
         created_at: new Date(),
         updated_at: new Date()
       },
@@ -52,15 +55,17 @@ module.exports = {
         email: 'events@prostranstvo.com',
         password: await bcrypt.hash('password123', 10),
         description: 'Современное пространство для проведения мероприятий любого масштаба',
+        country: 'Россия',
+        city: 'Екатеринбург',
+        address: 'ул. Ленина, 10',
+        owner: 'prostranstvo_events',
         location: 'Екатеринбург, ул. Ленина, 10',
         contact_info: 'Телефон: +7 (343) 555-12-34\nEmail: info@prostranstvo.ru',
         website: 'https://prostranstvo.ru',
-        social_media: JSON.stringify({
-          instagram: '@prostranstvo_events',
-          vk: 'prostranstvo_events'
-        }),
         is_active: true,
         type: 'event_space',
+        date_created: new Date().toISOString().split('T')[0],
+        email_verified: true,
         created_at: new Date(),
         updated_at: new Date()
       }

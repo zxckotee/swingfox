@@ -97,11 +97,11 @@ const ClubAnalytics = () => {
       ]);
       
       setAnalytics({
-        overview,
-        events,
-        participants,
-        ads,
-        financial
+        overview: overview.analytics || overview,
+        events: events.analytics || events,
+        participants: participants.analytics || participants,
+        ads: ads.analytics || ads,
+        financial: financial.analytics || financial
       });
     } catch (error) {
       console.error('Ошибка загрузки аналитики:', error);
