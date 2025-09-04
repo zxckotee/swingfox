@@ -57,22 +57,21 @@ router.get('/', authenticateToken, async (req, res) => {
       id: club.id,
       name: club.name,
       description: club.description,
-      type: club.type,
       location: club.location,
-      current_members: club.current_members,
-      max_members: club.max_members,
+      country: club.country,
+      city: club.city,
+      address: club.address,
       avatar: club.avatar,
-      cover_image: club.cover_image,
-      tags: club.tags ? club.tags.split(',').map(tag => tag.trim()) : [],
-      is_verified: club.is_verified,
-      membership_fee: club.membership_fee,
-      age_restriction: club.age_restriction,
+      website: club.website,
+      links: club.links,
       owner: club.owner,
       owner_info: club.OwnerUser ? {
         login: club.OwnerUser.login,
-        name: club.OwnerUser.name,
-        avatar: club.OwnerUser.ava
+        avatar: club.OwnerUser.ava,
+        date: club.OwnerUser.date,
+        status: club.OwnerUser.status
       } : null,
+      date_created: club.date_created,
       created_at: club.created_at
     }));
 
@@ -112,67 +111,51 @@ router.post('/', authenticateToken, async (req, res) => {
     const {
       name,
       description,
-      type = 'public',
+      country,
+      city,
+      address,
       location,
-      geo,
-      max_members = 100,
-      rules,
-      tags,
-      membership_fee = 0,
-      age_restriction,
-      contact_info,
-      social_links
+      website,
+      links
     } = req.body;
 
     const userId = req.user.login;
 
-    if (!name || !description || !location) {
+    if (!name || !country || !city || !address) {
       return res.status(400).json({
         error: 'missing_data',
-        message: 'Укажите название, описание и местоположение клуба'
+        message: 'Укажите название, страну, город и адрес клуба'
       });
     }
 
     logger.logBusinessLogic(1, 'Создание клуба', {
       user_id: userId,
       name,
-      type,
-      location,
-      max_members
+      country,
+      city,
+      address
     }, req);
-
-    // Проверяем VIP статус для приватных клубов
-    const user = await User.findOne({ where: { login: userId } });
-    if (type === 'private' && user.viptype === 'FREE') {
-      return res.status(403).json({
-        error: 'no_permission',
-        message: 'Приватные клубы доступны только VIP и PREMIUM пользователям'
-      });
-    }
 
     // Создаем клуб
     logger.logDatabase('INSERT', 'clubs', {
       name,
       owner: userId,
-      type,
-      location
+      country,
+      city,
+      address
     }, req);
 
     const club = await Clubs.create({
       name: name.trim(),
-      description: description.trim(),
+      description: description ? description.trim() : null,
       owner: userId,
-      type,
-      location: location.trim(),
-      geo,
-      max_members: parseInt(max_members),
-      rules: rules ? rules.trim() : null,
-      tags: tags ? tags.trim() : null,
-      membership_fee: parseFloat(membership_fee) || 0,
-      age_restriction,
-      contact_info,
-      social_links,
-      current_members: 1 // Владелец автоматически становится участником
+      country: country.trim(),
+      city: city.trim(),
+      address: address.trim(),
+      location: location ? location.trim() : null,
+      website: website ? website.trim() : null,
+      links: links ? links.trim() : null,
+      date_created: new Date().toISOString().split('T')[0]
     });
 
     logger.logResult('Создание клуба', true, {
@@ -186,11 +169,14 @@ router.post('/', authenticateToken, async (req, res) => {
         id: club.id,
         name: club.name,
         description: club.description,
-        type: club.type,
+        country: club.country,
+        city: club.city,
+        address: club.address,
         location: club.location,
-        current_members: club.current_members,
-        max_members: club.max_members,
+        website: club.website,
+        links: club.links,
         owner: club.owner,
+        date_created: club.date_created,
         created_at: club.created_at
       },
       message: 'Клуб успешно создан'
@@ -279,8 +265,9 @@ router.get('/:id', authenticateToken, async (req, res) => {
       owner: club.owner,
       owner_info: club.OwnerUser ? {
         login: club.OwnerUser.login,
-        name: club.OwnerUser.name,
-        avatar: club.OwnerUser.ava
+        avatar: club.OwnerUser.ava,
+        date: club.OwnerUser.date,
+        status: club.OwnerUser.status
       } : null,
       created_at: club.created_at,
       user_application: userApplication ? {

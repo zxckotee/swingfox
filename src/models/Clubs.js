@@ -6,68 +6,25 @@ module.exports = (sequelize) => {
     id: {
       type: DataTypes.BIGINT,
       primaryKey: true,
-      autoIncrement: true
+      allowNull: false
     },
     name: {
-      type: DataTypes.STRING(255),
-      allowNull: false,
-      validate: {
-        notEmpty: true,
-        len: [2, 255]
-      }
+      type: DataTypes.TEXT,
+      allowNull: false
     },
     login: {
       type: DataTypes.STRING(255),
       allowNull: false,
-      unique: true,
-      validate: {
-        notEmpty: true,
-        len: [3, 255],
-        is: /^[a-zA-Z0-9_]+$/
-      }
+      unique: true
     },
     email: {
       type: DataTypes.STRING(255),
       allowNull: false,
-      unique: true,
-      validate: {
-        isEmail: true
-      }
+      unique: true
     },
     password: {
       type: DataTypes.STRING(255),
-      allowNull: false,
-      validate: {
-        len: [6, 255]
-      }
-    },
-    description: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-    location: {
-      type: DataTypes.STRING(255),
-      allowNull: true
-    },
-    contact_info: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-    website: {
-      type: DataTypes.STRING(255),
-      allowNull: true
-    },
-    social_links: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-    is_active: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: true
-    },
-    type: {
-      type: DataTypes.ENUM('swing', 'bdsm', 'fetish', 'lgbt', 'general', 'other'),
-      allowNull: true
+      allowNull: false
     },
     country: {
       type: DataTypes.TEXT,
@@ -81,11 +38,19 @@ module.exports = (sequelize) => {
       type: DataTypes.TEXT,
       allowNull: false
     },
+    owner: {
+      type: DataTypes.STRING(255),
+      allowNull: false
+    },
     admins: {
       type: DataTypes.TEXT,
       allowNull: true
     },
     links: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    description: {
       type: DataTypes.TEXT,
       allowNull: true
     },
@@ -98,93 +63,32 @@ module.exports = (sequelize) => {
       type: DataTypes.DATEONLY,
       allowNull: false
     },
-    is_verified: {
+    is_active: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      defaultValue: false
+      defaultValue: true
     },
-    max_members: {
-      type: DataTypes.INTEGER,
-      allowNull: true
-    },
-    current_members: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 1
-    },
-    balance: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
-      defaultValue: 0
-    },
-    membership_fee: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: true,
-      defaultValue: 0
-    },
-    age_restriction: {
-      type: DataTypes.STRING(20),
-      allowNull: true
-    },
-    rules: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-    tags: {
-      type: DataTypes.STRING(500),
-      allowNull: true
-    },
-    cover_image: {
+    location: {
       type: DataTypes.STRING(255),
       allowNull: true
     },
-    verification_date: {
-      type: DataTypes.DATE,
+    website: {
+      type: DataTypes.STRING(255),
       allowNull: true
     },
-    verified_by: {
-      type: DataTypes.STRING(50),
+    contact_info: {
+      type: DataTypes.TEXT,
       allowNull: true
+    },
+    type: {
+      type: DataTypes.ENUM('nightclub', 'restaurant', 'event_space', 'other'),
+      allowNull: true,
+      defaultValue: 'other'
     },
     email_verified: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false
-    },
-    email_verification_token: {
-      type: DataTypes.STRING(255),
-      allowNull: true
-    },
-    email_verification_expires: {
-      type: DataTypes.DATE,
-      allowNull: true
-    },
-    verification_sent_at: {
-      type: DataTypes.DATE,
-      allowNull: true
-    },
-    category: {
-      type: DataTypes.STRING(100),
-      allowNull: true
-    },
-    rating: {
-      type: DataTypes.DECIMAL(3, 2),
-      allowNull: false,
-      defaultValue: 0
-    },
-    member_count: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 0
-    },
-    is_premium: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false
-    },
-    referral_code: {
-      type: DataTypes.STRING(50),
-      allowNull: true
     }
   }, {
     tableName: 'clubs',
@@ -206,14 +110,142 @@ module.exports = (sequelize) => {
   });
 
   // Методы экземпляра
-  Clubs.prototype.comparePassword = async function(candidatePassword) {
-    return bcrypt.compare(candidatePassword, this.password);
-  };
-
   Clubs.prototype.toJSON = function() {
     const values = Object.assign({}, this.get());
-    delete values.password;
+    delete values.password; // Не возвращаем пароль в JSON
     return values;
+  };
+
+  Clubs.prototype.comparePassword = async function(candidatePassword) {
+    return await bcrypt.compare(candidatePassword, this.password);
+  };
+
+  // Статические методы
+  Clubs.getActiveClubs = async function(options = {}) {
+    const {
+      limit = 20,
+      offset = 0,
+      location = null,
+      type = null,
+      search = null
+    } = options;
+
+    const whereClause = { is_active: true };
+    
+    if (location) {
+      whereClause[sequelize.Sequelize.Op.or] = [
+        { location: { [sequelize.Sequelize.Op.iLike]: `%${location}%` } },
+        { city: { [sequelize.Sequelize.Op.iLike]: `%${location}%` } },
+        { country: { [sequelize.Sequelize.Op.iLike]: `%${location}%` } }
+      ];
+    }
+    
+    if (search) {
+      const searchCondition = [
+        { name: { [sequelize.Sequelize.Op.iLike]: `%${search}%` } },
+        { description: { [sequelize.Sequelize.Op.iLike]: `%${search}%` } }
+      ];
+      
+      if (whereClause[sequelize.Sequelize.Op.or]) {
+        whereClause[sequelize.Sequelize.Op.and] = [
+          { [sequelize.Sequelize.Op.or]: whereClause[sequelize.Sequelize.Op.or] },
+          { [sequelize.Sequelize.Op.or]: searchCondition }
+        ];
+        delete whereClause[sequelize.Sequelize.Op.or];
+      } else {
+        whereClause[sequelize.Sequelize.Op.or] = searchCondition;
+      }
+    }
+
+    try {
+      const clubs = await this.findAll({
+        where: whereClause,
+        include: [
+          {
+            model: sequelize.models.User,
+            as: 'OwnerUser',
+            attributes: ['login', 'ava', 'date', 'status']
+          }
+        ],
+        order: [['created_at', 'DESC']],
+        limit,
+        offset
+      });
+
+      return clubs;
+    } catch (error) {
+      console.error('Error getting active clubs:', error);
+      throw error;
+    }
+  };
+
+  Clubs.getPopularClubs = async function(limit = 20) {
+    try {
+      const clubs = await this.findAll({
+        where: { is_active: true },
+        include: [
+          {
+            model: sequelize.models.User,
+            as: 'OwnerUser',
+            attributes: ['login', 'ava', 'date', 'status']
+          }
+        ],
+        order: [
+          ['created_at', 'DESC']
+        ],
+        limit
+      });
+
+      return clubs;
+    } catch (error) {
+      console.error('Error getting popular clubs:', error);
+      throw error;
+    }
+  };
+
+  Clubs.getUserClubs = async function(userId, role = 'all') {
+    try {
+      let whereClause = { is_active: true };
+      
+      if (role === 'owner') {
+        whereClause.owner = userId;
+      } else if (role === 'member') {
+        // Для участников нужно будет добавить связь с заявками
+        // Пока возвращаем пустой массив
+        return [];
+      }
+      // Если role === 'all', показываем все активные клубы
+
+      const clubs = await this.findAll({
+        where: whereClause,
+        include: [
+          {
+            model: sequelize.models.User,
+            as: 'OwnerUser',
+            attributes: ['login', 'ava', 'date', 'status']
+          }
+        ],
+        order: [['created_at', 'DESC']]
+      });
+
+      return clubs;
+    } catch (error) {
+      console.error('Error getting user clubs:', error);
+      throw error;
+    }
+  };
+
+  // Методы экземпляра
+  Clubs.prototype.canJoin = function() {
+    // Поскольку у нас нет полей current_members и max_members,
+    // всегда возвращаем true для возможности вступления
+    return true;
+  };
+
+  Clubs.prototype.isFull = function() {
+    // Поскольку у нас нет полей current_members и max_members,
+    // всегда возвращаем false
+    return false;
   };
 
   // Ассоциации
@@ -241,6 +273,13 @@ module.exports = (sequelize) => {
     Clubs.hasMany(models.Chat, {
       foreignKey: 'club_id',
       as: 'chats'
+    });
+
+    // Ассоциация с владельцем клуба
+    Clubs.belongsTo(models.User, {
+      foreignKey: 'owner',
+      targetKey: 'login',
+      as: 'OwnerUser'
     });
   };
 

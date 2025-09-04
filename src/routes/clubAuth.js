@@ -33,8 +33,12 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Клуб с таким логином или email уже существует' });
     }
 
+    // Генерируем уникальный ID для клуба
+    const clubId = Date.now() + Math.floor(Math.random() * 1000);
+    
     // Создание клуба
     const club = await Clubs.create({
+      id: clubId,
       name,
       login,
       email,
@@ -43,10 +47,11 @@ router.post('/register', async (req, res) => {
       location,
       contact_info,
       website,
-      type: type || 'general',
+      type: type || 'other',
       country: 'Россия', // Заглушка
       city: 'Москва', // Заглушка
       address: location || 'Не указан', // Используем location как адрес
+      owner: login, // Используем login как owner (временно)
       date_created: new Date().toISOString().split('T')[0], // Текущая дата
       email_verified: true // Считаем email подтвержденным после ввода кода
     });
