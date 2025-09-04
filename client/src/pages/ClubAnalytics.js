@@ -153,6 +153,17 @@ const ClubAnalytics = () => {
 
   const renderChart = (data, title, type = 'bar') => {
     // Простая визуализация данных
+    if (!Array.isArray(data) || data.length === 0) {
+      return (
+        <div className="chart-container">
+          <h3 className="chart-title">{title}</h3>
+          <div className="chart-content">
+            <p>Нет данных для отображения</p>
+          </div>
+        </div>
+      );
+    }
+    
     const maxValue = Math.max(...data.map(d => d.value));
     
     return (
@@ -359,7 +370,7 @@ const ClubAnalytics = () => {
                 <div className="demographic-item">
                   <h4>Возраст</h4>
                   <div className="demographic-data">
-                    {analytics.participants.demographics.age_groups?.map((group, index) => (
+                    {(analytics.participants.demographics.age_groups || []).map((group, index) => (
                       <div key={index} className="demographic-bar">
                         <span>{group.range}</span>
                         <div className="bar">
@@ -449,7 +460,7 @@ const ClubAnalytics = () => {
               <div className="ads-performance">
                 <h4>Эффективность объявлений</h4>
                 <div className="ads-list">
-                  {analytics.ads.performance_by_ad.map((ad, index) => (
+                  {(analytics.ads.performance_by_ad || []).map((ad, index) => (
                     <div key={index} className="ad-performance-item">
                       <div className="ad-info">
                         <h5>{ad.title}</h5>

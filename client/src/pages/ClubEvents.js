@@ -91,9 +91,10 @@ const ClubEvents = () => {
   const loadEvents = async () => {
     try {
       const eventsData = await clubApi.getEvents();
-      setEvents(eventsData);
+      setEvents(Array.isArray(eventsData) ? eventsData : []);
     } catch (error) {
       console.error('Ошибка загрузки мероприятий:', error);
+      setEvents([]);
     } finally {
       setLoading(false);
     }
@@ -103,14 +104,14 @@ const ClubEvents = () => {
     if (window.confirm('Вы уверены, что хотите удалить это мероприятие?')) {
       try {
         await clubApi.deleteEvent(eventId);
-        setEvents(events.filter(event => event.id !== eventId));
+        setEvents((events || []).filter(event => event.id !== eventId));
       } catch (error) {
         console.error('Ошибка удаления мероприятия:', error);
       }
     }
   };
 
-  const filteredEvents = events.filter(event => {
+  const filteredEvents = (events || []).filter(event => {
     const matchesFilter = filter === 'all' || 
                          (filter === 'upcoming' && new Date(event.date) > new Date()) ||
                          (filter === 'ongoing' && new Date(event.date) <= new Date() && new Date(event.date) > new Date(Date.now() - 24 * 60 * 60 * 1000)) ||

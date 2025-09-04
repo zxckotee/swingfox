@@ -91,7 +91,7 @@ const ClubDashboard = () => {
       
       setClub(clubData);
       setStats(statsData);
-      setRecentEvents(eventsData);
+      setRecentEvents(Array.isArray(eventsData) ? eventsData : []);
     } catch (error) {
       console.error('Ошибка загрузки данных:', error);
     } finally {
@@ -218,7 +218,7 @@ const ClubDashboard = () => {
         </div>
         
         <div className="events-grid">
-          {recentEvents.map(event => (
+          {(recentEvents || []).map(event => (
             <div key={event.id} className="event-card">
               <div className="event-header">
                 <h3>{event.title}</h3>

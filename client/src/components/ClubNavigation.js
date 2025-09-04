@@ -160,7 +160,6 @@ const ClubNavigation = () => {
       <nav className="club-navigation">
         <div className="nav-header">
           <div className="nav-logo">
-            <img src="/images/club-logo.png" alt="Club Logo" />
             <span className="logo-text">SwingFox Club</span>
           </div>
         </div>
@@ -208,7 +207,6 @@ const ClubNavigation = () => {
           <nav className="mobile-navigation" onClick={(e) => e.stopPropagation()}>
             <div className="mobile-nav-header">
               <div className="nav-logo">
-                <img src="/images/club-logo.png" alt="Club Logo" />
                 <span className="logo-text">SwingFox Club</span>
               </div>
               <button

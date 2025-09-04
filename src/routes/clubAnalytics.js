@@ -52,6 +52,7 @@ router.get('/overview', authenticateClub, async (req, res) => {
     const totalParticipants = await EventParticipants.count({
       include: [{
         model: ClubEvents,
+        as: 'event',
         where: { club_id: clubId }
       }]
     });
@@ -60,6 +61,7 @@ router.get('/overview', authenticateClub, async (req, res) => {
       where: { status: 'confirmed' },
       include: [{
         model: ClubEvents,
+        as: 'event',
         where: { club_id: clubId }
       }]
     });
@@ -99,6 +101,7 @@ router.get('/overview', authenticateClub, async (req, res) => {
     const participantsInPeriod = await EventParticipants.count({
       include: [{
         model: ClubEvents,
+        as: 'event',
         where: {
           club_id: clubId,
           created_at: {
@@ -219,6 +222,7 @@ router.get('/participants', authenticateClub, async (req, res) => {
     const participantStatusStats = await EventParticipants.findAll({
       include: [{
         model: ClubEvents,
+        as: 'event',
         where: { club_id: clubId }
       }],
       attributes: [
@@ -234,6 +238,7 @@ router.get('/participants', authenticateClub, async (req, res) => {
       include: [
         {
           model: ClubEvents,
+          as: 'event',
           where: { club_id: clubId }
         },
         {
@@ -257,6 +262,7 @@ router.get('/participants', authenticateClub, async (req, res) => {
       include: [
         {
           model: ClubEvents,
+          as: 'event',
           where: { club_id: clubId }
         },
         {
@@ -278,6 +284,7 @@ router.get('/participants', authenticateClub, async (req, res) => {
       include: [
         {
           model: ClubEvents,
+          as: 'event',
           where: { club_id: clubId }
         },
         {
