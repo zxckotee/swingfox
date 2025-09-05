@@ -528,22 +528,6 @@ const Catalog = () => {
                 </div>
               )}
                       
-                      {/* Показываем данные партнера для пар */}
-                      {user.isCouple && user.partnerData && (
-                        <div className="partner-data" style={{ 
-                          fontSize: '12px', 
-                          margin: '5px 0', 
-                          padding: '5px', 
-                          background: 'rgba(220, 53, 34, 0.1)', 
-                          borderRadius: '5px',
-                          border: '1px solid rgba(220, 53, 34, 0.2)'
-                        }}>
-                          <div style={{ fontWeight: 'bold', marginBottom: '3px' }}>👫 Пара:</div>
-                          <div>👨 {user.partnerData.manHeight || '?'}см, {user.partnerData.manWeight || '?'}кг</div>
-                          <div>👩 {user.partnerData.womanHeight || '?'}см, {user.partnerData.womanWeight || '?'}кг</div>
-                        </div>
-                      )}
-                      
                       <div className="location">
                         {user.city}, {user.distance}км
                       </div>

@@ -2109,17 +2109,6 @@ const Home = () => {
                     </div>
                   )}
                   
-                  {/* Информация о паре - показываем только если это действительно пара */}
-                  {currentProfile.isCouple && (
-                    <div className="partner-info">
-                      <div className="title">👫 Семейная пара (М+Ж)</div>
-                      <div className="details">
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <span style={{ fontSize: '11px', color: 'white' }}>Возраст: {currentProfile.age}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                   
                   {/* Дополнительная информация - убрана для упрощения интерфейса */}
                   
