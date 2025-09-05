@@ -30,6 +30,11 @@ import ClubRegister from './pages/ClubRegister';
 import ClubDashboard from './pages/ClubDashboard';
 import ClubEvents from './pages/ClubEvents';
 import ClubAnalytics from './pages/ClubAnalytics';
+import ClubAds from './pages/ClubAds';
+import ClubApplications from './pages/ClubApplications';
+import ClubBots from './pages/ClubBots';
+import ClubParticipants from './pages/ClubParticipants';
+import ClubSettings from './pages/ClubSettings';
 import ClubLayout from './components/ClubLayout';
 
 // Публичные страницы клубов
@@ -264,7 +269,12 @@ function App() {
               <Route path="/register" element={<Register />} />
               
               {/* Публичные страницы клубов */}
-              <Route path="/clubs" element={<PublicClubs />} />
+              <Route path="/clubs" element={
+                <AuthGuard>
+                  <Navigation />
+                  <Clubs />
+                </AuthGuard>
+              } />
               <Route path="/clubs/:id" element={<PublicClubDetail />} />
               <Route path="/clubs/:id/events" element={<PublicClubDetail />} />
               
@@ -293,6 +303,46 @@ function App() {
                 <ClubAuthGuard>
                   <ClubLayout>
                     <ClubAnalytics />
+                  </ClubLayout>
+                </ClubAuthGuard>
+              } />
+              
+              <Route path="/club/ads" element={
+                <ClubAuthGuard>
+                  <ClubLayout>
+                    <ClubAds />
+                  </ClubLayout>
+                </ClubAuthGuard>
+              } />
+              
+              <Route path="/club/applications" element={
+                <ClubAuthGuard>
+                  <ClubLayout>
+                    <ClubApplications />
+                  </ClubLayout>
+                </ClubAuthGuard>
+              } />
+              
+              <Route path="/club/bots" element={
+                <ClubAuthGuard>
+                  <ClubLayout>
+                    <ClubBots />
+                  </ClubLayout>
+                </ClubAuthGuard>
+              } />
+              
+              <Route path="/club/participants" element={
+                <ClubAuthGuard>
+                  <ClubLayout>
+                    <ClubParticipants />
+                  </ClubLayout>
+                </ClubAuthGuard>
+              } />
+              
+              <Route path="/club/settings" element={
+                <ClubAuthGuard>
+                  <ClubLayout>
+                    <ClubSettings />
                   </ClubLayout>
                 </ClubAuthGuard>
               } />

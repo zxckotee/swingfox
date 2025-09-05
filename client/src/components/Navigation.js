@@ -1038,14 +1038,6 @@ const Navigation = () => {
             Объявления
           </NavLink>
           
-          <NavLink
-            to="/clubs"
-            className={isActiveRoute('/clubs') ? 'active' : ''}
-          >
-            <ClubsIcon />
-            Клубы
-          </NavLink>
-          
           {currentUser.is_admin && (
             <NavLink 
               to="/admin" 
@@ -1222,15 +1214,6 @@ const Navigation = () => {
         >
           <AdsIcon />
           Объявления
-        </MobileNavLink>
-        
-        <MobileNavLink
-          to="/clubs"
-          className={isActiveRoute('/clubs') ? 'active' : ''}
-          onClick={() => setShowMobileMenu(false)}
-        >
-          <ClubsIcon />
-          Клубы
         </MobileNavLink>
         
         {currentUser.is_admin && (

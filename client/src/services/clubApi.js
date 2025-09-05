@@ -399,6 +399,125 @@ export const clubAuth = {
       localStorage.removeItem('clubToken');
       throw error;
     }
+  },
+
+  // Ads Management
+  getAds: async () => {
+    return apiCall('/ads');
+  },
+
+  createAd: async (adData) => {
+    return apiCall('/ads', {
+      method: 'POST',
+      body: JSON.stringify(adData)
+    });
+  },
+
+  updateAd: async (adId, adData) => {
+    return apiCall(`/ads/${adId}`, {
+      method: 'PUT',
+      body: JSON.stringify(adData)
+    });
+  },
+
+  deleteAd: async (adId) => {
+    return apiCall(`/ads/${adId}`, {
+      method: 'DELETE'
+    });
+  },
+
+  // Applications Management
+  getApplications: async () => {
+    return apiCall('/applications');
+  },
+
+  approveApplication: async (applicationId) => {
+    return apiCall(`/applications/${applicationId}/approve`, {
+      method: 'POST'
+    });
+  },
+
+  rejectApplication: async (applicationId) => {
+    return apiCall(`/applications/${applicationId}/reject`, {
+      method: 'POST'
+    });
+  },
+
+  // Bots Management
+  getBots: async () => {
+    return apiCall('/bots');
+  },
+
+  createBot: async (botData) => {
+    return apiCall('/bots', {
+      method: 'POST',
+      body: JSON.stringify(botData)
+    });
+  },
+
+  updateBot: async (botId, botData) => {
+    return apiCall(`/bots/${botId}`, {
+      method: 'PUT',
+      body: JSON.stringify(botData)
+    });
+  },
+
+  deleteBot: async (botId) => {
+    return apiCall(`/bots/${botId}`, {
+      method: 'DELETE'
+    });
+  },
+
+  // Participants Management
+  getParticipants: async () => {
+    return apiCall('/participants');
+  },
+
+  updateParticipantRole: async (participantId, role) => {
+    return apiCall(`/participants/${participantId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role })
+    });
+  },
+
+  removeParticipant: async (participantId) => {
+    return apiCall(`/participants/${participantId}`, {
+      method: 'DELETE'
+    });
+  },
+
+  // Settings Management
+  updateProfile: async (profileData) => {
+    return apiCall('/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profileData)
+    });
+  },
+
+  changePassword: async (passwordData) => {
+    return apiCall('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify(passwordData)
+    });
+  },
+
+  uploadAvatar: async (formData) => {
+    const token = localStorage.getItem('clubToken');
+    
+    const response = await fetch(`${API_BASE_URL}/profile/avatar`, {
+      method: 'POST',
+      headers: {
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      },
+      body: formData
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Upload Error');
+    }
+    
+    return await response.json();
   }
 };
 

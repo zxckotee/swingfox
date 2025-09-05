@@ -290,7 +290,7 @@ router.delete('/:eventId/participants/:userId', authenticateClub, checkEventOwne
 // Публичные мероприятия (для пользователей)
 router.get('/public/upcoming', async (req, res) => {
   try {
-    const { limit = 10, type, city } = req.query;
+    const { limit = 10, type, city, search } = req.query;
     
     const whereClause = {
       date: {
@@ -300,6 +300,12 @@ router.get('/public/upcoming', async (req, res) => {
 
     if (type) {
       whereClause.event_type = type;
+    }
+
+    if (search) {
+      whereClause.title = {
+        [sequelize.Sequelize.Op.iLike]: `%${search}%`
+      };
     }
 
     const events = await ClubEvents.findAll({
@@ -319,7 +325,8 @@ router.get('/public/upcoming', async (req, res) => {
           model: EventParticipants,
           as: 'participants',
           attributes: ['id', 'status'],
-          where: { status: 'confirmed' }
+          where: { status: 'confirmed' },
+          required: false // Делаем JOIN необязательным
         }
       ],
       order: [['date', 'ASC']],

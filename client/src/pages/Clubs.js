@@ -363,23 +363,18 @@ const ApplicationCard = styled.div`
 `;
 
 const Clubs = () => {
-  const [activeTab, setActiveTab] = useState('browse');
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('clubs');
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedClub, setSelectedClub] = useState(null);
+  const [showEventDetailsModal, setShowEventDetailsModal] = useState(false);
+  const [selectedEventDetails, setSelectedEventDetails] = useState(null);
+  const [showJoinEventModal, setShowJoinEventModal] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [cityFilter, setCityFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const queryClient = useQueryClient();
 
-  // Form state
-  const [clubForm, setClubForm] = useState({
-    name: '',
-    description: '',
-    city: '',
-    is_private: false,
-    max_members: 50
-  });
 
   // Queries
   const { data: clubsData, isLoading: isLoadingClubs } = useQuery(
@@ -390,61 +385,36 @@ const Clubs = () => {
       type: typeFilter
     }),
     {
-      enabled: activeTab === 'browse',
+      enabled: activeTab === 'clubs',
       onError: (error) => {
         toast.error(apiUtils.handleError(error));
       }
     }
   );
 
-  const { data: myClubs, isLoading: isLoadingMyClubs } = useQuery(
-    'my-clubs',
-    clubsAPI.getMyClubs,
+  const { data: eventsData, isLoading: isLoadingEvents } = useQuery(
+    ['events', searchQuery, cityFilter],
+    () => clubsAPI.getEvents({
+      search: searchQuery,
+      city: cityFilter
+    }),
     {
-      enabled: activeTab === 'my-clubs',
+      enabled: activeTab === 'events',
       onError: (error) => {
         toast.error(apiUtils.handleError(error));
       }
     }
   );
 
-  const { data: clubApplications, isLoading: isLoadingApplications } = useQuery(
-    ['club-applications', selectedClub?.id],
-    () => clubsAPI.getClubApplications(selectedClub.id),
-    {
-      enabled: !!selectedClub && activeTab === 'my-clubs',
-      onError: (error) => {
-        toast.error(apiUtils.handleError(error));
-      }
-    }
-  );
 
-  // Mutations
-  const createClubMutation = useMutation(clubsAPI.createClub, {
-    onSuccess: () => {
-      toast.success('Клуб создан успешно!');
-      setShowCreateModal(false);
-      setClubForm({
-        name: '',
-        description: '',
-        city: '',
-        is_private: false,
-        max_members: 50
-      });
-      queryClient.invalidateQueries(['clubs']);
-      queryClient.invalidateQueries('my-clubs');
-    },
-    onError: (error) => {
-      toast.error(apiUtils.handleError(error));
-    }
-  });
 
-  const joinClubMutation = useMutation(
-    ({ clubId, message }) => clubsAPI.joinClub(clubId, message),
+
+  const joinEventMutation = useMutation(
+    (eventId) => clubsAPI.joinEvent(eventId),
     {
       onSuccess: () => {
-        toast.success('Заявка на вступление отправлена!');
-        queryClient.invalidateQueries(['clubs']);
+        toast.success('Вы успешно записались на мероприятие!');
+        queryClient.invalidateQueries(['events']);
       },
       onError: (error) => {
         toast.error(apiUtils.handleError(error));
@@ -452,107 +422,70 @@ const Clubs = () => {
     }
   );
 
-  const manageApplicationMutation = useMutation(
-    ({ clubId, applicationId, action, reason }) => 
-      clubsAPI.manageApplication(clubId, applicationId, action, reason),
-    {
-      onSuccess: (data, variables) => {
-        toast.success(
-          variables.action === 'approve' 
-            ? 'Заявка одобрена!' 
-            : 'Заявка отклонена!'
-        );
-        queryClient.invalidateQueries(['club-applications']);
-      },
-      onError: (error) => {
-        toast.error(apiUtils.handleError(error));
-      }
-    }
-  );
 
-  // Handlers
-  const handleCreateClub = (e) => {
-    e.preventDefault();
-    
-    if (!clubForm.name.trim()) {
-      toast.error('Введите название клуба');
-      return;
-    }
 
-    if (!clubForm.description.trim()) {
-      toast.error('Введите описание клуба');
-      return;
-    }
-
-    createClubMutation.mutate(clubForm);
-  };
-
-  const handleJoinClub = (club) => {
-    const message = prompt('Введите сообщение для заявки (необязательно):');
-    if (message !== null) { // Пользователь не отменил
-      joinClubMutation.mutate({
-        clubId: club.id,
-        message: message.trim()
-      });
-    }
-  };
 
   const handleClubClick = (club) => {
     setSelectedClub(club);
     setShowDetailsModal(true);
   };
 
-  const handleApplicationAction = (applicationId, action) => {
-    const reason = action === 'reject' 
-      ? prompt('Причина отклонения (необязательно):') 
-      : '';
-    
-    if (action === 'reject' && reason === null) return;
+  const handleEventClick = (event) => {
+    setSelectedEventDetails(event);
+    setShowEventDetailsModal(true);
+  };
 
-    manageApplicationMutation.mutate({
-      clubId: selectedClub.id,
-      applicationId,
-      action,
-      reason: reason || ''
-    });
+
+  const handleJoinEvent = (event) => {
+    setSelectedEvent(event);
+    setShowJoinEventModal(true);
+  };
+
+  const confirmJoinEvent = async () => {
+    try {
+      await joinEventMutation.mutateAsync(selectedEvent.id);
+      toast.success('Вы успешно записались на мероприятие!');
+      queryClient.invalidateQueries(['events']);
+      setShowJoinEventModal(false);
+      setSelectedEvent(null);
+    } catch (error) {
+      console.error('Join event error:', error);
+      toast.error(error.response?.data?.error || 'Ошибка при записи на мероприятие');
+    }
   };
 
   const filteredClubs = clubsData?.clubs || [];
-  const myClubsList = myClubs?.clubs || [];
+  const eventsList = eventsData?.events || [];
 
   return (
     <ClubsContainer>
       <ContentCard $maxWidth="1200px">
-        <FlexContainer $justify="space-between" $align="center" $wrap>
+        <FlexContainer $justify="center" $align="center" $wrap>
           <SectionTitle>
             <UsersIcon />
-            Клубы и события
+            Клубы и мероприятия
           </SectionTitle>
-          <Button onClick={() => setShowCreateModal(true)}>
-            <PlusIcon />
-            Создать клуб
-          </Button>
         </FlexContainer>
 
         <TabsContainer>
           <Tab
-            $active={activeTab === 'browse'}
-            onClick={() => setActiveTab('browse')}
-          >
-            <SearchIcon />
-            Все клубы
-          </Tab>
-          <Tab
-            $active={activeTab === 'my-clubs'}
-            onClick={() => setActiveTab('my-clubs')}
+            $active={activeTab === 'clubs'}
+            onClick={() => setActiveTab('clubs')}
           >
             <UsersIcon />
-            Мои клубы
+            Клубы
+          </Tab>
+          <Tab
+            $active={activeTab === 'events'}
+            onClick={() => setActiveTab('events')}
+          >
+            <SearchIcon />
+            Мероприятия
           </Tab>
         </TabsContainer>
 
-        {/* Фильтры для просмотра всех клубов */}
-        {activeTab === 'browse' && (
+        {/* Фильтры для просмотра клубов */}
+        {activeTab === 'clubs' && (
           <FiltersContainer>
             <FilterRow>
               <SearchInput>
@@ -592,8 +525,39 @@ const Clubs = () => {
           </FiltersContainer>
         )}
 
-        {/* Просмотр всех клубов */}
-        {activeTab === 'browse' && (
+        {/* Фильтры для просмотра мероприятий */}
+        {activeTab === 'events' && (
+          <FiltersContainer>
+            <FilterRow>
+              <SearchInput>
+                <div className="search-icon">
+                  <SearchIcon />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Поиск мероприятий..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </SearchInput>
+              
+              <Select
+                value={cityFilter}
+                onChange={(e) => setCityFilter(e.target.value)}
+                style={{ minWidth: '150px' }}
+              >
+                <option value="">Все города</option>
+                <option value="Москва">Москва</option>
+                <option value="Санкт-Петербург">Санкт-Петербург</option>
+                <option value="Екатеринбург">Екатеринбург</option>
+                <option value="Новосибирск">Новосибирск</option>
+              </Select>
+            </FilterRow>
+          </FiltersContainer>
+        )}
+
+        {/* Просмотр клубов */}
+        {activeTab === 'clubs' && (
           <div>
             {isLoadingClubs ? (
               <LoadingSpinner />
@@ -630,22 +594,21 @@ const Clubs = () => {
                       
                       <ClubMeta>
                         <ClubStats>
-                          <span>
-                            <UsersIcon />
-                            {club.member_count || 0}/{club.max_members}
+                          <span style={{ fontSize: '12px', color: '#718096' }}>
+                            📍 {club.city}
                           </span>
+                          <span style={{ fontSize: '12px', color: '#718096' }}>
+                            👥 {club.current_members || 0} участников
+                          </span>
+                          {club.membership_fee && (
+                            <span style={{ fontSize: '12px', color: '#718096' }}>
+                              💰 {club.membership_fee}₽
+                            </span>
+                          )}
                         </ClubStats>
-                        
-                        <Button 
-                          $size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleJoinClub(club);
-                          }}
-                          disabled={club.is_member || joinClubMutation.isLoading}
-                        >
-                          {club.is_member ? 'Участник' : 'Вступить'}
-                        </Button>
+                        <div style={{ fontSize: '12px', color: '#718096', marginTop: '8px' }}>
+                          {club.is_private ? '🔒 Приватный клуб' : '🌐 Открытый клуб'}
+                        </div>
                       </ClubMeta>
                     </ClubContent>
                   </ClubCard>
@@ -661,17 +624,17 @@ const Clubs = () => {
           </div>
         )}
 
-        {/* Мои клубы */}
-        {activeTab === 'my-clubs' && (
+        {/* Просмотр мероприятий */}
+        {activeTab === 'events' && (
           <div>
-            {isLoadingMyClubs ? (
+            {isLoadingEvents ? (
               <LoadingSpinner />
-            ) : myClubsList.length > 0 ? (
+            ) : eventsList.length > 0 ? (
               <Grid $columns="repeat(auto-fill, minmax(300px, 1fr))" $gap="25px">
-                {myClubsList.map((club) => (
-                  <MyClubCard
-                    key={club.id}
-                    onClick={() => handleClubClick(club)}
+                {eventsList.map((event) => (
+                  <ClubCard
+                    key={event.id}
+                    onClick={() => handleEventClick(event)}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2 }}
@@ -680,150 +643,84 @@ const Clubs = () => {
                       <FlexContainer $justify="space-between" $align="flex-start">
                         <div>
                           <ClubTitle style={{ color: 'white', fontSize: '16px' }}>
-                            {club.name}
+                            {event.title}
                           </ClubTitle>
                           <div style={{ fontSize: '12px', opacity: '0.9' }}>
-                            {club.is_owner ? 'Владелец' : 'Участник'}
+                            {event.club?.name || 'Клуб'}
                           </div>
                         </div>
-                        <ClubType $isPrivate={club.is_private}>
-                          {club.is_private ? 'Приватный' : 'Открытый'}
+                        <ClubType $isPrivate={false}>
+                          {new Date(event.date).toLocaleDateString()}
                         </ClubType>
                       </FlexContainer>
                     </ClubHeader>
                     
                     <ClubContent>
                       <ClubDescription>
-                        {club.description}
+                        {event.description}
                       </ClubDescription>
                       
                       <ClubMeta>
                         <ClubStats>
-                          <span>
-                            <UsersIcon />
-                            {club.member_count || 0}/{club.max_members}
+                          <span style={{ fontSize: '12px', color: '#718096' }}>
+                            📅 {new Date(event.date).toLocaleDateString('ru-RU', { 
+                              day: 'numeric', 
+                              month: 'long',
+                              year: 'numeric'
+                            })}
                           </span>
-                          {club.pending_applications > 0 && (
-                            <span style={{ color: '#d69e2e' }}>
-                              📋 {club.pending_applications} заявок
+                          <span style={{ fontSize: '12px', color: '#718096' }}>
+                            🕐 {event.time || 'Время уточняется'}
+                          </span>
+                          <span style={{ fontSize: '12px', color: '#718096' }}>
+                            📍 {event.location || event.club?.location || 'Место уточняется'}
+                          </span>
+                          <span style={{ fontSize: '12px', color: '#718096' }}>
+                            👥 {event.participants?.length || 0}/{event.max_participants || '∞'}
+                          </span>
+                          {event.price && (
+                            <span style={{ fontSize: '12px', color: '#718096' }}>
+                              💰 {event.price}₽
                             </span>
                           )}
                         </ClubStats>
                         
-                        {club.is_owner && (
-                          <Button $size="small" $variant="secondary">
-                            <EditIcon />
-                            Управление
-                          </Button>
-                        )}
+                        <Button 
+                          $size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (event.user_participation?.is_participating) {
+                              // Показать информацию о том, что уже участвуете
+                              return;
+                            }
+                            handleJoinEvent(event);
+                          }}
+                          disabled={joinEventMutation.isLoading || event.user_participation?.is_participating}
+                          $variant={event.user_participation?.is_participating ? 'secondary' : 'primary'}
+                        >
+                          {joinEventMutation.isLoading ? 'Записываемся...' : 
+                           event.user_participation?.is_participating ? 'Вы участвуете' : 'Участвовать'}
+                        </Button>
                       </ClubMeta>
                     </ClubContent>
-                  </MyClubCard>
+                  </ClubCard>
                 ))}
               </Grid>
             ) : (
               <EmptyState>
-                <div className="icon">🏛️</div>
-                <h3>Вы не состоите в клубах</h3>
-                <p>Вступите в существующий клуб или создайте свой</p>
-                <Button onClick={() => setShowCreateModal(true)}>
-                  <PlusIcon />
-                  Создать клуб
-                </Button>
+                <div className="icon">🎉</div>
+                <h3>Мероприятия не найдены</h3>
+                <p>Попробуйте изменить параметры поиска</p>
               </EmptyState>
             )}
           </div>
         )}
 
-        {/* Модал создания клуба */}
-        {showCreateModal && (
-          <Modal onClick={() => setShowCreateModal(false)}>
-            <ModalContent onClick={(e) => e.stopPropagation()}>
-              <ModalHeader>
-                <h2>Создать новый клуб</h2>
-                <IconButton onClick={() => setShowCreateModal(false)}>
-                  <CloseIcon />
-                </IconButton>
-              </ModalHeader>
 
-              <Form onSubmit={handleCreateClub}>
-                <FormGroup>
-                  <Label>Название клуба</Label>
-                  <Input
-                    type="text"
-                    placeholder="Введите название клуба"
-                    value={clubForm.name}
-                    onChange={(e) => setClubForm({...clubForm, name: e.target.value})}
-                    required
-                  />
-                </FormGroup>
-
-                <FormGroup>
-                  <Label>Описание</Label>
-                  <TextArea
-                    placeholder="Опишите цели и активности клуба..."
-                    value={clubForm.description}
-                    onChange={(e) => setClubForm({...clubForm, description: e.target.value})}
-                    $minHeight="120px"
-                    required
-                  />
-                </FormGroup>
-
-                <FlexContainer $gap="15px">
-                  <FormGroup style={{ flex: 1 }}>
-                    <Label>Город</Label>
-                    <Input
-                      type="text"
-                      placeholder="Укажите город"
-                      value={clubForm.city}
-                      onChange={(e) => setClubForm({...clubForm, city: e.target.value})}
-                    />
-                  </FormGroup>
-
-                  <FormGroup style={{ flex: 1 }}>
-                    <Label>Максимум участников</Label>
-                    <Input
-                      type="number"
-                      min="5"
-                      max="500"
-                      value={clubForm.max_members}
-                      onChange={(e) => setClubForm({...clubForm, max_members: parseInt(e.target.value)})}
-                    />
-                  </FormGroup>
-                </FlexContainer>
-
-                <FormGroup>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={clubForm.is_private}
-                      onChange={(e) => setClubForm({...clubForm, is_private: e.target.checked})}
-                    />
-                    Приватный клуб (требует одобрения заявок)
-                  </label>
-                </FormGroup>
-
-                <FlexContainer $gap="10px" $justify="flex-end">
-                  <Button 
-                    $variant="secondary" 
-                    onClick={() => setShowCreateModal(false)} 
-                    type="button"
-                  >
-                    Отмена
-                  </Button>
-                  <Button type="submit" disabled={createClubMutation.isLoading}>
-                    {createClubMutation.isLoading ? 'Создание...' : 'Создать клуб'}
-                  </Button>
-                </FlexContainer>
-              </Form>
-            </ModalContent>
-          </Modal>
-        )}
-
-        {/* Модал деталей клуба и заявок */}
+        {/* Модал деталей клуба */}
         {showDetailsModal && selectedClub && (
           <Modal onClick={() => setShowDetailsModal(false)}>
-            <ModalContent $maxWidth="600px" onClick={(e) => e.stopPropagation()}>
+            <ModalContent $maxWidth="700px" onClick={(e) => e.stopPropagation()}>
               <ModalHeader>
                 <h2>{selectedClub.name}</h2>
                 <IconButton onClick={() => setShowDetailsModal(false)}>
@@ -832,81 +729,394 @@ const Clubs = () => {
               </ModalHeader>
 
               <div style={{ marginBottom: '20px' }}>
-                <p style={{ color: '#4a5568', lineHeight: 1.5 }}>
+                <p style={{ color: '#4a5568', lineHeight: 1.6, fontSize: '16px', marginBottom: '20px' }}>
                   {selectedClub.description}
                 </p>
                 
-                <FlexContainer $gap="15px" $wrap style={{ marginTop: '15px' }}>
-                  <span>📍 {selectedClub.city}</span>
-                  <span>👥 {selectedClub.member_count}/{selectedClub.max_members}</span>
-                  <ClubType $isPrivate={selectedClub.is_private}>
-                    {selectedClub.is_private ? 'Приватный' : 'Открытый'}
-                  </ClubType>
-                </FlexContainer>
-              </div>
-
-              {/* Заявки на вступление (только для владельцев) */}
-              {selectedClub.is_owner && clubApplications?.applications?.length > 0 && (
-                <div>
-                  <h3 style={{ marginBottom: '15px', color: '#2d3748' }}>
-                    Заявки на вступление ({clubApplications.applications.length})
+                <div style={{ 
+                  background: '#f7fafc', 
+                  padding: '20px', 
+                  borderRadius: '12px',
+                  marginBottom: '20px'
+                }}>
+                  <h3 style={{ margin: '0 0 15px 0', color: '#2d3748', fontSize: '18px' }}>
+                    📋 Информация о клубе
                   </h3>
                   
-                  {clubApplications.applications.map((application) => (
-                    <ApplicationCard key={application.id}>
-                      <div className="header">
-                        <div className="applicant">
-                          <Avatar
-                            $src={application.user_avatar ? `/uploads/${application.user_avatar}` : ''}
-                            $size="40px"
-                          >
-                            {application.user_login?.charAt(0).toUpperCase()}
-                          </Avatar>
-                          <div>
-                            <div className="name">@{application.user_login}</div>
-                            <div className="date">
-                              {apiUtils.formatTimeAgo(application.created_at)}
-                            </div>
-                          </div>
-                        </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                    <div>
+                      <strong>📍 Местоположение:</strong><br />
+                      <span style={{ color: '#4a5568' }}>{selectedClub.city}</span>
+                    </div>
+                    
+                    <div>
+                      <strong>👥 Участники:</strong><br />
+                      <span style={{ color: '#4a5568' }}>
+                        {selectedClub.current_members || 0} из {selectedClub.max_members || '∞'}
+                      </span>
+                    </div>
+                    
+                    <div>
+                      <strong>🔐 Тип:</strong><br />
+                      <ClubType $isPrivate={selectedClub.is_private} style={{ margin: '5px 0' }}>
+                        {selectedClub.is_private ? 'Приватный' : 'Открытый'}
+                      </ClubType>
+                    </div>
+                    
+                    {selectedClub.membership_fee && (
+                      <div>
+                        <strong>💰 Взнос:</strong><br />
+                        <span style={{ color: '#4a5568' }}>{selectedClub.membership_fee}₽</span>
                       </div>
-                      
-                      {application.message && (
-                        <div className="message">
-                          "{application.message}"
-                        </div>
-                      )}
-                      
-                      <div className="actions">
-                        <Button
-                          $size="small"
-                          onClick={() => handleApplicationAction(application.id, 'approve')}
-                          disabled={manageApplicationMutation.isLoading}
-                        >
-                          <CheckIcon />
-                          Принять
-                        </Button>
-                        <Button
-                          $size="small"
-                          $variant="danger"
-                          onClick={() => handleApplicationAction(application.id, 'reject')}
-                          disabled={manageApplicationMutation.isLoading}
-                        >
-                          Отклонить
-                        </Button>
+                    )}
+                    
+                    {selectedClub.website && (
+                      <div>
+                        <strong>🌐 Сайт:</strong><br />
+                        <a href={selectedClub.website} target="_blank" rel="noopener noreferrer" 
+                           style={{ color: '#3182ce', textDecoration: 'none' }}>
+                          {selectedClub.website}
+                        </a>
                       </div>
-                    </ApplicationCard>
-                  ))}
+                    )}
+                    
+                    {selectedClub.email && (
+                      <div>
+                        <strong>📧 Email:</strong><br />
+                        <span style={{ color: '#4a5568' }}>{selectedClub.email}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
 
-              {!selectedClub.is_member && !selectedClub.is_owner && (
-                <FlexContainer $justify="center">
-                  <Button onClick={() => handleJoinClub(selectedClub)}>
-                    Подать заявку на вступление
+                {selectedClub.rules && (
+                  <div style={{ 
+                    background: '#fff5f5', 
+                    padding: '20px', 
+                    borderRadius: '12px',
+                    marginBottom: '20px'
+                  }}>
+                    <h3 style={{ margin: '0 0 15px 0', color: '#2d3748', fontSize: '18px' }}>
+                      📜 Правила клуба
+                    </h3>
+                    <p style={{ color: '#4a5568', lineHeight: 1.6, margin: 0 }}>
+                      {selectedClub.rules}
+                    </p>
+                  </div>
+                )}
+
+                {selectedClub.tags && selectedClub.tags.length > 0 && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <h3 style={{ margin: '0 0 15px 0', color: '#2d3748', fontSize: '18px' }}>
+                      🏷️ Теги
+                    </h3>
+                    <FlexContainer $gap="8px" $wrap>
+                      {selectedClub.tags.map((tag, index) => (
+                        <span key={index} style={{
+                          background: '#e2e8f0',
+                          color: '#4a5568',
+                          padding: '6px 12px',
+                          borderRadius: '20px',
+                          fontSize: '14px'
+                        }}>
+                          {tag}
+                        </span>
+                      ))}
+                    </FlexContainer>
+                  </div>
+                )}
+              </div>
+
+              <FlexContainer $justify="center">
+                <div style={{ 
+                  textAlign: 'center', 
+                  color: '#718096',
+                  background: '#f7fafc',
+                  padding: '20px',
+                  borderRadius: '12px',
+                  border: '2px dashed #cbd5e0'
+                }}>
+                  <div style={{ fontSize: '24px', marginBottom: '10px' }}>🎉</div>
+                  <p style={{ margin: '0 0 10px 0', fontSize: '16px' }}>
+                    Для участия в мероприятиях клуба
+                  </p>
+                  <p style={{ margin: 0, fontWeight: 'bold', color: '#2d3748' }}>
+                    перейдите во вкладку "Мероприятия"
+                  </p>
+                </div>
+              </FlexContainer>
+            </ModalContent>
+          </Modal>
+        )}
+
+        {/* Модал деталей мероприятия */}
+        {showEventDetailsModal && selectedEventDetails && (
+          <Modal onClick={() => setShowEventDetailsModal(false)}>
+            <ModalContent $maxWidth="700px" onClick={(e) => e.stopPropagation()}>
+              <ModalHeader>
+                <h2>🎉 {selectedEventDetails.title}</h2>
+                <IconButton onClick={() => setShowEventDetailsModal(false)}>
+                  <CloseIcon />
+                </IconButton>
+              </ModalHeader>
+
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ 
+                  background: '#f7fafc', 
+                  padding: '20px', 
+                  borderRadius: '12px',
+                  marginBottom: '20px'
+                }}>
+                  <h3 style={{ margin: '0 0 15px 0', color: '#2d3748', fontSize: '18px' }}>
+                    📋 Информация о мероприятии
+                  </h3>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                    <div>
+                      <strong>🏛️ Клуб:</strong><br />
+                      <span style={{ color: '#4a5568' }}>{selectedEventDetails.club?.name || 'Не указан'}</span>
+                    </div>
+                    
+                    <div>
+                      <strong>📅 Дата:</strong><br />
+                      <span style={{ color: '#4a5568' }}>
+                        {new Date(selectedEventDetails.date).toLocaleDateString('ru-RU', { 
+                          day: 'numeric', 
+                          month: 'long',
+                          year: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                    
+                    <div>
+                      <strong>🕐 Время:</strong><br />
+                      <span style={{ color: '#4a5568' }}>
+                        {selectedEventDetails.time || 'Время уточняется'}
+                      </span>
+                    </div>
+                    
+                    <div>
+                      <strong>📍 Место:</strong><br />
+                      <span style={{ color: '#4a5568' }}>
+                        {selectedEventDetails.location || selectedEventDetails.club?.location || 'Место уточняется'}
+                      </span>
+                    </div>
+                    
+                    <div>
+                      <strong>👥 Участники:</strong><br />
+                      <span style={{ color: '#4a5568' }}>
+                        {selectedEventDetails.participants?.length || 0} из {selectedEventDetails.max_participants || '∞'}
+                      </span>
+                    </div>
+                    
+                    {selectedEventDetails.price && (
+                      <div>
+                        <strong>💰 Стоимость:</strong><br />
+                        <span style={{ color: '#4a5568' }}>{selectedEventDetails.price}₽</span>
+                      </div>
+                    )}
+                    
+                    {selectedEventDetails.event_type && (
+                      <div>
+                        <strong>🏷️ Тип:</strong><br />
+                        <span style={{ color: '#4a5568' }}>{selectedEventDetails.event_type}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {selectedEventDetails.description && (
+                  <div style={{ 
+                    background: '#fff5f5', 
+                    padding: '20px', 
+                    borderRadius: '12px',
+                    marginBottom: '20px'
+                  }}>
+                    <h3 style={{ margin: '0 0 15px 0', color: '#2d3748', fontSize: '18px' }}>
+                      📝 Описание мероприятия
+                    </h3>
+                    <p style={{ color: '#4a5568', lineHeight: 1.6, margin: 0 }}>
+                      {selectedEventDetails.description}
+                    </p>
+                  </div>
+                )}
+
+                {selectedEventDetails.club && (
+                  <div style={{ 
+                    background: '#e6fffa', 
+                    padding: '20px', 
+                    borderRadius: '12px',
+                    marginBottom: '20px'
+                  }}>
+                    <h3 style={{ margin: '0 0 15px 0', color: '#2d3748', fontSize: '18px' }}>
+                      🏛️ Информация о клубе
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                      <div>
+                        <strong>Название:</strong><br />
+                        <span style={{ color: '#4a5568' }}>{selectedEventDetails.club.name}</span>
+                      </div>
+                      <div>
+                        <strong>Местоположение:</strong><br />
+                        <span style={{ color: '#4a5568' }}>{selectedEventDetails.club.location}</span>
+                      </div>
+                      <div>
+                        <strong>Тип:</strong><br />
+                        <span style={{ color: '#4a5568' }}>{selectedEventDetails.club.type}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <FlexContainer $gap="15px" $justify="center">
+                <Button 
+                  $variant="secondary" 
+                  onClick={() => setShowEventDetailsModal(false)}
+                >
+                  Закрыть
+                </Button>
+                {!selectedEventDetails.user_participation?.is_participating && (
+                  <Button 
+                    onClick={() => {
+                      setShowEventDetailsModal(false);
+                      handleJoinEvent(selectedEventDetails);
+                    }}
+                  >
+                    Записаться на мероприятие
                   </Button>
-                </FlexContainer>
-              )}
+                )}
+                {selectedEventDetails.user_participation?.is_participating && (
+                  <Button 
+                    $variant="secondary"
+                    disabled
+                  >
+                    Вы уже участвуете
+                  </Button>
+                )}
+              </FlexContainer>
+            </ModalContent>
+          </Modal>
+        )}
+
+        {/* Модал вступления в мероприятие */}
+        {showJoinEventModal && selectedEvent && (
+          <Modal onClick={() => setShowJoinEventModal(false)}>
+            <ModalContent $maxWidth="500px" onClick={(e) => e.stopPropagation()}>
+              <ModalHeader>
+                <h2>🎉 Записаться на мероприятие</h2>
+                <IconButton onClick={() => setShowJoinEventModal(false)}>
+                  <CloseIcon />
+                </IconButton>
+              </ModalHeader>
+
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ 
+                  background: '#f7fafc', 
+                  padding: '20px', 
+                  borderRadius: '12px',
+                  marginBottom: '20px'
+                }}>
+                  <h3 style={{ margin: '0 0 15px 0', color: '#2d3748', fontSize: '18px' }}>
+                    {selectedEvent.title}
+                  </h3>
+                  
+                  <div style={{ display: 'grid', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '16px' }}>🏛️</span>
+                      <span style={{ color: '#4a5568' }}>{selectedEvent.club?.name || 'Клуб'}</span>
+                    </div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '16px' }}>📅</span>
+                      <span style={{ color: '#4a5568' }}>
+                        {new Date(selectedEvent.date).toLocaleDateString('ru-RU', { 
+                          day: 'numeric', 
+                          month: 'long',
+                          year: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                    
+                    {selectedEvent.time && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '16px' }}>🕐</span>
+                        <span style={{ color: '#4a5568' }}>{selectedEvent.time}</span>
+                      </div>
+                    )}
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '16px' }}>📍</span>
+                      <span style={{ color: '#4a5568' }}>
+                        {selectedEvent.location || selectedEvent.club?.location || 'Место уточняется'}
+                      </span>
+                    </div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '16px' }}>👥</span>
+                      <span style={{ color: '#4a5568' }}>
+                        {selectedEvent.participants?.length || 0} из {selectedEvent.max_participants || '∞'} участников
+                      </span>
+                    </div>
+                    
+                    {selectedEvent.price && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '16px' }}>💰</span>
+                        <span style={{ color: '#4a5568' }}>{selectedEvent.price}₽</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {selectedEvent.description && (
+                  <div style={{ 
+                    background: '#fff5f5', 
+                    padding: '15px', 
+                    borderRadius: '12px',
+                    marginBottom: '20px'
+                  }}>
+                    <h4 style={{ margin: '0 0 10px 0', color: '#2d3748', fontSize: '16px' }}>
+                      📝 Описание
+                    </h4>
+                    <p style={{ color: '#4a5568', lineHeight: 1.5, margin: 0 }}>
+                      {selectedEvent.description}
+                    </p>
+                  </div>
+                )}
+
+                <div style={{ 
+                  background: '#e6fffa', 
+                  padding: '15px', 
+                  borderRadius: '12px',
+                  border: '1px solid #81e6d9'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '16px' }}>ℹ️</span>
+                    <strong style={{ color: '#2d3748' }}>Важно знать:</strong>
+                  </div>
+                  <ul style={{ color: '#4a5568', margin: 0, paddingLeft: '20px' }}>
+                    <li>После записи вы получите уведомление</li>
+                    <li>Организатор может связаться с вами</li>
+                    <li>Вы можете отменить участие в любое время</li>
+                  </ul>
+                </div>
+              </div>
+
+              <FlexContainer $gap="15px" $justify="flex-end">
+                <Button 
+                  $variant="secondary" 
+                  onClick={() => setShowJoinEventModal(false)}
+                  disabled={joinEventMutation.isLoading}
+                >
+                  Отмена
+                </Button>
+                <Button 
+                  onClick={confirmJoinEvent}
+                  disabled={joinEventMutation.isLoading}
+                >
+                  {joinEventMutation.isLoading ? 'Записываемся...' : 'Записаться на мероприятие'}
+                </Button>
+              </FlexContainer>
             </ModalContent>
           </Modal>
         )}

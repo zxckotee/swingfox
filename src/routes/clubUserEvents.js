@@ -63,6 +63,78 @@ router.get('/public/events', async (req, res) => {
   }
 });
 
+// Получение мероприятий с информацией об участии пользователя (авторизованный)
+router.get('/events', authenticateToken, async (req, res) => {
+  try {
+    const { limit = 20, offset = 0, type, city, search } = req.query;
+    const userId = req.user.id;
+    
+    const whereClause = {
+      date: {
+        [sequelize.Sequelize.Op.gte]: new Date()
+      }
+    };
+
+    if (type) {
+      whereClause.event_type = type;
+    }
+
+    if (search) {
+      whereClause.title = {
+        [sequelize.Sequelize.Op.iLike]: `%${search}%`
+      };
+    }
+
+    const events = await ClubEvents.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: Clubs,
+          as: 'club',
+          attributes: ['id', 'name', 'location', 'type'],
+          where: city ? {
+            location: {
+              [sequelize.Sequelize.Op.iLike]: `%${city}%`
+            }
+          } : {}
+        },
+        {
+          model: EventParticipants,
+          as: 'participants',
+          attributes: ['id', 'status', 'user_id'],
+          where: { status: 'confirmed' },
+          required: false
+        }
+      ],
+      order: [['date', 'ASC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    // Добавляем информацию об участии пользователя
+    const eventsWithParticipation = events.map(event => {
+      const eventData = event.toJSON();
+      const userParticipation = eventData.participants?.find(p => p.user_id === userId);
+      
+      return {
+        ...eventData,
+        user_participation: userParticipation ? {
+          status: userParticipation.status,
+          is_participating: true
+        } : {
+          status: null,
+          is_participating: false
+        }
+      };
+    });
+
+    res.json({ events: eventsWithParticipation });
+  } catch (error) {
+    console.error('Get user events error:', error);
+    res.status(500).json({ error: 'Ошибка при получении мероприятий' });
+  }
+});
+
 // Получение конкретного мероприятия
 router.get('/events/:eventId', async (req, res) => {
   try {
@@ -160,7 +232,7 @@ router.post('/events/:eventId/join', authenticateToken, async (req, res) => {
     // Создаем уведомление для клуба
     await Notifications.create({
       user_id: event.club_id,
-      type: 'event_participant',
+      type: 'event_update',
       title: 'Новый участник',
       message: `${req.user.login} присоединился к мероприятию "${event.title}"`,
       data: { event_id: eventId, user_id: userId }

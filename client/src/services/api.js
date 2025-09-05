@@ -944,6 +944,27 @@ export const clubsAPI = {
       }
       throw error;
     }
+  },
+
+  getEvents: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.city) params.append('city', filters.city);
+    if (filters.type) params.append('type', filters.type);
+    if (filters.search) params.append('search', filters.search);
+    if (filters.limit) params.append('limit', filters.limit);
+    
+    const response = await apiClient.get(`/club/user-events/events?${params.toString()}`);
+    return response.data;
+  },
+
+  joinEvent: async (eventId) => {
+    const response = await apiClient.post(`/club/user-events/events/${eventId}/join`);
+    return response.data;
+  },
+
+  leaveEvent: async (eventId) => {
+    const response = await apiClient.delete(`/club/user-events/events/${eventId}/leave`);
+    return response.data;
   }
 };
 

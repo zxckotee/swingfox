@@ -120,8 +120,7 @@ const ClubDashboard = () => {
   };
 
   const handleSettings = () => {
-    // TODO: Реализовать настройки клуба
-    alert('Функция настроек будет реализована в следующих версиях');
+    window.location.href = '/club/settings';
   };
 
   if (loading) {
@@ -239,7 +238,7 @@ const ClubDashboard = () => {
             <p>Просмотр статистики</p>
           </Link>
           
-          <Link to="/club/events" className="action-card">
+          <Link to="/club/participants" className="action-card">
             <UsersIcon className="icon" />
             <h3>Участники</h3>
             <p>Управление участниками</p>
