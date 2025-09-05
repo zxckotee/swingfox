@@ -14,22 +14,22 @@ const PublicClubs = () => {
 
   useEffect(() => {
     loadClubs();
-  }, []);
+  }, [searchTerm, selectedType, selectedCity]);
 
   const loadClubs = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // Используем существующий API для получения клубов
-      const response = await api.get('/clubs', {
-        params: {
-          limit: 50,
-          popular: false
-        }
+      // Используем правильный API для получения клубов
+      const response = await api.clubs.getClubs({
+        limit: 50,
+        search: searchTerm,
+        type: selectedType !== 'all' ? selectedType : undefined,
+        city: selectedCity !== 'all' ? selectedCity : undefined
       });
       
-      setClubs(response.data.clubs || []);
+      setClubs(response.clubs || []);
     } catch (error) {
       console.error('Ошибка загрузки клубов:', error);
       setError('Не удалось загрузить список клубов');
@@ -38,20 +38,11 @@ const PublicClubs = () => {
     }
   };
 
-  const filteredClubs = clubs.filter(club => {
-    const matchesSearch = club.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         club.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesType = selectedType === 'all' || club.type === selectedType;
-    
-    const matchesCity = selectedCity === 'all' || 
-                       club.city?.toLowerCase().includes(selectedCity.toLowerCase());
-    
-    return matchesSearch && matchesType && matchesCity;
-  });
+  // Фильтрация теперь происходит на сервере, поэтому используем clubs напрямую
+  const filteredClubs = clubs;
 
   const getClubTypes = () => {
-    const types = [...new Set(clubs.map(club => club.type))];
+    const types = [...new Set(clubs.map(club => club.type).filter(Boolean))];
     return types.map(type => ({
       value: type,
       label: getClubTypeLabel(type)
@@ -125,7 +116,7 @@ const PublicClubs = () => {
           >
             <option value="all">Все типы</option>
             {getClubTypes().map(type => (
-              <option key={type.value} value={type.value}>
+              <option key={type.value || 'unknown'} value={type.value}>
                 {type.label}
               </option>
             ))}
@@ -142,7 +133,7 @@ const PublicClubs = () => {
           >
             <option value="all">Все города</option>
             {getCities().map(city => (
-              <option key={city} value={city}>
+              <option key={city || 'unknown'} value={city}>
                 {city}
               </option>
             ))}
@@ -189,7 +180,7 @@ const PublicClubs = () => {
         ) : (
           <div className="clubs-grid">
             {filteredClubs.map(club => (
-              <ClubCard key={club.id} club={club} />
+              <ClubCard key={club.id || `club-${Math.random()}`} club={club} />
             ))}
           </div>
         )}

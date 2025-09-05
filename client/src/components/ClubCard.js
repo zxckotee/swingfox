@@ -31,10 +31,10 @@ const ClubCard = ({ club }) => {
       <div className="club-card-header">
         <div className="club-avatar">
           <img 
-            src={club.avatar || '/images/default-club.png'} 
+            src={club.avatar ? `/uploads/${club.avatar}` : '/uploads/no_photo.jpg'} 
             alt={club.name}
             onError={(e) => {
-              e.target.src = '/images/default-club.png';
+              e.target.src = '/uploads/no_photo.jpg';
             }}
           />
         </div>

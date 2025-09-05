@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { clubApi } from '../services/clubApi';
+import EventForm from '../components/EventForm';
 import '../styles/ClubDashboard.css';
 
 // Иконки
@@ -76,6 +77,7 @@ const ClubDashboard = () => {
   const [stats, setStats] = useState({});
   const [recentEvents, setRecentEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showCreateEventModal, setShowCreateEventModal] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
@@ -101,6 +103,25 @@ const ClubDashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCreateEvent = () => {
+    setShowCreateEventModal(true);
+  };
+
+  const handleCloseCreateEventModal = () => {
+    setShowCreateEventModal(false);
+  };
+
+  const handleEventCreated = () => {
+    setShowCreateEventModal(false);
+    // Перезагружаем данные дашборда
+    loadDashboardData();
+  };
+
+  const handleSettings = () => {
+    // TODO: Реализовать настройки клуба
+    alert('Функция настроек будет реализована в следующих версиях');
   };
 
   if (loading) {
@@ -130,7 +151,7 @@ const ClubDashboard = () => {
       <div className="club-dashboard-header">
         <div className="club-info">
           <div className="club-avatar">
-            <img src={club?.avatar || '/images/default-club.png'} alt={club?.name} />
+            <img src={club?.avatar ? `/uploads/${club.avatar}` : '/uploads/no_photo.jpg'} alt={club?.name} />
           </div>
           <div className="club-details">
             <h1>{club?.name}</h1>
@@ -142,11 +163,11 @@ const ClubDashboard = () => {
           </div>
         </div>
         <div className="club-actions">
-          <button className="btn btn-primary">
+          <button className="btn btn-primary" onClick={handleCreateEvent}>
             <PlusIcon className="icon" />
             Создать мероприятие
           </button>
-          <button className="btn btn-secondary">
+          <button className="btn btn-secondary" onClick={handleSettings}>
             <CogIcon className="icon" />
             Настройки
           </button>
@@ -200,16 +221,16 @@ const ClubDashboard = () => {
       <div className="quick-actions">
         <h2>Быстрые действия</h2>
         <div className="actions-grid">
-          <Link to="/club/events/create" className="action-card">
+          <button className="action-card" onClick={handleCreateEvent}>
             <CalendarIcon className="icon" />
             <h3>Создать мероприятие</h3>
             <p>Организуйте новое событие</p>
-          </Link>
+          </button>
           
-          <Link to="/club/ads/create" className="action-card">
+          <Link to="/club/events" className="action-card">
             <BellIcon className="icon" />
-            <h3>Разместить объявление</h3>
-            <p>Привлеките внимание</p>
+            <h3>Мероприятия</h3>
+            <p>Управление событиями</p>
           </Link>
           
           <Link to="/club/analytics" className="action-card">
@@ -218,10 +239,10 @@ const ClubDashboard = () => {
             <p>Просмотр статистики</p>
           </Link>
           
-          <Link to="/club/applications" className="action-card">
+          <Link to="/club/events" className="action-card">
             <UsersIcon className="icon" />
-            <h3>Заявки</h3>
-            <p>Управление заявками</p>
+            <h3>Участники</h3>
+            <p>Управление участниками</p>
           </Link>
         </div>
       </div>
@@ -255,7 +276,10 @@ const ClubDashboard = () => {
                 </p>
                 <p className="event-participants">
                   <UsersIcon className="icon" />
-                  {event.current_participants}/{event.max_participants} участников
+                  {event.max_participants && event.max_participants > 0 
+                    ? `${event.current_participants || 0}/${event.max_participants} участников`
+                    : `${event.current_participants || 0} участников`
+                  }
                 </p>
               </div>
               
@@ -297,6 +321,18 @@ const ClubDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Create Event Modal */}
+      {showCreateEventModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <EventForm
+              onCancel={handleCloseCreateEventModal}
+              onSave={handleEventCreated}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

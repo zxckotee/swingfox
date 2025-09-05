@@ -203,7 +203,7 @@ const ClubNavigation = () => {
 
       {/* Mobile Navigation */}
       {isMobileMenuOpen && (
-        <div className="mobile-nav-overlay" onClick={() => setIsMobileMenuOpen(false)}>
+        <div className={`mobile-nav-overlay ${isMobileMenuOpen ? 'active' : ''}`} onClick={() => setIsMobileMenuOpen(false)}>
           <nav className="mobile-navigation" onClick={(e) => e.stopPropagation()}>
             <div className="mobile-nav-header">
               <div className="nav-logo">

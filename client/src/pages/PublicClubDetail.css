@@ -172,6 +172,27 @@
   margin: 0 0 25px 0;
 }
 
+.contact-item {
+  margin-bottom: 10px;
+  color: #4a5568;
+  line-height: 1.6;
+}
+
+.contact-item strong {
+  color: #2d3748;
+  font-weight: 600;
+}
+
+.website-link {
+  color: #dc3522;
+  text-decoration: none;
+  margin-left: 5px;
+}
+
+.website-link:hover {
+  text-decoration: underline;
+}
+
 .details-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -245,6 +266,8 @@
   border-radius: 12px;
   border-left: 4px solid #dc3522;
   transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .event-card:hover {
@@ -301,6 +324,10 @@
 
 .event-actions {
   margin-top: 15px;
+  display: flex;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .btn {

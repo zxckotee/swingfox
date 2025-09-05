@@ -184,10 +184,10 @@ const EventParticipants = ({ eventId, onClose }) => {
                 <div className="participant-info">
                   <div className="participant-avatar">
                     <img 
-                      src={participant.user?.avatar || '/images/default-avatar.png'} 
+                      src={participant.user?.avatar ? `/uploads/${participant.user.avatar}` : '/uploads/no_photo.jpg'} 
                       alt={participant.user?.name}
                       onError={(e) => {
-                        e.target.src = '/images/default-avatar.png';
+                        e.target.src = '/uploads/no_photo.jpg';
                       }}
                     />
                   </div>

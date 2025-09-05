@@ -5,8 +5,8 @@ const { authenticateToken } = require('../middleware/auth');
 const { generateId } = require('../utils/helpers');
 const { APILogger } = require('../utils/logger');
 
-// GET /api/clubs - Получение списка клубов
-router.get('/', authenticateToken, async (req, res) => {
+// GET /api/clubs - Получение списка клубов (публичный)
+router.get('/', async (req, res) => {
   const logger = new APILogger('CLUBS');
   
   try {
@@ -21,7 +21,7 @@ router.get('/', authenticateToken, async (req, res) => {
       popular = false
     } = req.query;
 
-    const userId = req.user.login;
+    const userId = req.user?.login || null; // Пользователь может быть не аутентифицирован
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     logger.logBusinessLogic(1, 'Получение списка клубов', {
@@ -194,15 +194,15 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/clubs/:id - Получение конкретного клуба
-router.get('/:id', authenticateToken, async (req, res) => {
+// GET /api/clubs/:id - Получение конкретного клуба (публичный)
+router.get('/:id', async (req, res) => {
   const logger = new APILogger('CLUBS');
   
   try {
     logger.logRequest(req, 'GET /clubs/:id');
     
     const { id } = req.params;
-    const userId = req.user.login;
+    const userId = req.user?.login || null; // Пользователь может быть не аутентифицирован
 
     logger.logBusinessLogic(1, 'Получение информации о клубе', {
       user_id: userId,
@@ -211,14 +211,14 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
     const club = await Clubs.findOne({
       where: {
-        id: parseInt(id),
+        id: id, // Используем ID как есть, без parseInt
         is_active: true
       },
       include: [
         {
           model: User,
           as: 'OwnerUser',
-          attributes: ['login', 'name', 'ava']
+          attributes: ['login', 'ava']
         }
       ]
     });
@@ -230,18 +230,28 @@ router.get('/:id', authenticateToken, async (req, res) => {
       });
     }
 
-    // Проверяем заявку пользователя
-    const userApplication = await ClubApplications.findOne({
-      where: {
-        club_id: parseInt(id),
-        applicant: userId
-      }
-    });
+    // Проверяем заявку пользователя (только если пользователь аутентифицирован)
+    let userApplication = null;
+    if (userId) {
+      userApplication = await ClubApplications.findOne({
+        where: {
+          club_id: id,
+          applicant: userId
+        }
+      });
+    }
 
-    // Получаем последние события клуба
-    const recentEvents = await Events.getClubEvents(parseInt(id), {
-      limit: 5,
-      upcoming: true
+    // Получаем последние события клуба из таблицы club_events
+    const { ClubEvents } = require('../models');
+    const recentEvents = await ClubEvents.findAll({
+      where: {
+        club_id: id,
+        date: {
+          [require('sequelize').Op.gte]: new Date()
+        }
+      },
+      order: [['date', 'ASC']],
+      limit: 5
     });
 
     const responseData = {
@@ -250,6 +260,11 @@ router.get('/:id', authenticateToken, async (req, res) => {
       description: club.description,
       type: club.type,
       location: club.location,
+      city: club.city,
+      country: club.country,
+      address: club.address,
+      website: club.website,
+      email: club.email,
       geo: club.geo,
       current_members: club.current_members,
       max_members: club.max_members,
@@ -270,6 +285,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
         status: club.OwnerUser.status
       } : null,
       created_at: club.created_at,
+      date_created: club.date_created,
       user_application: userApplication ? {
         status: userApplication.status,
         created_at: userApplication.created_at,

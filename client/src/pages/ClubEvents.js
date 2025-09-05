@@ -310,7 +310,12 @@ const ClubEvents = () => {
                     
                     <div className="detail-item">
                       <UsersIcon className="icon" />
-                      <span>{event.current_participants}/{event.max_participants} участников</span>
+                      <span>
+                        {event.max_participants && event.max_participants > 0 
+                          ? `${event.current_participants || 0}/${event.max_participants} участников`
+                          : `${event.current_participants || 0} участников`
+                        }
+                      </span>
                     </div>
                   </div>
                   
@@ -329,17 +334,25 @@ const ClubEvents = () => {
                 </div>
                 
                 <div className="event-footer">
-                  <div className="participation-progress">
-                    <div className="progress-bar">
-                      <div 
-                        className="progress-fill"
-                        style={{ width: `${(event.current_participants / event.max_participants) * 100}%` }}
-                      ></div>
+                  {event.max_participants ? (
+                    <div className="participation-progress">
+                      <div className="progress-bar">
+                        <div 
+                          className="progress-fill"
+                          style={{ width: `${Math.min((event.current_participants || 0) / event.max_participants * 100, 100)}%` }}
+                        ></div>
+                      </div>
+                      <span className="progress-text">
+                        {Math.round((event.current_participants || 0) / event.max_participants * 100)}% заполнено
+                      </span>
                     </div>
-                    <span className="progress-text">
-                      {Math.round((event.current_participants / event.max_participants) * 100)}% заполнено
-                    </span>
-                  </div>
+                  ) : (
+                    <div className="participation-progress">
+                      <span className="progress-text">
+                        Без ограничений
+                      </span>
+                    </div>
+                  )}
                   
                   <Link to={`/club/events/${event.id}/participants`} className="btn btn-sm btn-secondary">
                     Участники

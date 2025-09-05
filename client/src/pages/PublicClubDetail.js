@@ -27,15 +27,13 @@ const PublicClubDetail = () => {
       setError(null);
       
       // Загружаем данные клуба
-      const clubResponse = await api.get(`/clubs/${id}`);
-      setClub(clubResponse.data.club || clubResponse.data);
+      const clubResponse = await api.clubs.getClub(id);
+      setClub(clubResponse.club || clubResponse);
       
       // Загружаем события клуба
       try {
-        const eventsResponse = await api.get(`/club/events`, {
-          params: { club_id: id, limit: 10 }
-        });
-        setEvents(eventsResponse.data.events || []);
+        const eventsResponse = await clubApi.getEvents({ club_id: id, limit: 10 });
+        setEvents(eventsResponse.events || []);
       } catch (eventsError) {
         console.warn('Не удалось загрузить события:', eventsError);
         setEvents([]);
@@ -130,10 +128,10 @@ const PublicClubDetail = () => {
         <div className="club-detail-hero">
           <div className="club-hero-avatar">
             <img 
-              src={club.avatar || '/images/default-club.png'} 
+              src={club.avatar ? `/uploads/${club.avatar}` : '/uploads/no_photo.jpg'} 
               alt={club.name}
               onError={(e) => {
-                e.target.src = '/images/default-club.png';
+                e.target.src = '/uploads/no_photo.jpg';
               }}
             />
           </div>
@@ -196,12 +194,30 @@ const PublicClubDetail = () => {
               </p>
             </div>
             
-            {club.contact_info && (
-              <div className="club-contact">
-                <h3>Контактная информация</h3>
-                <p>{club.contact_info}</p>
-              </div>
-            )}
+            <div className="club-contact">
+              <h3>Контактная информация</h3>
+              {club.email && (
+                <div className="contact-item">
+                  <strong>Email:</strong> {club.email}
+                </div>
+              )}
+              {club.contact_info && (
+                <div className="contact-item">
+                  <strong>Дополнительные контакты:</strong> {club.contact_info}
+                </div>
+              )}
+              {club.website && (
+                <div className="contact-item">
+                  <strong>Веб-сайт:</strong> 
+                  <a href={club.website.startsWith('http') ? club.website : `https://${club.website}`} 
+                     target="_blank" 
+                     rel="noopener noreferrer"
+                     className="website-link">
+                    {club.website}
+                  </a>
+                </div>
+              )}
+            </div>
             
             <div className="club-details">
               <h3>Детали</h3>
@@ -227,7 +243,7 @@ const PublicClubDetail = () => {
                 <div className="detail-item">
                   <span className="detail-label">Дата создания:</span>
                   <span className="detail-value">
-                    {new Date(club.date_created).toLocaleDateString('ru-RU')}
+                    {club.date_created ? new Date(club.date_created).toLocaleDateString('ru-RU') : 'Не указана'}
                   </span>
                 </div>
               </div>
@@ -260,11 +276,9 @@ const PublicClubDetail = () => {
                         <span className="event-price">
                           {event.price ? `${event.price} ₽` : 'Бесплатно'}
                         </span>
-                        {event.max_participants && (
-                          <span className="event-participants">
-                            До {event.max_participants} участников
-                          </span>
-                        )}
+                        <span className="event-participants">
+                          {event.max_participants ? `До ${event.max_participants} участников` : 'Без ограничений'}
+                        </span>
                       </div>
                       
                       <div className="event-actions">
