@@ -178,6 +178,8 @@ router.post('/events/:eventId/join', authenticateToken, async (req, res) => {
     const { eventId } = req.params;
     const userId = req.user.id;
 
+    console.log(`User ${userId} trying to join event ${eventId}`);
+
     // Проверяем существование мероприятия
     const event = await ClubEvents.findByPk(eventId, {
       include: [
@@ -190,21 +192,16 @@ router.post('/events/:eventId/join', authenticateToken, async (req, res) => {
     });
 
     if (!event) {
+      console.log(`Event ${eventId} not found`);
       return res.status(404).json({ error: 'Мероприятие не найдено' });
     }
 
+    console.log(`Event found: ${event.title}, club_id: ${event.club_id}`);
+
     // Проверяем, можно ли присоединиться
     if (!event.canJoin()) {
+      console.log(`Event ${eventId} cannot be joined (full or past date)`);
       return res.status(400).json({ error: 'Нельзя присоединиться к этому мероприятию' });
-    }
-
-    // Проверяем, не присоединился ли уже пользователь
-    const existingParticipation = await EventParticipants.findOne({
-      where: { event_id: eventId, user_id: userId }
-    });
-
-    if (existingParticipation) {
-      return res.status(400).json({ error: 'Вы уже участвуете в этом мероприятии' });
     }
 
     // Проверяем лимит участников
@@ -214,29 +211,55 @@ router.post('/events/:eventId/join', authenticateToken, async (req, res) => {
       });
 
       if (currentParticipants >= event.max_participants) {
+        console.log(`Event ${eventId} is full: ${currentParticipants}/${event.max_participants}`);
         return res.status(400).json({ error: 'Достигнут лимит участников' });
       }
     }
 
-    // Создаем участие
-    const participation = await EventParticipants.create({
-      event_id: eventId,
-      user_id: userId,
-      status: 'confirmed'
+    console.log(`Creating participation for user ${userId} in event ${eventId}`);
+
+    // Используем findOrCreate для избежания дублирования
+    const [participation, created] = await EventParticipants.findOrCreate({
+      where: { 
+        event_id: eventId, 
+        user_id: userId 
+      },
+      defaults: {
+        event_id: eventId,
+        user_id: userId,
+        status: 'confirmed'
+      }
     });
+
+    if (!created) {
+      console.log(`User ${userId} already participates in event ${eventId}`);
+      return res.status(400).json({ error: 'Вы уже участвуете в этом мероприятии' });
+    }
+
+    console.log(`Participation created with id: ${participation.id}`);
 
     // Обновляем счетчик участников
     event.current_participants += 1;
     await event.save();
 
+    console.log(`Updated event participants count to: ${event.current_participants}`);
+
     // Создаем уведомление для клуба
-    await Notifications.create({
-      user_id: event.club_id,
-      type: 'event_update',
-      title: 'Новый участник',
-      message: `${req.user.login} присоединился к мероприятию "${event.title}"`,
-      data: { event_id: eventId, user_id: userId }
-    });
+    try {
+      await Notifications.create({
+        user_id: event.club_id,
+        type: 'event_update',
+        title: 'Новый участник',
+        message: `${req.user.login} присоединился к мероприятию "${event.title}"`,
+        data: { event_id: eventId, user_id: userId }
+      });
+      console.log(`Notification created for club ${event.club_id}`);
+    } catch (notificationError) {
+      console.error('Notification creation failed:', notificationError);
+      // Не прерываем выполнение, если уведомление не создалось
+    }
+
+    console.log(`Successfully joined event ${eventId} for user ${userId}`);
 
     res.json({
       message: 'Успешно присоединились к мероприятию',
@@ -245,6 +268,12 @@ router.post('/events/:eventId/join', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('Join event error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      eventId: req.params.eventId,
+      userId: req.user?.id
+    });
     res.status(500).json({ error: 'Ошибка при присоединении к мероприятию' });
   }
 });
