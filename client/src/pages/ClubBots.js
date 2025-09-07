@@ -476,3 +476,4 @@ const BotForm = ({ bot, onCancel, onSave }) => {
 };
 
 export default ClubBots;
+

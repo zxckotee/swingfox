@@ -385,3 +385,4 @@ const ApplicationModal = ({ application, onClose, onApprove, onReject }) => {
 };
 
 export default ClubApplications;
+

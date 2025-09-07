@@ -713,3 +713,4 @@ const SecuritySettings = ({ club, onSave, onChangePassword, showPasswordForm, se
 };
 
 export default ClubSettings;
+

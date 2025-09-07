@@ -450,3 +450,4 @@ const ParticipantModal = ({ participant, onClose, onChangeRole, onRemove }) => {
 };
 
 export default ClubParticipants;
+
