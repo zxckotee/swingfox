@@ -4,6 +4,7 @@ import { clubApi } from '../services/clubApi';
 import EventForm from '../components/EventForm';
 import EventParticipants from '../components/EventParticipants';
 import EventDetailsModal from '../components/EventDetailsModal';
+import { getEventStatus, getEventStatusText, getTimeUntilStart, getTimeUntilEnd } from '../utils/eventStatus';
 import '../styles/ClubEvents.css';
 
 // Иконки
@@ -161,27 +162,24 @@ const ClubEvents = () => {
     setSelectedEventId(null);
   };
 
+  const getEventStatusLocal = (event) => {
+    // Используем новую утилиту с учетом длительности
+    return getEventStatus(
+      event.date, 
+      event.duration_hours || 2, 
+      event.end_date
+    );
+  };
+
   const filteredEvents = (events || []).filter(event => {
-    const matchesFilter = filter === 'all' || 
-                         (filter === 'upcoming' && new Date(event.date) > new Date()) ||
-                         (filter === 'ongoing' && new Date(event.date) <= new Date() && new Date(event.date) > new Date(Date.now() - 24 * 60 * 60 * 1000)) ||
-                         (filter === 'completed' && new Date(event.date) < new Date(Date.now() - 24 * 60 * 60 * 1000));
+    const eventStatus = getEventStatusLocal(event);
+    const matchesFilter = filter === 'all' || filter === eventStatus;
     
     const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          event.location.toLowerCase().includes(searchTerm.toLowerCase());
     
     return matchesFilter && matchesSearch;
   });
-
-  const getEventStatus = (date) => {
-    const eventDate = new Date(date);
-    const now = new Date();
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    
-    if (eventDate > now) return 'upcoming';
-    if (eventDate > oneDayAgo) return 'ongoing';
-    return 'completed';
-  };
 
   if (loading) {
     return (
@@ -271,9 +269,8 @@ const ClubEvents = () => {
               <div key={event.id} className="event-card">
                 <div className="event-header">
                   <div className="event-status-badge">
-                    <span className={`status-dot ${getEventStatus(event.date)}`}></span>
-                    {getEventStatus(event.date) === 'upcoming' ? 'Предстоит' : 
-                     getEventStatus(event.date) === 'ongoing' ? 'Идет' : 'Завершено'}
+                    <span className={`status-dot ${getEventStatusLocal(event)}`}></span>
+                    {getEventStatusText(getEventStatusLocal(event))}
                   </div>
                   <div className="event-actions">
                     <button 
@@ -317,12 +314,32 @@ const ClubEvents = () => {
                     <div className="detail-item">
                       <CalendarIcon className="icon" />
                       <span>{new Date(event.date).toLocaleDateString('ru-RU')}</span>
+                      {event.time && <span className="event-time"> в {event.time}</span>}
                     </div>
                     
-                    <div className="detail-item">
-                      <ClockIcon className="icon" />
-                      <span>{event.time}</span>
-                    </div>
+                    {/* Отображение времени до начала/окончания */}
+                    {(() => {
+                      const status = getEventStatusLocal(event);
+                      const timeUntilStart = getTimeUntilStart(event.date);
+                      const timeUntilEnd = getTimeUntilEnd(event.date, event.duration_hours || 2, event.end_date);
+                      
+                      if (status === 'upcoming' && timeUntilStart) {
+                        return (
+                          <div className="detail-item time-info">
+                            <ClockIcon className="icon" />
+                            <span>До начала: {timeUntilStart}</span>
+                          </div>
+                        );
+                      } else if (status === 'ongoing' && timeUntilEnd) {
+                        return (
+                          <div className="detail-item time-info">
+                            <ClockIcon className="icon" />
+                            <span>До окончания: {timeUntilEnd}</span>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                     
                     <div className="detail-item">
                       <MapPinIcon className="icon" />

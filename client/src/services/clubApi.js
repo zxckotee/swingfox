@@ -18,8 +18,20 @@ const apiCall = async (endpoint, options = {}) => {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
     
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'API Error');
+      let errorMessage = 'API Error';
+      try {
+        const error = await response.json();
+        errorMessage = error.message || error.error || `HTTP ${response.status}: ${response.statusText}`;
+      } catch (parseError) {
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      console.error('API Error Details:', {
+        status: response.status,
+        statusText: response.statusText,
+        endpoint,
+        config
+      });
+      throw new Error(errorMessage);
     }
     
     return await response.json();
@@ -385,11 +397,6 @@ export const clubApi = {
     return apiCall(`/user-events/search/events?${queryString}`);
   },
 
-  // Public Club Ads
-  getPublicClubAds: async (params = {}) => {
-    const queryString = new URLSearchParams(params).toString();
-    return apiCall(`/user-events/public/club-ads${queryString ? `?${queryString}` : ''}`);
-  },
 
   // Public Clubs
   getPublicClubs: async (params = {}) => {
@@ -410,6 +417,47 @@ export const clubApi = {
   },
 
   uploadClubAvatar: async (formData) => {
+    const token = localStorage.getItem('clubToken');
+    
+    const response = await fetch(`${API_BASE_URL}/auth/profile/avatar`, {
+      method: 'POST',
+      headers: {
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      },
+      body: formData
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Upload Error');
+    }
+    
+    return await response.json();
+  },
+
+  updateProfile: async (profileData) => {
+    return apiCall('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profileData)
+    });
+  },
+
+  changePassword: async (passwordData) => {
+    console.log('ClubApi.changePassword called with:', passwordData);
+    try {
+      const result = await apiCall('/auth/password', {
+        method: 'PUT',
+        body: JSON.stringify(passwordData)
+      });
+      console.log('ClubApi.changePassword success:', result);
+      return result;
+    } catch (error) {
+      console.error('ClubApi.changePassword error:', error);
+      throw error;
+    }
+  },
+
+  uploadAvatar: async (formData) => {
     const token = localStorage.getItem('clubToken');
     
     const response = await fetch(`${API_BASE_URL}/auth/profile/avatar`, {
@@ -548,40 +596,6 @@ export const clubAuth = {
     return apiCall(`/participants/${participantId}`, {
       method: 'DELETE'
     });
-  },
-
-  // Settings Management
-  updateProfile: async (profileData) => {
-    return apiCall('/auth/profile', {
-      method: 'PUT',
-      body: JSON.stringify(profileData)
-    });
-  },
-
-  changePassword: async (passwordData) => {
-    return apiCall('/auth/change-password', {
-      method: 'POST',
-      body: JSON.stringify(passwordData)
-    });
-  },
-
-  uploadAvatar: async (formData) => {
-    const token = localStorage.getItem('clubToken');
-    
-    const response = await fetch(`${API_BASE_URL}/auth/profile/avatar`, {
-      method: 'POST',
-      headers: {
-        ...(token && { 'Authorization': `Bearer ${token}` })
-      },
-      body: formData
-    });
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Upload Error');
-    }
-    
-    return await response.json();
   }
 };
 
@@ -596,5 +610,4 @@ export const handleApiError = (error) => {
   return error.message || 'Произошла ошибка';
 };
 
-export default clubApi;
 

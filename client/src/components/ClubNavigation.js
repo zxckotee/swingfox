@@ -104,12 +104,6 @@ const ClubNavigation = () => {
       description: 'Управление мероприятиями'
     },
     {
-      name: 'Объявления',
-      href: '/club/ads',
-      icon: BellIcon,
-      description: 'Управление объявлениями'
-    },
-    {
       name: 'Аналитика',
       href: '/club/analytics',
       icon: ChartBarIcon,

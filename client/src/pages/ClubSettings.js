@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { clubApi } from '../services/clubApi';
+import toast from 'react-hot-toast';
 import '../styles/ClubSettings.css';
 
 // Иконки
@@ -61,10 +62,10 @@ const ClubSettings = () => {
       setSaving(true);
       await clubApi.updateProfile(formData);
       await loadClubData();
-      alert('Настройки сохранены успешно!');
+      toast.success('Настройки сохранены успешно!');
     } catch (error) {
       console.error('Ошибка сохранения настроек:', error);
-      alert('Ошибка при сохранении настроек');
+      toast.error('Ошибка при сохранении настроек');
     } finally {
       setSaving(false);
     }
@@ -75,10 +76,10 @@ const ClubSettings = () => {
       setSaving(true);
       await clubApi.changePassword(passwordData);
       setShowPasswordForm(false);
-      alert('Пароль изменен успешно!');
+      toast.success('Пароль изменен успешно!');
     } catch (error) {
       console.error('Ошибка изменения пароля:', error);
-      alert('Ошибка при изменении пароля');
+      toast.error('Ошибка при изменении пароля');
     } finally {
       setSaving(false);
     }
@@ -91,10 +92,10 @@ const ClubSettings = () => {
       formData.append('avatar', file);
       await clubApi.uploadAvatar(formData);
       await loadClubData();
-      alert('Аватар обновлен успешно!');
+      toast.success('Аватар обновлен успешно!');
     } catch (error) {
       console.error('Ошибка загрузки аватара:', error);
-      alert('Ошибка при загрузке аватара');
+      toast.error('Ошибка при загрузке аватара');
     } finally {
       setSaving(false);
     }
@@ -313,12 +314,22 @@ const ProfileSettings = ({ club, onSave, onUploadAvatar, saving }) => {
       <div className="avatar-section">
         <h3>Аватар клуба</h3>
         <div className="avatar-upload">
-          <div className="current-avatar">
+          <div className="current-avatar" onClick={() => document.getElementById('avatar-upload').click()}>
             {club?.avatar ? (
-              <img src={club.avatar} alt="Аватар клуба" />
+              <img 
+                src={`/uploads/${club.avatar}`} 
+                alt="Аватар клуба" 
+                onError={(e) => {
+                  e.target.src = '/uploads/no_photo.jpg';
+                }}
+              />
             ) : (
               <div className="avatar-placeholder">👤</div>
             )}
+            <div className="avatar-overlay">
+              <span>📷</span>
+              <span>Изменить аватар</span>
+            </div>
           </div>
           <div className="upload-controls">
             <label htmlFor="avatar-upload" className="btn btn-secondary">
@@ -609,10 +620,17 @@ const SecuritySettings = ({ club, onSave, onChangePassword, showPasswordForm, se
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
     if (passwordData.new_password !== passwordData.confirm_password) {
-      alert('Пароли не совпадают');
+      toast.error('Пароли не совпадают');
       return;
     }
-    onChangePassword(passwordData);
+    
+    // Преобразуем поля для API
+    const apiData = {
+      currentPassword: passwordData.current_password,
+      newPassword: passwordData.new_password
+    };
+    
+    onChangePassword(apiData);
     setPasswordData({ current_password: '', new_password: '', confirm_password: '' });
   };
 

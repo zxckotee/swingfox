@@ -4,6 +4,8 @@ import { clubApi, clubAuth } from '../services/clubApi';
 import EventForm from '../components/EventForm';
 import ClubAvatarCropper from '../components/UI/ClubAvatarCropper';
 import EventDetailsModal from '../components/EventDetailsModal';
+import { getEventStatus, getEventStatusText } from '../utils/eventStatus';
+import toast from 'react-hot-toast';
 import '../styles/ClubDashboard.css';
 
 // Иконки
@@ -181,7 +183,7 @@ const ClubDashboard = () => {
       }
     } catch (error) {
       console.error('Ошибка загрузки аватара:', error);
-      alert('Ошибка при загрузке аватара');
+      toast.error('Ошибка при загрузке аватара');
     }
   };
 
@@ -364,9 +366,8 @@ const ClubDashboard = () => {
             <div key={event.id} className="event-card">
               <div className="event-header">
                 <h3>{event.title}</h3>
-                <span className={`event-status ${event.status}`}>
-                  {event.status === 'upcoming' ? 'Предстоит' : 
-                   event.status === 'ongoing' ? 'Идет' : 'Завершено'}
+                <span className={`event-status ${getEventStatus(event.date, event.duration_hours || 2, event.end_date)}`}>
+                  {getEventStatusText(getEventStatus(event.date, event.duration_hours || 2, event.end_date))}
                 </span>
               </div>
               

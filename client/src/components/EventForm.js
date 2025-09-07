@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { clubApi } from '../services/clubApi';
 import ClubAvatarCropper from './UI/ClubAvatarCropper';
 import EventImageUploader from './UI/EventImageUploader';
+import toast from 'react-hot-toast';
 import './EventForm.css';
 
 const EventForm = ({ event, onSave, onCancel, clubId }) => {
@@ -16,7 +17,8 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
     category: 'party',
     age_restriction: '18+',
     dress_code: '',
-    special_requirements: ''
+    special_requirements: '',
+    duration_hours: 2
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -39,7 +41,8 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
         age_restriction: event.age_restriction || '18+',
         dress_code: event.dress_code || '',
         special_requirements: event.special_requirements || '',
-        avatar: event.avatar || ''
+        avatar: event.avatar || '',
+        duration_hours: event.duration_hours || 2
       });
       
       // Загружаем существующие изображения
@@ -91,6 +94,10 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
       newErrors.max_participants = 'Количество участников должно быть положительным числом';
     }
 
+    if (formData.duration_hours && (isNaN(parseInt(formData.duration_hours)) || parseInt(formData.duration_hours) < 1 || parseInt(formData.duration_hours) > 24)) {
+      newErrors.duration_hours = 'Длительность должна быть от 1 до 24 часов';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -134,7 +141,7 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
       }
     } catch (error) {
       console.error('Ошибка загрузки аватара:', error);
-      alert('Ошибка при загрузке аватара мероприятия');
+      toast.error('Ошибка при загрузке аватара мероприятия');
     }
   };
 
@@ -182,7 +189,8 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
         club_id: clubId,
         date: new Date(`${formData.date}T${formData.time}`).toISOString(),
         price: formData.price ? parseFloat(formData.price) : 0,
-        max_participants: formData.max_participants ? parseInt(formData.max_participants) : null
+        max_participants: formData.max_participants ? parseInt(formData.max_participants) : null,
+        duration_hours: formData.duration_hours ? parseInt(formData.duration_hours) : 2
       };
 
       if (event) {
@@ -425,6 +433,22 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
                 min="1"
               />
               {errors.max_participants && <span className="field-error">{errors.max_participants}</span>}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="duration_hours">Длительность (часы)</label>
+              <input
+                type="number"
+                id="duration_hours"
+                name="duration_hours"
+                value={formData.duration_hours}
+                onChange={handleChange}
+                className={errors.duration_hours ? 'error' : ''}
+                placeholder="2"
+                min="1"
+                max="24"
+              />
+              {errors.duration_hours && <span className="field-error">{errors.duration_hours}</span>}
             </div>
           </div>
 

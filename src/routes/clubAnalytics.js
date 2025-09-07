@@ -4,7 +4,6 @@ const {
   Clubs, 
   ClubEvents, 
   EventParticipants, 
-  Ads, 
   User,
   ClubApplications 
 } = require('../models');
@@ -66,27 +65,6 @@ router.get('/overview', authenticateClub, async (req, res) => {
       }]
     });
 
-    const totalAds = await Ads.count({
-      where: {
-        club_id: clubId,
-        is_club_ad: true
-      }
-    });
-
-    const approvedAds = await Ads.count({
-      where: {
-        club_id: clubId,
-        is_club_ad: true,
-        status: 'approved'
-      }
-    });
-
-    const totalViews = await Ads.sum('views_count', {
-      where: {
-        club_id: clubId,
-        is_club_ad: true
-      }
-    });
 
     // Статистика за период
     const eventsInPeriod = await ClubEvents.count({
@@ -111,15 +89,6 @@ router.get('/overview', authenticateClub, async (req, res) => {
       }]
     });
 
-    const adsInPeriod = await Ads.count({
-      where: {
-        club_id: clubId,
-        is_club_ad: true,
-        created_at: {
-          [sequelize.Sequelize.Op.gte]: startDate
-        }
-      }
-    });
 
     const analytics = {
       overview: {
@@ -127,15 +96,11 @@ router.get('/overview', authenticateClub, async (req, res) => {
         upcoming_events: upcomingEvents,
         total_participants: totalParticipants,
         confirmed_participants: confirmedParticipants,
-        total_ads: totalAds,
-        approved_ads: approvedAds,
-        total_views: totalViews || 0
       },
       period_stats: {
         period: period,
         events_created: eventsInPeriod,
         participants_joined: participantsInPeriod,
-        ads_created: adsInPeriod
       }
     };
 
@@ -315,87 +280,6 @@ router.get('/participants', authenticateClub, async (req, res) => {
   }
 });
 
-// Аналитика объявлений
-router.get('/ads', authenticateClub, async (req, res) => {
-  try {
-    const clubId = req.club.id;
-
-    // Статистика по статусам объявлений
-    const adStatusStats = await Ads.findAll({
-      where: {
-        club_id: clubId,
-        is_club_ad: true
-      },
-      attributes: [
-        'status',
-        [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
-        [sequelize.fn('SUM', sequelize.col('views_count')), 'total_views']
-      ],
-      group: ['status'],
-      raw: true
-    });
-
-    // Топ объявлений по просмотрам
-    const topAds = await Ads.findAll({
-      where: {
-        club_id: clubId,
-        is_club_ad: true
-      },
-      attributes: [
-        'id',
-        'title',
-        'type',
-        'views_count',
-        'status',
-        'created_at'
-      ],
-      order: [['views_count', 'DESC']],
-      limit: 10
-    });
-
-    // Статистика по типам объявлений
-    const adTypeStats = await Ads.findAll({
-      where: {
-        club_id: clubId,
-        is_club_ad: true
-      },
-      attributes: [
-        'type',
-        [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
-        [sequelize.fn('AVG', sequelize.col('views_count')), 'avg_views']
-      ],
-      group: ['type'],
-      raw: true
-    });
-
-    // Статистика по месяцам
-    const monthlyAdStats = await Ads.findAll({
-      where: {
-        club_id: clubId,
-        is_club_ad: true
-      },
-      attributes: [
-        [sequelize.fn('DATE_FORMAT', sequelize.col('created_at'), '%Y-%m'), 'month'],
-        [sequelize.fn('COUNT', sequelize.col('id')), 'ads_count'],
-        [sequelize.fn('SUM', sequelize.col('views_count')), 'total_views']
-      ],
-      group: [sequelize.fn('DATE_FORMAT', sequelize.col('created_at'), '%Y-%m')],
-      order: [[sequelize.fn('DATE_FORMAT', sequelize.col('created_at'), '%Y-%m'), 'DESC']],
-      limit: 12,
-      raw: true
-    });
-
-    res.json({
-      status_stats: adStatusStats,
-      top_ads: topAds,
-      type_stats: adTypeStats,
-      monthly_stats: monthlyAdStats
-    });
-  } catch (error) {
-    console.error('Get ads analytics error:', error);
-    res.status(500).json({ error: 'Ошибка при получении аналитики объявлений' });
-  }
-});
 
 // Финансовая аналитика
 router.get('/financial', authenticateClub, async (req, res) => {

@@ -30,7 +30,6 @@ import ClubRegister from './pages/ClubRegister';
 import ClubDashboard from './pages/ClubDashboard';
 import ClubEvents from './pages/ClubEvents';
 import ClubAnalytics from './pages/ClubAnalytics';
-import ClubAds from './pages/ClubAds';
 import ClubApplications from './pages/ClubApplications';
 import ClubBots from './pages/ClubBots';
 import ClubParticipants from './pages/ClubParticipants';
@@ -307,13 +306,6 @@ function App() {
                 </ClubAuthGuard>
               } />
               
-              <Route path="/club/ads" element={
-                <ClubAuthGuard>
-                  <ClubLayout>
-                    <ClubAds />
-                  </ClubLayout>
-                </ClubAuthGuard>
-              } />
               
               <Route path="/club/applications" element={
                 <ClubAuthGuard>

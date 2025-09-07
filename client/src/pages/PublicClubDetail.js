@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { clubApi } from '../services/clubApi';
 import EventApplication from '../components/EventApplication';
+import toast from 'react-hot-toast';
 import './PublicClubDetail.css';
 
 const PublicClubDetail = () => {
@@ -91,7 +92,7 @@ const PublicClubDetail = () => {
   };
 
   const handleApplicationSuccess = () => {
-    alert('Заявка успешно подана! Организатор рассмотрит её в ближайшее время.');
+    toast.success('Заявка успешно подана! Организатор рассмотрит её в ближайшее время.');
   };
 
   if (loading) {

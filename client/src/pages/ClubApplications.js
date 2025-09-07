@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { clubApi } from '../services/clubApi';
+import toast from 'react-hot-toast';
 import '../styles/ClubApplications.css';
 
 // Иконки
@@ -75,7 +76,7 @@ const ClubApplications = () => {
         setSelectedApplication(null);
       } catch (error) {
         console.error('Ошибка одобрения заявки:', error);
-        alert('Ошибка при одобрении заявки');
+        toast.error('Ошибка при одобрении заявки');
       }
     }
   };
@@ -89,7 +90,7 @@ const ClubApplications = () => {
         setSelectedApplication(null);
       } catch (error) {
         console.error('Ошибка отклонения заявки:', error);
-        alert('Ошибка при отклонении заявки');
+        toast.error('Ошибка при отклонении заявки');
       }
     }
   };

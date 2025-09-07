@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { clubApi } from '../services/clubApi';
+import toast from 'react-hot-toast';
 import './EventParticipants.css';
 
 const EventParticipants = ({ eventId, onClose }) => {
@@ -43,7 +44,7 @@ const EventParticipants = ({ eventId, onClose }) => {
       );
     } catch (error) {
       console.error('Ошибка обновления статуса:', error);
-      alert('Не удалось обновить статус участника');
+      toast.error('Не удалось обновить статус участника');
     }
   };
 
@@ -57,7 +58,7 @@ const EventParticipants = ({ eventId, onClose }) => {
       setParticipants(prev => prev.filter(p => p.id !== participantId));
     } catch (error) {
       console.error('Ошибка удаления участника:', error);
-      alert('Не удалось удалить участника');
+      toast.error('Не удалось удалить участника');
     }
   };
 

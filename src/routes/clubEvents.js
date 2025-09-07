@@ -68,7 +68,8 @@ router.post('/events', authenticateClub, async (req, res) => {
       price,
       event_type,
       is_premium,
-      auto_invite_enabled
+      auto_invite_enabled,
+      duration_hours
     } = req.body;
 
     // Валидация
@@ -93,7 +94,8 @@ router.post('/events', authenticateClub, async (req, res) => {
       price: price ? parseFloat(price) : 0,
       event_type: event_type || 'other',
       is_premium: is_premium || false,
-      auto_invite_enabled: auto_invite_enabled !== false
+      auto_invite_enabled: auto_invite_enabled !== false,
+      duration_hours: duration_hours ? parseInt(duration_hours) : 2
     });
 
     res.status(201).json({
@@ -146,7 +148,8 @@ router.put('/events/:eventId', authenticateClub, checkEventOwnership, async (req
       price,
       event_type,
       is_premium,
-      auto_invite_enabled
+      auto_invite_enabled,
+      duration_hours
     } = req.body;
 
     const event = req.event;
@@ -170,6 +173,7 @@ router.put('/events/:eventId', authenticateClub, checkEventOwnership, async (req
     if (event_type) event.event_type = event_type;
     if (is_premium !== undefined) event.is_premium = is_premium;
     if (auto_invite_enabled !== undefined) event.auto_invite_enabled = auto_invite_enabled;
+    if (duration_hours !== undefined) event.duration_hours = duration_hours ? parseInt(duration_hours) : 2;
 
     await event.save();
 

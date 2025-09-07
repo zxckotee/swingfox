@@ -88,11 +88,10 @@ const ClubAnalytics = () => {
 
   const loadAnalytics = async () => {
     try {
-      const [overview, events, participants, ads, financial] = await Promise.all([
+      const [overview, events, participants, financial] = await Promise.all([
         clubApi.getAnalytics('overview', period),
         clubApi.getAnalytics('events', period),
         clubApi.getAnalytics('participants', period),
-        clubApi.getAnalytics('ads', period),
         clubApi.getAnalytics('financial', period)
       ]);
       
@@ -100,7 +99,6 @@ const ClubAnalytics = () => {
         overview: overview.analytics || overview,
         events: events.analytics || events,
         participants: participants.analytics || participants,
-        ads: ads.analytics || ads,
         financial: financial.analytics || financial
       });
     } catch (error) {
@@ -428,65 +426,6 @@ const ClubAnalytics = () => {
           </div>
         </div>
 
-        {/* Ads Analytics */}
-        <div className="analytics-section">
-          <div className="section-header">
-            <h2>Аналитика объявлений</h2>
-          </div>
-          
-          <div className="section-content">
-            <div className="metrics-row">
-              <div className="metric-item">
-                <span className="metric-label">Просмотры</span>
-                <span className="metric-value">
-                  {analytics.ads?.total_views?.toLocaleString() || 0}
-                </span>
-              </div>
-              <div className="metric-item">
-                <span className="metric-label">Клики</span>
-                <span className="metric-value">
-                  {analytics.ads?.total_clicks?.toLocaleString() || 0}
-                </span>
-              </div>
-              <div className="metric-item">
-                <span className="metric-label">CTR</span>
-                <span className="metric-value">
-                  {analytics.ads?.ctr || 0}%
-                </span>
-              </div>
-            </div>
-            
-            {analytics.ads?.performance_by_ad && (
-              <div className="ads-performance">
-                <h4>Эффективность объявлений</h4>
-                <div className="ads-list">
-                  {(analytics.ads.performance_by_ad || []).map((ad, index) => (
-                    <div key={index} className="ad-performance-item">
-                      <div className="ad-info">
-                        <h5>{ad.title}</h5>
-                        <p>{ad.description}</p>
-                      </div>
-                      <div className="ad-metrics">
-                        <div className="ad-metric">
-                          <span className="metric-label">Просмотры</span>
-                          <span className="metric-value">{ad.views}</span>
-                        </div>
-                        <div className="ad-metric">
-                          <span className="metric-label">Клики</span>
-                          <span className="metric-value">{ad.clicks}</span>
-                        </div>
-                        <div className="ad-metric">
-                          <span className="metric-label">CTR</span>
-                          <span className="metric-value">{ad.ctr}%</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
       </div>
     </div>
   );

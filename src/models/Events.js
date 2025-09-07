@@ -134,6 +134,17 @@ const Events = sequelize.define('Events', {
     type: DataTypes.INTEGER,
     defaultValue: 0,
     comment: 'Текущее количество участников'
+  },
+  duration_hours: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 2,
+    comment: 'Длительность мероприятия в часах'
+  },
+  end_date: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Дата и время окончания мероприятия'
   }
 }, {
   tableName: 'events',
@@ -216,6 +227,36 @@ Events.prototype.isUpcoming = function() {
 
 Events.prototype.isPast = function() {
   return new Date(this.event_date) < new Date();
+};
+
+Events.prototype.getEndDate = function() {
+  if (this.end_date) {
+    return new Date(this.end_date);
+  }
+  
+  if (this.duration_hours) {
+    const startDate = new Date(this.event_date);
+    return new Date(startDate.getTime() + (this.duration_hours * 60 * 60 * 1000));
+  }
+  
+  // По умолчанию 2 часа, если ничего не указано
+  const startDate = new Date(this.event_date);
+  return new Date(startDate.getTime() + (2 * 60 * 60 * 1000));
+};
+
+Events.prototype.isOngoing = function() {
+  const now = new Date();
+  const startDate = new Date(this.event_date);
+  const endDate = this.getEndDate();
+  
+  return now >= startDate && now <= endDate;
+};
+
+Events.prototype.isCompleted = function() {
+  const now = new Date();
+  const endDate = this.getEndDate();
+  
+  return now > endDate;
 };
 
 Events.prototype.canEdit = function(userLogin) {

@@ -96,6 +96,17 @@ module.exports = (sequelize) => {
       set(value) {
         this.setDataValue('images', value ? JSON.stringify(value) : null);
       }
+    },
+    duration_hours: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 2,
+      comment: 'Длительность мероприятия в часах'
+    },
+    end_date: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: 'Дата и время окончания мероприятия'
     }
   }, {
     tableName: 'club_events',
@@ -111,6 +122,41 @@ module.exports = (sequelize) => {
 
   ClubEvents.prototype.canJoin = function() {
     return !this.isFull() && new Date(this.date) > new Date();
+  };
+
+  ClubEvents.prototype.getEndDate = function() {
+    if (this.end_date) {
+      return new Date(this.end_date);
+    }
+    
+    if (this.duration_hours) {
+      const startDate = new Date(`${this.date} ${this.time || '00:00:00'}`);
+      return new Date(startDate.getTime() + (this.duration_hours * 60 * 60 * 1000));
+    }
+    
+    // По умолчанию 2 часа, если ничего не указано
+    const startDate = new Date(`${this.date} ${this.time || '00:00:00'}`);
+    return new Date(startDate.getTime() + (2 * 60 * 60 * 1000));
+  };
+
+  ClubEvents.prototype.isUpcoming = function() {
+    const startDate = new Date(`${this.date} ${this.time || '00:00:00'}`);
+    return startDate > new Date();
+  };
+
+  ClubEvents.prototype.isOngoing = function() {
+    const now = new Date();
+    const startDate = new Date(`${this.date} ${this.time || '00:00:00'}`);
+    const endDate = this.getEndDate();
+    
+    return now >= startDate && now <= endDate;
+  };
+
+  ClubEvents.prototype.isCompleted = function() {
+    const now = new Date();
+    const endDate = this.getEndDate();
+    
+    return now > endDate;
   };
 
   ClubEvents.prototype.getParticipantCount = function() {

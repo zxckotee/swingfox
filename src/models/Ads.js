@@ -100,22 +100,6 @@ const Ads = sequelize.define('Ads', {
     allowNull: false,
     defaultValue: false
   },
-  club_id: {
-    type: DataTypes.BIGINT,
-    allowNull: true,
-    references: {
-      model: 'clubs',
-      key: 'id'
-    }
-  },
-  is_club_ad: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
-  },
-  club_contact_info: {
-    type: DataTypes.TEXT,
-    allowNull: true
-  },
   viral_share_enabled: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
@@ -128,14 +112,6 @@ const Ads = sequelize.define('Ads', {
     type: DataTypes.INTEGER,
     defaultValue: 0
   },
-  event_id: {
-    type: DataTypes.BIGINT,
-    allowNull: true,
-    references: {
-      model: 'club_events',
-      key: 'id'
-    }
-  }
 }, {
   tableName: 'ads',
   timestamps: true,
@@ -159,15 +135,6 @@ const Ads = sequelize.define('Ads', {
     },
     {
       fields: ['expires_at']
-    },
-    {
-      fields: ['club_id']
-    },
-    {
-      fields: ['is_club_ad']
-    },
-    {
-      fields: ['event_id']
     }
   ]
 });

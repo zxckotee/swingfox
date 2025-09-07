@@ -3,22 +3,35 @@
   padding: 2rem;
   max-width: 1200px;
   margin: 0 auto;
+  min-height: 100vh;
+  background: #f8fafc;
 }
 
 .page-header {
   margin-bottom: 2rem;
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e2e8f0;
 }
 
 .header-content h1 {
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: 700;
   color: #2d3748;
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.75rem 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .header-content p {
   color: #718096;
   margin: 0;
+  font-size: 1.1rem;
+  line-height: 1.6;
 }
 
 /* Settings Container */
@@ -218,15 +231,24 @@
 }
 
 .current-avatar {
-  width: 80px;
+  width: 200px;
   height: 80px;
-  border-radius: 50%;
+  border-radius: 12px;
   overflow: hidden;
   background: #e2e8f0;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  border: 3px solid #667eea;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.current-avatar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
 }
 
 .current-avatar img {
@@ -238,6 +260,29 @@
 .avatar-placeholder {
   font-size: 2rem;
   color: #a0aec0;
+}
+
+.avatar-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.current-avatar:hover .avatar-overlay {
+  opacity: 1;
 }
 
 .upload-controls {
@@ -438,6 +483,18 @@ input:checked + .toggle-slider:before {
     padding: 1rem;
   }
   
+  .page-header {
+    padding: 1.5rem;
+  }
+  
+  .header-content h1 {
+    font-size: 2rem;
+  }
+  
+  .header-content p {
+    font-size: 1rem;
+  }
+  
   .settings-container {
     grid-template-columns: 1fr;
     gap: 0;
@@ -479,6 +536,12 @@ input:checked + .toggle-slider:before {
   .avatar-upload {
     flex-direction: column;
     text-align: center;
+  }
+  
+  .current-avatar {
+    width: 150px;
+    height: 60px;
+    margin: 0 auto;
   }
   
   .privacy-item,

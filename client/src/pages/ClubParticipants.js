@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { clubApi } from '../services/clubApi';
+import toast from 'react-hot-toast';
 import '../styles/ClubParticipants.css';
 
 // Иконки
@@ -92,7 +93,7 @@ const ClubParticipants = () => {
         setSelectedParticipant(null);
       } catch (error) {
         console.error('Ошибка изменения роли:', error);
-        alert('Ошибка при изменении роли участника');
+        toast.error('Ошибка при изменении роли участника');
       }
     }
   };
@@ -106,7 +107,7 @@ const ClubParticipants = () => {
         setSelectedParticipant(null);
       } catch (error) {
         console.error('Ошибка исключения участника:', error);
-        alert('Ошибка при исключении участника');
+        toast.error('Ошибка при исключении участника');
       }
     }
   };

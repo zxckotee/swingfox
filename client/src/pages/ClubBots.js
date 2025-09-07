@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { clubApi } from '../services/clubApi';
+import toast from 'react-hot-toast';
 import '../styles/ClubBots.css';
 
 // Иконки
@@ -99,7 +100,7 @@ const ClubBots = () => {
         await loadBots();
       } catch (error) {
         console.error('Ошибка удаления бота:', error);
-        alert('Ошибка при удалении бота');
+        toast.error('Ошибка при удалении бота');
       }
     }
   };
@@ -111,7 +112,7 @@ const ClubBots = () => {
       await loadBots();
     } catch (error) {
       console.error('Ошибка изменения статуса бота:', error);
-      alert('Ошибка при изменении статуса бота');
+      toast.error('Ошибка при изменении статуса бота');
     }
   };
 
@@ -351,7 +352,7 @@ const BotForm = ({ bot, onCancel, onSave }) => {
       onSave();
     } catch (error) {
       console.error('Ошибка сохранения бота:', error);
-      alert('Ошибка при сохранении бота');
+      toast.error('Ошибка при сохранении бота');
     } finally {
       setLoading(false);
     }

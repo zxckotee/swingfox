@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
 import { Button } from './index.js';
+import toast from 'react-hot-toast';
 
 const UploadContainer = styled.div`
   display: flex;
@@ -112,12 +113,12 @@ const EventImageUploader = ({
     const imageFiles = fileArray.filter(file => file.type.startsWith('image/'));
     
     if (imageFiles.length === 0) {
-      alert('Пожалуйста, выберите только изображения');
+      toast.error('Пожалуйста, выберите только изображения');
       return;
     }
 
     if (existingImages.length + selectedFiles.length + imageFiles.length > maxFiles) {
-      alert(`Максимум ${maxFiles} изображений разрешено`);
+      toast.error(`Максимум ${maxFiles} изображений разрешено`);
       return;
     }
 
@@ -171,7 +172,7 @@ const EventImageUploader = ({
       }
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Ошибка при загрузке изображений');
+      toast.error('Ошибка при загрузке изображений');
     } finally {
       setIsUploading(false);
     }
@@ -182,7 +183,7 @@ const EventImageUploader = ({
       await onRemove(eventId, filename);
     } catch (error) {
       console.error('Remove error:', error);
-      alert('Ошибка при удалении изображения');
+      toast.error('Ошибка при удалении изображения');
     }
   };
 
