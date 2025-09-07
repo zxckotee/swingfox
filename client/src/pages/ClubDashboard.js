@@ -108,6 +108,10 @@ const ClubDashboard = () => {
       ]);
       
       setClub(clubData.club || clubData);
+      
+      // Отладочная информация
+      console.log('Dashboard Stats Data:', statsData);
+      
       setStats(statsData.analytics || statsData);
       setRecentEvents(Array.isArray(eventsData.events) ? eventsData.events : (Array.isArray(eventsData) ? eventsData : []));
     } catch (error) {
@@ -288,7 +292,7 @@ const ClubDashboard = () => {
             <CalendarIcon />
           </div>
           <div className="stat-content">
-            <h3>{stats.total_events || 0}</h3>
+            <h3>{stats?.overview?.total_events || 0}</h3>
             <p>Всего мероприятий</p>
           </div>
         </div>
@@ -298,7 +302,7 @@ const ClubDashboard = () => {
             <UsersIcon />
           </div>
           <div className="stat-content">
-            <h3>{stats.total_participants || 0}</h3>
+            <h3>{stats?.overview?.total_participants || 0}</h3>
             <p>Участников</p>
           </div>
         </div>
@@ -308,7 +312,7 @@ const ClubDashboard = () => {
             <ChartBarIcon />
           </div>
           <div className="stat-content">
-            <h3>{stats.total_revenue || 0} ₽</h3>
+            <h3>{stats?.overview?.total_revenue || 0} ₽</h3>
             <p>Доход</p>
           </div>
         </div>
@@ -318,7 +322,7 @@ const ClubDashboard = () => {
             <StarIcon />
           </div>
           <div className="stat-content">
-            <h3>{stats.average_rating || 0}</h3>
+            <h3>{stats?.overview?.average_rating || 0}</h3>
             <p>Рейтинг</p>
           </div>
         </div>
@@ -390,29 +394,6 @@ const ClubDashboard = () => {
               </div>
               
               <div className="event-actions">
-                <div 
-                  className="btn btn-sm btn-outline"
-                  onClick={(e) => {
-                    console.log('=== EYE BUTTON CLICKED ===');
-                    console.log('Event object:', e);
-                    console.log('Event target:', e.target);
-                    console.log('Event currentTarget:', e.currentTarget);
-                    console.log('Event ID:', event.id);
-                    
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    console.log('About to call handleShowEventDetails');
-                    handleShowEventDetails(event.id);
-                    console.log('handleShowEventDetails called');
-                    
-                    return false;
-                  }}
-                  title="Просмотр деталей"
-                  style={{ cursor: 'pointer', userSelect: 'none' }}
-                >
-                  👁️
-                </div>
                 <div 
                   className="btn btn-sm btn-primary"
                   onClick={(e) => {

@@ -4,7 +4,7 @@ const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const {
   User, Chat, Likes, Ads, Reports, Events, Notifications,
-  Gifts, Clubs, ClubApplications, Subscriptions
+  Gifts, Clubs, Subscriptions
 } = require('../models');
 const { APILogger } = require('../utils/logger');
 

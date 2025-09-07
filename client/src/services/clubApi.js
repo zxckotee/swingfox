@@ -117,15 +117,15 @@ export const clubApi = {
     return apiCall(`/events/events/${eventId}/participants`);
   },
 
-  updateParticipantStatus: async (eventId, participantId, status) => {
-    return apiCall(`/events/events/${eventId}/participants/${participantId}`, {
+  updateParticipantStatus: async (eventId, userId, status) => {
+    return apiCall(`/events/events/${eventId}/participants/${userId}`, {
       method: 'PUT',
       body: JSON.stringify({ status })
     });
   },
 
-  removeParticipant: async (eventId, participantId) => {
-    return apiCall(`/events/events/${eventId}/participants/${participantId}`, {
+  removeParticipant: async (eventId, userId) => {
+    return apiCall(`/events/events/${eventId}/participants/${userId}`, {
       method: 'DELETE'
     });
   },
@@ -245,113 +245,80 @@ export const clubApi = {
     return apiCall(`/analytics/${type}?period=${period}`);
   },
 
-  // Applications
-  getApplications: async (params = {}) => {
-    const queryString = new URLSearchParams(params).toString();
-    return apiCall(`/applications/applications${queryString ? `?${queryString}` : ''}`);
-  },
-
-  getApplication: async (applicationId) => {
-    return apiCall(`/applications/applications/${applicationId}`);
-  },
-
-  approveApplication: async (applicationId) => {
-    return apiCall(`/applications/applications/${applicationId}/approve`, {
-      method: 'PUT'
-    });
-  },
-
-  rejectApplication: async (applicationId, reason = '') => {
-    return apiCall(`/applications/applications/${applicationId}/reject`, {
-      method: 'PUT',
-      body: JSON.stringify({ reason })
-    });
-  },
-
-  bulkApproveApplications: async (applicationIds) => {
-    return apiCall('/applications/applications/bulk-approve', {
-      method: 'POST',
-      body: JSON.stringify({ application_ids: applicationIds })
-    });
-  },
-
-  bulkRejectApplications: async (applicationIds, reason = '') => {
-    return apiCall('/applications/applications/bulk-reject', {
-      method: 'POST',
-      body: JSON.stringify({ application_ids: applicationIds, reason })
-    });
-  },
-
-  getApplicationStats: async () => {
-    return apiCall('/applications/applications/stats');
-  },
 
   // Bots
   getBots: async () => {
-    return apiCall('/bots/bots');
+    return apiCall('/bots');
   },
 
   getBot: async (botId) => {
-    return apiCall(`/bots/bots/${botId}`);
+    return apiCall(`/bots/${botId}`);
   },
 
   createBot: async (botData) => {
-    return apiCall('/bots/bots', {
+    return apiCall('/bots', {
       method: 'POST',
       body: JSON.stringify(botData)
     });
   },
 
+  updateBot: async (botId, botData) => {
+    return apiCall(`/bots/${botId}`, {
+      method: 'PUT',
+      body: JSON.stringify(botData)
+    });
+  },
+
   updateBotSettings: async (botId, settings) => {
-    return apiCall(`/bots/bots/${botId}/settings`, {
+    return apiCall(`/bots/${botId}/settings`, {
       method: 'PUT',
       body: JSON.stringify(settings)
     });
   },
 
   toggleBot: async (botId) => {
-    return apiCall(`/bots/bots/${botId}/toggle`, {
+    return apiCall(`/bots/${botId}/toggle`, {
       method: 'PUT'
     });
   },
 
   deleteBot: async (botId) => {
-    return apiCall(`/bots/bots/${botId}`, {
+    return apiCall(`/bots/${botId}`, {
       method: 'DELETE'
     });
   },
 
   getBotLogs: async (botId) => {
-    return apiCall(`/bots/bots/${botId}/logs`);
+    return apiCall(`/bots/${botId}/logs`);
   },
 
   // Bot Actions
   sendAutoInvites: async (eventId) => {
-    return apiCall(`/bots/bots/auto-invites/${eventId}`, {
+    return apiCall(`/bots/auto-invites/${eventId}`, {
       method: 'POST'
     });
   },
 
   sendReminders: async () => {
-    return apiCall('/bots/bots/reminders', {
+    return apiCall('/bots/reminders', {
       method: 'POST'
     });
   },
 
   generateRecommendations: async () => {
-    return apiCall('/bots/bots/recommendations', {
+    return apiCall('/bots/recommendations', {
       method: 'POST'
     });
   },
 
   updateStats: async () => {
-    return apiCall('/bots/bots/update-stats', {
+    return apiCall('/bots/update-stats', {
       method: 'POST'
     });
   },
 
   getBotStats: async () => {
-    return apiCall('/bots/bots/stats/overview');
+    return apiCall('/bots/stats/overview');
   },
 
   // User Events (Public API)
@@ -538,65 +505,9 @@ export const clubAuth = {
     });
   },
 
-  // Applications Management
-  getApplications: async () => {
-    return apiCall('/applications/applications');
-  },
 
-  approveApplication: async (applicationId) => {
-    return apiCall(`/applications/applications/${applicationId}/approve`, {
-      method: 'POST'
-    });
-  },
+  // Bots Management (дублированные методы удалены - используются основные методы выше)
 
-  rejectApplication: async (applicationId) => {
-    return apiCall(`/applications/applications/${applicationId}/reject`, {
-      method: 'POST'
-    });
-  },
-
-  // Bots Management
-  getBots: async () => {
-    return apiCall('/bots/bots');
-  },
-
-  createBot: async (botData) => {
-    return apiCall('/bots/bots', {
-      method: 'POST',
-      body: JSON.stringify(botData)
-    });
-  },
-
-  updateBot: async (botId, botData) => {
-    return apiCall(`/bots/bots/${botId}`, {
-      method: 'PUT',
-      body: JSON.stringify(botData)
-    });
-  },
-
-  deleteBot: async (botId) => {
-    return apiCall(`/bots/bots/${botId}`, {
-      method: 'DELETE'
-    });
-  },
-
-  // Participants Management
-  getParticipants: async () => {
-    return apiCall('/participants');
-  },
-
-  updateParticipantRole: async (participantId, role) => {
-    return apiCall(`/participants/${participantId}/role`, {
-      method: 'PUT',
-      body: JSON.stringify({ role })
-    });
-  },
-
-  removeParticipant: async (participantId) => {
-    return apiCall(`/participants/${participantId}`, {
-      method: 'DELETE'
-    });
-  }
 };
 
 // Error handling

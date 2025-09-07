@@ -260,10 +260,6 @@ module.exports = (sequelize) => {
       as: 'bots'
     });
 
-    Clubs.hasMany(models.ClubApplications, {
-      foreignKey: 'club_id',
-      as: 'applications'
-    });
 
     Clubs.hasMany(models.Ads, {
       foreignKey: 'club_id',

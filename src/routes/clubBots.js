@@ -6,8 +6,26 @@ const router = express.Router();
 // Получение ботов клуба
 router.get('/', authenticateClub, async (req, res) => {
   try {
-    const bots = await ClubBots.getActiveBots(req.club.id);
-    res.json({ bots });
+    const bots = await ClubBots.findAll({
+      where: { club_id: req.club.id },
+      order: [['created_at', 'ASC']]
+    });
+    
+    // Преобразуем is_active в status для совместимости с фронтендом
+    const formattedBots = bots.map(bot => {
+      const botData = bot.toJSON();
+      return {
+        ...botData,
+        status: botData.is_active ? 'active' : 'inactive',
+        type: botData.settings?.type || 'custom',
+        trigger: botData.settings?.trigger || '',
+        interval: botData.settings?.interval || '',
+        tasks_completed: botData.settings?.tasks_completed || 0,
+        last_run: botData.settings?.last_run || null
+      };
+    });
+    
+    res.json({ bots: formattedBots });
   } catch (error) {
     console.error('Get club bots error:', error);
     res.status(500).json({ error: 'Ошибка при получении ботов' });
@@ -30,7 +48,19 @@ router.get('/:botId', authenticateClub, async (req, res) => {
       return res.status(404).json({ error: 'Бот не найден' });
     }
 
-    res.json({ bot: bot.toJSON() });
+    // Преобразуем is_active в status для совместимости с фронтендом
+    const botData = bot.toJSON();
+    const formattedBot = {
+      ...botData,
+      status: botData.is_active ? 'active' : 'inactive',
+      type: botData.settings?.type || 'custom',
+      trigger: botData.settings?.trigger || '',
+      interval: botData.settings?.interval || '',
+      tasks_completed: botData.settings?.tasks_completed || 0,
+      last_run: botData.settings?.last_run || null
+    };
+
+    res.json({ bot: formattedBot });
   } catch (error) {
     console.error('Get bot error:', error);
     res.status(500).json({ error: 'Ошибка при получении бота' });
@@ -93,9 +123,21 @@ router.put('/:botId/toggle', authenticateClub, async (req, res) => {
     bot.is_active = !bot.is_active;
     await bot.save();
 
+    // Преобразуем is_active в status для совместимости с фронтендом
+    const botData = bot.toJSON();
+    const formattedBot = {
+      ...botData,
+      status: botData.is_active ? 'active' : 'inactive',
+      type: botData.settings?.type || 'custom',
+      trigger: botData.settings?.trigger || '',
+      interval: botData.settings?.interval || '',
+      tasks_completed: botData.settings?.tasks_completed || 0,
+      last_run: botData.settings?.last_run || null
+    };
+
     res.json({
       message: `Бот ${bot.is_active ? 'активирован' : 'деактивирован'}`,
-      bot: bot.toJSON()
+      bot: formattedBot
     });
 
   } catch (error) {
@@ -183,28 +225,106 @@ router.post('/update-stats', authenticateClub, async (req, res) => {
 // Создание нового бота
 router.post('/', authenticateClub, async (req, res) => {
   try {
-    const { name, description, settings } = req.body;
+    const { name, description, type, trigger, interval, status } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Название бота обязательно' });
     }
 
+    // Собираем настройки из полей формы
+    const settings = {
+      type: type || 'custom',
+      trigger: trigger || '',
+      interval: interval || '',
+      tasks_completed: 0,
+      last_run: null
+    };
+
     const bot = await ClubBots.create({
       club_id: req.club.id,
       name,
       description,
-      settings: settings || {},
-      is_active: true
+      settings,
+      is_active: status === 'active'
     });
+
+    // Преобразуем is_active в status для совместимости с фронтендом
+    const botData = bot.toJSON();
+    const formattedBot = {
+      ...botData,
+      status: botData.is_active ? 'active' : 'inactive',
+      type: botData.settings?.type || 'custom',
+      trigger: botData.settings?.trigger || '',
+      interval: botData.settings?.interval || '',
+      tasks_completed: botData.settings?.tasks_completed || 0,
+      last_run: botData.settings?.last_run || null
+    };
 
     res.status(201).json({
       message: 'Бот создан',
-      bot: bot.toJSON()
+      bot: formattedBot
     });
 
   } catch (error) {
     console.error('Create bot error:', error);
     res.status(500).json({ error: 'Ошибка при создании бота' });
+  }
+});
+
+// Обновление бота
+router.put('/:botId', authenticateClub, async (req, res) => {
+  try {
+    const { botId } = req.params;
+    const { name, description, type, trigger, interval, status } = req.body;
+
+    const bot = await ClubBots.findOne({
+      where: {
+        id: botId,
+        club_id: req.club.id
+      }
+    });
+
+    if (!bot) {
+      return res.status(404).json({ error: 'Бот не найден' });
+    }
+
+    // Обновляем настройки
+    const settings = {
+      ...bot.settings,
+      type: type || bot.settings?.type || 'custom',
+      trigger: trigger || bot.settings?.trigger || '',
+      interval: interval || bot.settings?.interval || '',
+      tasks_completed: bot.settings?.tasks_completed || 0,
+      last_run: bot.settings?.last_run || null
+    };
+
+    await bot.update({
+      name: name || bot.name,
+      description: description || bot.description,
+      settings,
+      is_active: status !== undefined ? (status === 'active') : bot.is_active
+    });
+
+    // Преобразуем is_active в status для совместимости с фронтендом
+    const botData = bot.toJSON();
+    const formattedBot = {
+      ...botData,
+      status: botData.is_active ? 'active' : 'inactive',
+      type: botData.settings?.type || 'custom',
+      trigger: botData.settings?.trigger || '',
+      interval: botData.settings?.interval || '',
+      tasks_completed: botData.settings?.tasks_completed || 0,
+      last_run: botData.settings?.last_run || null
+    };
+
+    res.json({
+      message: 'Бот обновлен',
+      bot: formattedBot
+    });
+
+  } catch (error) {
+    console.error('Update bot error:', error);
+    res.status(500).json({ error: 'Ошибка при обновлении бота' });
   }
 });
 

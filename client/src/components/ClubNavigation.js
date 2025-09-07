@@ -104,28 +104,22 @@ const ClubNavigation = () => {
       description: 'Управление мероприятиями'
     },
     {
+      name: 'Участники',
+      href: '/club/participants',
+      icon: UsersIcon,
+      description: 'Управление участниками мероприятий'
+    },
+    {
       name: 'Аналитика',
       href: '/club/analytics',
       icon: ChartBarIcon,
       description: 'Статистика и отчеты'
     },
     {
-      name: 'Заявки',
-      href: '/club/applications',
-      icon: UsersIcon,
-      description: 'Заявки на вступление'
-    },
-    {
       name: 'Боты',
       href: '/club/bots',
       icon: RobotIcon,
       description: 'Автоматизация и боты'
-    },
-    {
-      name: 'Участники',
-      href: '/club/participants',
-      icon: UserGroupIcon,
-      description: 'Управление участниками'
     },
     {
       name: 'Настройки',

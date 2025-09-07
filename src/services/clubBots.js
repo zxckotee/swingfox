@@ -362,15 +362,6 @@ class ClubBotService {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      // Удаляем старые отклоненные заявки
-      const deletedApplications = await ClubApplications.destroy({
-        where: {
-          status: 'rejected',
-          created_at: {
-            [sequelize.Sequelize.Op.lt]: thirtyDaysAgo
-          }
-        }
-      });
 
       // Удаляем старые уведомления
       const deletedNotifications = await Notifications.destroy({
@@ -384,7 +375,6 @@ class ClubBotService {
       return { 
         success: true, 
         message: 'Очистка завершена',
-        deleted_applications: deletedApplications,
         deleted_notifications: deletedNotifications
       };
     } catch (error) {

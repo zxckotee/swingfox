@@ -381,6 +381,215 @@ const ApplicationCard = styled.div`
   }
 `;
 
+// Стили для карточек мероприятий
+const EventCard = styled(motion.div)`
+  background: white;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: 2px solid transparent;
+  
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+    border-color: #dc3522;
+  }
+`;
+
+const EventHeader = styled.div`
+  height: 180px;
+  background: ${props => props.$avatarUrl ? `url(${props.$avatarUrl})` : 'linear-gradient(135deg, #dc3522 0%, #ff6b58 100%)'};
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+  padding: 20px;
+  color: white;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.1) 100%);
+    border-radius: 20px 20px 0 0;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    background: white;
+    border-radius: 20px 20px 0 0;
+  }
+  
+  > * {
+    position: relative;
+    z-index: 1;
+  }
+`;
+
+const EventHeaderContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  justify-content: flex-end;
+`;
+
+const EventTitle = styled.h3`
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: white;
+  line-height: 1.2;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  
+  @media (max-width: 768px) {
+    font-size: 18px;
+  }
+`;
+
+const EventClub = styled.div`
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+`;
+
+const EventDate = styled.div`
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+`;
+
+const EventContent = styled.div`
+  padding: 24px;
+`;
+
+const EventDescription = styled.p`
+  margin: 0 0 20px 0;
+  color: #4a5568;
+  font-size: 15px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+`;
+
+const EventDetails = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+`;
+
+const EventDetailItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+`;
+
+const EventDetailIcon = styled.span`
+  font-size: 16px;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+`;
+
+const EventDetailText = styled.span`
+  color: #4a5568;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+`;
+
+const EventAction = styled.div`
+  display: flex;
+  justify-content: center;
+  padding-top: 8px;
+`;
+
+const EventButton = styled(Button)`
+  min-width: 140px;
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(220, 53, 34, 0.3);
+  }
+  
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+  }
+  
+  @media (max-width: 768px) {
+    min-width: 120px;
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+`;
+
+// Адаптивность для карточек мероприятий
+const EventCardResponsive = styled(EventCard)`
+  @media (max-width: 768px) {
+    margin: 0 10px;
+  }
+`;
+
+const EventHeaderResponsive = styled(EventHeader)`
+  @media (max-width: 768px) {
+    height: 160px;
+    padding: 16px;
+  }
+`;
+
+const EventContentResponsive = styled(EventContent)`
+  @media (max-width: 768px) {
+    padding: 20px;
+  }
+`;
+
+const EventDetailsResponsive = styled(EventDetails)`
+  @media (max-width: 768px) {
+    padding: 12px;
+    gap: 10px;
+  }
+`;
+
+const EventDetailTextResponsive = styled(EventDetailText)`
+  @media (max-width: 768px) {
+    font-size: 13px;
+  }
+`;
+
+const EventsGrid = styled(Grid)`
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+    padding: 0 10px;
+  }
+`;
+
 const Clubs = () => {
   const [activeTab, setActiveTab] = useState('clubs');
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -649,67 +858,62 @@ const Clubs = () => {
             {isLoadingEvents ? (
               <LoadingSpinner />
             ) : eventsList.length > 0 ? (
-              <Grid $columns="repeat(auto-fill, minmax(300px, 1fr))" $gap="25px">
+              <EventsGrid $columns="repeat(auto-fill, minmax(350px, 1fr))" $gap="25px">
                 {eventsList.map((event) => (
-                  <ClubCard
+                  <EventCardResponsive
                     key={event.id}
                     onClick={() => handleEventClick(event)}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <ClubHeader $avatarUrl={event.avatar ? `/uploads/${event.avatar}` : null}>
-                      <FlexContainer $justify="space-between" $align="flex-start">
-                        <div>
-                          <ClubTitle style={{ color: 'white', fontSize: '16px' }}>
-                            {event.title}
-                          </ClubTitle>
-                          <div style={{ fontSize: '12px', opacity: '0.9' }}>
-                            {event.club?.name || 'Клуб'}
-                          </div>
-                        </div>
-                        <ClubType $isPrivate={false}>
-                          {new Date(event.date).toLocaleDateString()}
-                        </ClubType>
-                      </FlexContainer>
-                    </ClubHeader>
+                    <EventHeaderResponsive $avatarUrl={event.avatar ? `/uploads/${event.avatar}` : null}>
+                      <EventHeaderContent>
+                        <EventTitle>{event.title}</EventTitle>
+                        <EventClub>{event.club?.name || 'Клуб'}</EventClub>
+                        <EventDate>{new Date(event.date).toLocaleDateString('ru-RU', { 
+                          day: 'numeric', 
+                          month: 'long',
+                          year: 'numeric'
+                        })}</EventDate>
+                      </EventHeaderContent>
+                    </EventHeaderResponsive>
                     
-                    <ClubContent>
-                      <ClubDescription>
+                    <EventContentResponsive>
+                      <EventDescription>
                         {event.description}
-                      </ClubDescription>
+                      </EventDescription>
                       
-                      <ClubMeta>
-                        <ClubStats>
-                          <span style={{ fontSize: '12px', color: '#718096' }}>
-                            📅 {new Date(event.date).toLocaleDateString('ru-RU', { 
-                              day: 'numeric', 
-                              month: 'long',
-                              year: 'numeric'
-                            })}
-                          </span>
-                          <span style={{ fontSize: '12px', color: '#718096' }}>
-                            🕐 {event.time || 'Время уточняется'}
-                          </span>
-                          <span style={{ fontSize: '12px', color: '#718096' }}>
-                            📍 {event.location || event.club?.location || 'Место уточняется'}
-                          </span>
-                          <span style={{ fontSize: '12px', color: '#718096' }}>
-                            👥 {event.participants?.length || 0}/{event.max_participants || '∞'}
-                          </span>
-                          {event.price && (
-                            <span style={{ fontSize: '12px', color: '#718096' }}>
-                              💰 {event.price}₽
-                            </span>
-                          )}
-                        </ClubStats>
+                      <EventDetailsResponsive>
+                        <EventDetailItem>
+                          <EventDetailIcon>🕐</EventDetailIcon>
+                          <EventDetailTextResponsive>{event.time || 'Время уточняется'}</EventDetailTextResponsive>
+                        </EventDetailItem>
                         
-                        <Button 
+                        <EventDetailItem>
+                          <EventDetailIcon>📍</EventDetailIcon>
+                          <EventDetailTextResponsive>{event.location || event.club?.location || 'Место уточняется'}</EventDetailTextResponsive>
+                        </EventDetailItem>
+                        
+                        <EventDetailItem>
+                          <EventDetailIcon>👥</EventDetailIcon>
+                          <EventDetailTextResponsive>{event.participants?.length || 0}/{event.max_participants || '∞'}</EventDetailTextResponsive>
+                        </EventDetailItem>
+                        
+                        {event.price && (
+                          <EventDetailItem>
+                            <EventDetailIcon>💰</EventDetailIcon>
+                            <EventDetailTextResponsive>{event.price}₽</EventDetailTextResponsive>
+                          </EventDetailItem>
+                        )}
+                      </EventDetailsResponsive>
+                      
+                      <EventAction>
+                        <EventButton 
                           $size="small"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (event.user_participation?.is_participating) {
-                              // Показать информацию о том, что уже участвуете
                               return;
                             }
                             handleJoinEvent(event);
@@ -719,12 +923,12 @@ const Clubs = () => {
                         >
                           {joinEventMutation.isLoading ? 'Записываемся...' : 
                            event.user_participation?.is_participating ? 'Вы участвуете' : 'Участвовать'}
-                        </Button>
-                      </ClubMeta>
-                    </ClubContent>
-                  </ClubCard>
+                        </EventButton>
+                      </EventAction>
+                    </EventContentResponsive>
+                  </EventCardResponsive>
                 ))}
-              </Grid>
+              </EventsGrid>
             ) : (
               <EmptyState>
                 <div className="icon">🎉</div>

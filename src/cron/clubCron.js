@@ -151,7 +151,7 @@ class ClubCron {
           
           const result = await ClubBotService.cleanupOldData();
           if (result.success) {
-            console.log(`✅ Очистка завершена: удалено ${result.deleted_applications} заявок, ${result.deleted_notifications} уведомлений`);
+            console.log(`✅ Очистка завершена: удалено ${result.deleted_notifications} уведомлений`);
           } else {
             console.log('❌ Ошибка очистки данных:', result.message);
           }

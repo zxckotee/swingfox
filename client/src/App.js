@@ -30,10 +30,9 @@ import ClubRegister from './pages/ClubRegister';
 import ClubDashboard from './pages/ClubDashboard';
 import ClubEvents from './pages/ClubEvents';
 import ClubAnalytics from './pages/ClubAnalytics';
-import ClubApplications from './pages/ClubApplications';
 import ClubBots from './pages/ClubBots';
-import ClubParticipants from './pages/ClubParticipants';
 import ClubSettings from './pages/ClubSettings';
+import ClubParticipants from './pages/ClubParticipants';
 import ClubLayout from './components/ClubLayout';
 
 // Публичные страницы клубов
@@ -306,11 +305,10 @@ function App() {
                 </ClubAuthGuard>
               } />
               
-              
-              <Route path="/club/applications" element={
+              <Route path="/club/participants" element={
                 <ClubAuthGuard>
                   <ClubLayout>
-                    <ClubApplications />
+                    <ClubParticipants />
                   </ClubLayout>
                 </ClubAuthGuard>
               } />
@@ -323,13 +321,6 @@ function App() {
                 </ClubAuthGuard>
               } />
               
-              <Route path="/club/participants" element={
-                <ClubAuthGuard>
-                  <ClubLayout>
-                    <ClubParticipants />
-                  </ClubLayout>
-                </ClubAuthGuard>
-              } />
               
               <Route path="/club/settings" element={
                 <ClubAuthGuard>

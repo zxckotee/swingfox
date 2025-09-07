@@ -4,8 +4,7 @@ const {
   Clubs, 
   ClubEvents, 
   EventParticipants, 
-  User,
-  ClubApplications 
+  User
 } = require('../models');
 const { authenticateClub } = require('../middleware/clubAuth');
 const router = express.Router();
@@ -15,6 +14,7 @@ router.get('/overview', authenticateClub, async (req, res) => {
   try {
     const clubId = req.club.id;
     const { period = 'week' } = req.query;
+    console.log('Analytics overview - clubId:', clubId, 'period:', period);
 
     // Определяем период для анализа
     let startDate;
@@ -48,22 +48,30 @@ router.get('/overview', authenticateClub, async (req, res) => {
       }
     });
 
-    const totalParticipants = await EventParticipants.count({
-      include: [{
-        model: ClubEvents,
-        as: 'event',
-        where: { club_id: clubId }
-      }]
+    // Получаем ID мероприятий клуба для подсчета участников
+    const clubEventIds = await ClubEvents.findAll({
+      where: { club_id: clubId },
+      attributes: ['id']
     });
+    
+    const eventIds = clubEventIds.map(event => event.id);
+    
+    const totalParticipants = eventIds.length > 0 ? await EventParticipants.count({
+      where: {
+        event_id: {
+          [sequelize.Sequelize.Op.in]: eventIds
+        }
+      }
+    }) : 0;
 
-    const confirmedParticipants = await EventParticipants.count({
-      where: { status: 'confirmed' },
-      include: [{
-        model: ClubEvents,
-        as: 'event',
-        where: { club_id: clubId }
-      }]
-    });
+    const confirmedParticipants = eventIds.length > 0 ? await EventParticipants.count({
+      where: {
+        event_id: {
+          [sequelize.Sequelize.Op.in]: eventIds
+        },
+        status: 'confirmed'
+      }
+    }) : 0;
 
 
     // Статистика за период
@@ -76,18 +84,26 @@ router.get('/overview', authenticateClub, async (req, res) => {
       }
     });
 
-    const participantsInPeriod = await EventParticipants.count({
-      include: [{
-        model: ClubEvents,
-        as: 'event',
-        where: {
-          club_id: clubId,
-          created_at: {
-            [sequelize.Sequelize.Op.gte]: startDate
-          }
+    // Получаем ID мероприятий за период
+    const periodEventIds = await ClubEvents.findAll({
+      where: {
+        club_id: clubId,
+        created_at: {
+          [sequelize.Sequelize.Op.gte]: startDate
         }
-      }]
+      },
+      attributes: ['id']
     });
+    
+    const periodEventIdsList = periodEventIds.map(event => event.id);
+    
+    const participantsInPeriod = periodEventIdsList.length > 0 ? await EventParticipants.count({
+      where: {
+        event_id: {
+          [sequelize.Sequelize.Op.in]: periodEventIdsList
+        }
+      }
+    }) : 0;
 
 
     const analytics = {
@@ -120,24 +136,15 @@ router.get('/events', authenticateClub, async (req, res) => {
     // Топ мероприятий по участникам
     const topEvents = await ClubEvents.findAll({
       where: { club_id: clubId },
-      include: [
-        {
-          model: EventParticipants,
-          as: 'participants',
-          attributes: []
-        }
-      ],
       attributes: [
         'id',
         'title',
         'date',
         'event_type',
         'max_participants',
-        'current_participants',
-        [sequelize.fn('COUNT', sequelize.col('participants.id')), 'participant_count']
+        'current_participants'
       ],
-      group: ['ClubEvents.id'],
-      order: [[sequelize.fn('COUNT', sequelize.col('participants.id')), 'DESC']],
+      order: [['current_participants', 'DESC']],
       limit: parseInt(limit)
     });
 
@@ -157,12 +164,12 @@ router.get('/events', authenticateClub, async (req, res) => {
     const monthlyStats = await ClubEvents.findAll({
       where: { club_id: clubId },
       attributes: [
-        [sequelize.fn('DATE_FORMAT', sequelize.col('date'), '%Y-%m'), 'month'],
+        [sequelize.fn('DATE_TRUNC', 'month', sequelize.col('date')), 'month'],
         [sequelize.fn('COUNT', sequelize.col('id')), 'events_count'],
         [sequelize.fn('SUM', sequelize.col('current_participants')), 'total_participants']
       ],
-      group: [sequelize.fn('DATE_FORMAT', sequelize.col('date'), '%Y-%m')],
-      order: [[sequelize.fn('DATE_FORMAT', sequelize.col('date'), '%Y-%m'), 'DESC']],
+      group: [sequelize.fn('DATE_TRUNC', 'month', sequelize.col('date'))],
+      order: [[sequelize.fn('DATE_TRUNC', 'month', sequelize.col('date')), 'DESC']],
       limit: 12,
       raw: true
     });
@@ -182,17 +189,37 @@ router.get('/events', authenticateClub, async (req, res) => {
 router.get('/participants', authenticateClub, async (req, res) => {
   try {
     const clubId = req.club.id;
+    console.log('Analytics participants - clubId:', clubId);
+
+    // Получаем ID мероприятий клуба
+    const clubEvents = await ClubEvents.findAll({
+      where: { club_id: clubId },
+      attributes: ['id']
+    });
+    
+    console.log('Club events found:', clubEvents.length);
+    const eventIds = clubEvents.map(event => event.id);
+    console.log('Event IDs:', eventIds);
+    
+    if (eventIds.length === 0) {
+      return res.json({
+        status_stats: [],
+        top_participants: [],
+        demographic_stats: {},
+        top_cities: []
+      });
+    }
 
     // Статистика по статусам участников
     const participantStatusStats = await EventParticipants.findAll({
-      include: [{
-        model: ClubEvents,
-        as: 'event',
-        where: { club_id: clubId }
-      }],
+      where: {
+        event_id: {
+          [sequelize.Sequelize.Op.in]: eventIds
+        }
+      },
       attributes: [
         'status',
-        [sequelize.fn('COUNT', sequelize.col('EventParticipants.id')), 'count']
+        [sequelize.fn('COUNT', sequelize.col('id')), 'count']
       ],
       group: ['status'],
       raw: true
@@ -200,12 +227,12 @@ router.get('/participants', authenticateClub, async (req, res) => {
 
     // Топ активных участников
     const topParticipants = await EventParticipants.findAll({
+      where: {
+        event_id: {
+          [sequelize.Sequelize.Op.in]: eventIds
+        }
+      },
       include: [
-        {
-          model: ClubEvents,
-          as: 'event',
-          where: { club_id: clubId }
-        },
         {
           model: User,
           as: 'user',
@@ -214,44 +241,64 @@ router.get('/participants', authenticateClub, async (req, res) => {
       ],
       attributes: [
         'user_id',
-        [sequelize.fn('COUNT', sequelize.col('EventParticipants.id')), 'events_attended'],
-        [sequelize.fn('COUNT', sequelize.literal('CASE WHEN EventParticipants.status = "confirmed" THEN 1 END')), 'confirmed_events']
+        [sequelize.fn('COUNT', sequelize.col('EventParticipants.id')), 'events_attended']
       ],
-      group: ['user_id'],
+      group: ['user_id', 'user.id', 'user.login', 'user.ava', 'user.city'],
       order: [[sequelize.fn('COUNT', sequelize.col('EventParticipants.id')), 'DESC']],
       limit: 10
     });
 
     // Демографическая статистика
     const demographicStats = await EventParticipants.findAll({
+      where: {
+        event_id: {
+          [sequelize.Sequelize.Op.in]: eventIds
+        }
+      },
       include: [
-        {
-          model: ClubEvents,
-          as: 'event',
-          where: { club_id: clubId }
-        },
         {
           model: User,
           as: 'user',
-          attributes: ['city']
+          attributes: []
         }
       ],
       attributes: [
-        [sequelize.fn('AVG', sequelize.col('user.age')), 'avg_age'],
-        [sequelize.fn('MIN', sequelize.col('user.age')), 'min_age'],
-        [sequelize.fn('MAX', sequelize.col('user.age')), 'max_age']
+        [sequelize.fn('ROUND', sequelize.fn('AVG', sequelize.literal(`
+          CASE 
+            WHEN "user"."date" LIKE '%_%' THEN 
+              EXTRACT(YEAR FROM NOW()) - EXTRACT(YEAR FROM SPLIT_PART("user"."date", '_', 1)::DATE)
+            ELSE 
+              EXTRACT(YEAR FROM NOW()) - EXTRACT(YEAR FROM "user"."date"::DATE)
+          END
+        `))), 'avg_age'],
+        [sequelize.fn('MIN', sequelize.literal(`
+          CASE 
+            WHEN "user"."date" LIKE '%_%' THEN 
+              EXTRACT(YEAR FROM NOW()) - EXTRACT(YEAR FROM SPLIT_PART("user"."date", '_', 1)::DATE)
+            ELSE 
+              EXTRACT(YEAR FROM NOW()) - EXTRACT(YEAR FROM "user"."date"::DATE)
+          END
+        `)), 'min_age'],
+        [sequelize.fn('MAX', sequelize.literal(`
+          CASE 
+            WHEN "user"."date" LIKE '%_%' THEN 
+              EXTRACT(YEAR FROM NOW()) - EXTRACT(YEAR FROM SPLIT_PART("user"."date", '_', 1)::DATE)
+            ELSE 
+              EXTRACT(YEAR FROM NOW()) - EXTRACT(YEAR FROM "user"."date"::DATE)
+          END
+        `)), 'max_age']
       ],
       raw: true
     });
 
     // Топ городов участников
     const topCities = await EventParticipants.findAll({
+      where: {
+        event_id: {
+          [sequelize.Sequelize.Op.in]: eventIds
+        }
+      },
       include: [
-        {
-          model: ClubEvents,
-          as: 'event',
-          where: { club_id: clubId }
-        },
         {
           model: User,
           as: 'user',
@@ -295,11 +342,11 @@ router.get('/financial', authenticateClub, async (req, res) => {
     const monthlyRevenue = await ClubEvents.findAll({
       where: { club_id: clubId },
       attributes: [
-        [sequelize.fn('DATE_FORMAT', sequelize.col('date'), '%Y-%m'), 'month'],
+        [sequelize.fn('DATE_TRUNC', 'month', sequelize.col('date')), 'month'],
         [sequelize.fn('SUM', sequelize.col('price')), 'revenue']
       ],
-      group: [sequelize.fn('DATE_FORMAT', sequelize.col('date'), '%Y-%m')],
-      order: [[sequelize.fn('DATE_FORMAT', sequelize.col('date'), '%Y-%m'), 'DESC']],
+      group: [sequelize.fn('DATE_TRUNC', 'month', sequelize.col('date'))],
+      order: [[sequelize.fn('DATE_TRUNC', 'month', sequelize.col('date')), 'DESC']],
       limit: 12,
       raw: true
     });

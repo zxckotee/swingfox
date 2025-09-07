@@ -45,6 +45,62 @@ const ClubSettings = () => {
     loadClubData();
   }, []);
 
+  // Обработчик скролла для табов
+  useEffect(() => {
+    const tabsList = document.querySelector('.tabs-list');
+    const sidebar = document.querySelector('.settings-sidebar');
+    const scrollHint = document.querySelector('.scroll-hint');
+    
+    if (!tabsList || !sidebar) return;
+
+    const handleScroll = () => {
+      const { scrollLeft, scrollWidth, clientWidth } = tabsList;
+      
+      // Добавляем класс для скрытия подсказки после первого скролла
+      if (scrollLeft > 0) {
+        tabsList.classList.add('scrolled');
+        if (scrollHint) {
+          scrollHint.style.opacity = '0';
+        }
+      } else {
+        tabsList.classList.remove('scrolled');
+        if (scrollHint) {
+          scrollHint.style.opacity = '1';
+        }
+      }
+      
+      // Управляем индикаторами прокрутки
+      if (scrollLeft > 0) {
+        sidebar.classList.add('scrollable-left');
+      } else {
+        sidebar.classList.remove('scrollable-left');
+      }
+      
+      if (scrollLeft < scrollWidth - clientWidth - 1) {
+        sidebar.classList.add('scrollable-right');
+      } else {
+        sidebar.classList.remove('scrollable-right');
+      }
+    };
+
+    // Проверяем состояние при загрузке
+    handleScroll();
+    
+    tabsList.addEventListener('scroll', handleScroll);
+    
+    // Проверяем состояние при изменении размера окна
+    const handleResize = () => {
+      setTimeout(handleScroll, 100);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      tabsList.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
   const loadClubData = async () => {
     try {
       setLoading(true);
@@ -143,6 +199,9 @@ const ClubSettings = () => {
               </button>
             ))}
           </div>
+          <div className="scroll-hint">
+            Прокрутите для просмотра всех разделов
+          </div>
         </div>
 
         <div className="settings-content">
@@ -186,12 +245,25 @@ const ClubSettings = () => {
 // Компонент основных настроек
 const GeneralSettings = ({ club, onSave, saving }) => {
   const [formData, setFormData] = useState({
-    name: club?.name || '',
-    description: club?.description || '',
-    type: club?.type || 'general',
-    website: club?.website || '',
-    contact_info: club?.contact_info || ''
+    name: '',
+    description: '',
+    type: 'general',
+    website: '',
+    contact_info: ''
   });
+
+  // Обновляем formData когда club загружается
+  useEffect(() => {
+    if (club) {
+      setFormData({
+        name: club.name || '',
+        description: club.description || '',
+        type: club.type || 'general',
+        website: club.website || '',
+        contact_info: club.contact_info || ''
+      });
+    }
+  }, [club]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -284,11 +356,23 @@ const GeneralSettings = ({ club, onSave, saving }) => {
 // Компонент настроек профиля
 const ProfileSettings = ({ club, onSave, onUploadAvatar, saving }) => {
   const [formData, setFormData] = useState({
-    country: club?.country || '',
-    city: club?.city || '',
-    address: club?.address || '',
-    email: club?.email || ''
+    country: '',
+    city: '',
+    address: '',
+    email: ''
   });
+
+  // Обновляем formData когда club загружается
+  useEffect(() => {
+    if (club) {
+      setFormData({
+        country: club.country || '',
+        city: club.city || '',
+        address: club.address || '',
+        email: club.email || ''
+      });
+    }
+  }, [club]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -412,11 +496,19 @@ const ProfileSettings = ({ club, onSave, onUploadAvatar, saving }) => {
 // Компонент настроек приватности
 const PrivacySettings = ({ club, onSave, saving }) => {
   const [formData, setFormData] = useState({
-    is_public: club?.is_public !== false,
-    show_members: club?.show_members !== false,
-    allow_applications: club?.allow_applications !== false,
-    require_approval: club?.require_approval !== false
+    is_public: true,
+    show_members: true,
   });
+
+  // Обновляем formData когда club загружается
+  useEffect(() => {
+    if (club) {
+      setFormData({
+        is_public: club.is_public !== false,
+        show_members: club.show_members !== false,
+      });
+    }
+  }, [club]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -465,37 +557,6 @@ const PrivacySettings = ({ club, onSave, saving }) => {
             </label>
           </div>
 
-          <div className="privacy-item">
-            <div className="privacy-info">
-              <h4>Разрешить заявки</h4>
-              <p>Пользователи могут подавать заявки на вступление</p>
-            </div>
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                name="allow_applications"
-                checked={formData.allow_applications}
-                onChange={handleChange}
-              />
-              <span className="toggle-slider"></span>
-            </label>
-          </div>
-
-          <div className="privacy-item">
-            <div className="privacy-info">
-              <h4>Требовать одобрения</h4>
-              <p>Все заявки требуют одобрения администратора</p>
-            </div>
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                name="require_approval"
-                checked={formData.require_approval}
-                onChange={handleChange}
-              />
-              <span className="toggle-slider"></span>
-            </label>
-          </div>
         </div>
 
         <div className="form-actions">
@@ -512,11 +573,21 @@ const PrivacySettings = ({ club, onSave, saving }) => {
 // Компонент настроек уведомлений
 const NotificationSettings = ({ club, onSave, saving }) => {
   const [formData, setFormData] = useState({
-    email_notifications: club?.email_notifications !== false,
-    event_reminders: club?.event_reminders !== false,
-    new_applications: club?.new_applications !== false,
-    member_activity: club?.member_activity !== false
+    email_notifications: true,
+    event_reminders: true,
+    member_activity: true
   });
+
+  // Обновляем formData когда club загружается
+  useEffect(() => {
+    if (club) {
+      setFormData({
+        email_notifications: club.email_notifications !== false,
+        event_reminders: club.event_reminders !== false,
+        member_activity: club.member_activity !== false
+      });
+    }
+  }, [club]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -565,21 +636,6 @@ const NotificationSettings = ({ club, onSave, saving }) => {
             </label>
           </div>
 
-          <div className="notification-item">
-            <div className="notification-info">
-              <h4>Новые заявки</h4>
-              <p>Уведомления о новых заявках на вступление</p>
-            </div>
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                name="new_applications"
-                checked={formData.new_applications}
-                onChange={handleChange}
-              />
-              <span className="toggle-slider"></span>
-            </label>
-          </div>
 
           <div className="notification-item">
             <div className="notification-info">

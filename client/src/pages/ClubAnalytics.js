@@ -97,9 +97,9 @@ const ClubAnalytics = () => {
       
       setAnalytics({
         overview: overview.analytics || overview,
-        events: events.analytics || events,
-        participants: participants.analytics || participants,
-        financial: financial.analytics || financial
+        events: events,
+        participants: participants,
+        financial: financial
       });
     } catch (error) {
       console.error('Ошибка загрузки аналитики:', error);
@@ -231,7 +231,7 @@ const ClubAnalytics = () => {
       <div className="metrics-grid">
         {renderMetricCard(
           'Всего мероприятий',
-          analytics.overview?.total_events,
+          analytics.overview?.overview?.total_events,
           <CalendarIcon />,
           analytics.overview?.events_change,
           'blue'
@@ -239,7 +239,7 @@ const ClubAnalytics = () => {
         
         {renderMetricCard(
           'Участников',
-          analytics.overview?.total_participants,
+          analytics.overview?.overview?.total_participants,
           <UsersIcon />,
           analytics.overview?.participants_change,
           'green'
@@ -247,15 +247,15 @@ const ClubAnalytics = () => {
         
         {renderMetricCard(
           'Доход',
-          analytics.overview?.total_revenue,
+          analytics.financial?.total_revenue,
           <CurrencyRubleIcon />,
           analytics.overview?.revenue_change,
           'purple'
         )}
         
         {renderMetricCard(
-          'Рейтинг',
-          analytics.overview?.average_rating,
+          'Предстоящие мероприятия',
+          analytics.overview?.overview?.upcoming_events,
           <HeartIcon />,
           analytics.overview?.rating_change,
           'red'
@@ -279,29 +279,33 @@ const ClubAnalytics = () => {
           <div className="section-content">
             <div className="metrics-row">
               <div className="metric-item">
-                <span className="metric-label">Средняя посещаемость</span>
+                <span className="metric-label">Среднее количество участников</span>
                 <span className="metric-value">
-                  {analytics.events?.average_participation || 0}%
+                  {analytics.events?.event_type_stats?.[0]?.avg_participants ? 
+                    Math.round(parseFloat(analytics.events.event_type_stats[0].avg_participants)) : 0} чел.
                 </span>
               </div>
               <div className="metric-item">
-                <span className="metric-label">Популярные дни</span>
+                <span className="metric-label">Типы мероприятий</span>
                 <span className="metric-value">
-                  {analytics.events?.popular_days?.join(', ') || 'Нет данных'}
+                  {analytics.events?.event_type_stats?.length || 0}
                 </span>
               </div>
               <div className="metric-item">
-                <span className="metric-label">Отмены</span>
+                <span className="metric-label">Всего мероприятий</span>
                 <span className="metric-value">
-                  {analytics.events?.cancellations || 0}
+                  {analytics.events?.top_events?.length || 0}
                 </span>
               </div>
             </div>
             
-            {analytics.events?.monthly_data && (
+            {analytics.events?.monthly_stats && analytics.events.monthly_stats.length > 0 && (
               <div className="chart-section">
                 {renderChart(
-                  analytics.events.monthly_data,
+                  analytics.events.monthly_stats.map(stat => ({
+                    label: new Date(stat.month).toLocaleDateString('ru-RU', { month: 'short', year: 'numeric' }),
+                    value: parseInt(stat.events_count)
+                  })),
                   'Мероприятия по месяцам'
                 )}
               </div>
@@ -318,21 +322,21 @@ const ClubAnalytics = () => {
           <div className="section-content">
             <div className="metrics-row">
               <div className="metric-item">
-                <span className="metric-label">Новые участники</span>
+                <span className="metric-label">Всего участников</span>
                 <span className="metric-value">
-                  {analytics.participants?.new_participants || 0}
+                  {analytics.participants?.status_stats?.reduce((sum, stat) => sum + parseInt(stat.count), 0) || 0}
                 </span>
               </div>
               <div className="metric-item">
-                <span className="metric-label">Активные участники</span>
+                <span className="metric-label">Подтвержденных участников</span>
                 <span className="metric-value">
-                  {analytics.participants?.active_participants || 0}
+                  {analytics.participants?.status_stats?.find(stat => stat.status === 'confirmed')?.count || 0}
                 </span>
               </div>
               <div className="metric-item">
                 <span className="metric-label">Средний возраст</span>
                 <span className="metric-value">
-                  {analytics.participants?.average_age || 0} лет
+                  {analytics.participants?.demographic_stats?.avg_age || 0} лет
                 </span>
               </div>
             </div>

@@ -301,6 +301,42 @@ router.post('/events/:eventId/invite', authenticateClub, checkEventOwnership, as
   }
 });
 
+// Обновление статуса участника мероприятия
+router.put('/events/:eventId/participants/:userId', authenticateClub, checkEventOwnership, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { status } = req.body;
+    const event = req.event;
+
+    if (!status) {
+      return res.status(400).json({ error: 'Статус обязателен' });
+    }
+
+    const validStatuses = ['pending', 'confirmed', 'cancelled', 'attended', 'no_show'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Недопустимый статус' });
+    }
+
+    const participant = await EventParticipants.findOne({
+      where: { event_id: event.id, user_id: userId }
+    });
+
+    if (!participant) {
+      return res.status(404).json({ error: 'Участник не найден' });
+    }
+
+    await participant.update({ status });
+
+    res.json({ 
+      message: 'Статус участника обновлен',
+      participant: participant.toJSON()
+    });
+  } catch (error) {
+    console.error('Update participant status error:', error);
+    res.status(500).json({ error: 'Ошибка при обновлении статуса участника' });
+  }
+});
+
 // Удаление участника из мероприятия
 router.delete('/events/:eventId/participants/:userId', authenticateClub, checkEventOwnership, async (req, res) => {
   try {
