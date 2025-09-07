@@ -77,7 +77,7 @@ module.exports = (sequelize) => {
         {
           model: sequelize.models.User,
           as: 'user',
-          attributes: ['id', 'login', 'name', 'ava', 'city', 'age']
+          attributes: ['id', 'login', 'ava', 'city']
         }
       ],
       order: [['created_at', 'ASC']]

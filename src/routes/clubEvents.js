@@ -1,11 +1,44 @@
 const express = require('express');
+const multer = require('multer');
+const sharp = require('sharp');
+const path = require('path');
+const fs = require('fs').promises;
 const { sequelize } = require('../config/database');
 const { ClubEvents, EventParticipants, User, Clubs } = require('../models');
 const { authenticateClub, checkEventOwnership } = require('../middleware/clubAuth');
+const { generateId } = require('../utils/helpers');
 const router = express.Router();
 
+// Multer configuration for event images
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, '../../public/uploads'));
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, `event_${uniqueSuffix}${path.extname(file.originalname)}`);
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Только изображения разрешены'), false);
+  }
+};
+
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB
+    files: 10 // Максимум 10 файлов за раз
+  }
+});
+
 // Получение списка мероприятий клуба
-router.get('/', authenticateClub, async (req, res) => {
+router.get('/events', authenticateClub, async (req, res) => {
   try {
     const { status = 'all', limit = 20, offset = 0 } = req.query;
     
@@ -23,7 +56,7 @@ router.get('/', authenticateClub, async (req, res) => {
 });
 
 // Создание нового мероприятия
-router.post('/', authenticateClub, async (req, res) => {
+router.post('/events', authenticateClub, async (req, res) => {
   try {
     const {
       title,
@@ -75,7 +108,7 @@ router.post('/', authenticateClub, async (req, res) => {
 });
 
 // Получение конкретного мероприятия
-router.get('/:eventId', authenticateClub, checkEventOwnership, async (req, res) => {
+router.get('/events/:eventId', authenticateClub, checkEventOwnership, async (req, res) => {
   try {
     const event = await ClubEvents.findByPk(req.event.id, {
       include: [
@@ -86,7 +119,7 @@ router.get('/:eventId', authenticateClub, checkEventOwnership, async (req, res) 
             {
               model: User,
               as: 'user',
-              attributes: ['id', 'login', 'name', 'ava', 'age', 'city']
+              attributes: ['id', 'login', 'ava', 'city']
             }
           ]
         }
@@ -101,7 +134,7 @@ router.get('/:eventId', authenticateClub, checkEventOwnership, async (req, res) 
 });
 
 // Обновление мероприятия
-router.put('/:eventId', authenticateClub, checkEventOwnership, async (req, res) => {
+router.put('/events/:eventId', authenticateClub, checkEventOwnership, async (req, res) => {
   try {
     const {
       title,
@@ -152,7 +185,7 @@ router.put('/:eventId', authenticateClub, checkEventOwnership, async (req, res) 
 });
 
 // Удаление мероприятия
-router.delete('/:eventId', authenticateClub, checkEventOwnership, async (req, res) => {
+router.delete('/events/:eventId', authenticateClub, checkEventOwnership, async (req, res) => {
   try {
     const event = req.event;
 
@@ -177,7 +210,7 @@ router.delete('/:eventId', authenticateClub, checkEventOwnership, async (req, re
 });
 
 // Получение участников мероприятия
-router.get('/:eventId/participants', authenticateClub, checkEventOwnership, async (req, res) => {
+router.get('/events/:eventId/participants', authenticateClub, checkEventOwnership, async (req, res) => {
   try {
     const { status, limit = 50, offset = 0 } = req.query;
     
@@ -195,7 +228,7 @@ router.get('/:eventId/participants', authenticateClub, checkEventOwnership, asyn
 });
 
 // Приглашение пользователей на мероприятие
-router.post('/:eventId/invite', authenticateClub, checkEventOwnership, async (req, res) => {
+router.post('/events/:eventId/invite', authenticateClub, checkEventOwnership, async (req, res) => {
   try {
     const { userIds } = req.body;
     const event = req.event;
@@ -265,7 +298,7 @@ router.post('/:eventId/invite', authenticateClub, checkEventOwnership, async (re
 });
 
 // Удаление участника из мероприятия
-router.delete('/:eventId/participants/:userId', authenticateClub, checkEventOwnership, async (req, res) => {
+router.delete('/events/:eventId/participants/:userId', authenticateClub, checkEventOwnership, async (req, res) => {
   try {
     const { userId } = req.params;
     const event = req.event;
@@ -288,7 +321,7 @@ router.delete('/:eventId/participants/:userId', authenticateClub, checkEventOwne
 });
 
 // Публичные мероприятия (для пользователей)
-router.get('/public/upcoming', async (req, res) => {
+router.get('/public/events/upcoming', async (req, res) => {
   try {
     const { limit = 10, type, city, search } = req.query;
     
@@ -337,6 +370,182 @@ router.get('/public/upcoming', async (req, res) => {
   } catch (error) {
     console.error('Get public events error:', error);
     res.status(500).json({ error: 'Ошибка при получении мероприятий' });
+  }
+});
+
+// Загрузка аватара мероприятия
+router.post('/events/:eventId/avatar', authenticateClub, checkEventOwnership, upload.single('avatar'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Файл не был загружен' });
+    }
+
+    const { x = 0, y = 0, width, height } = req.body;
+    const event = req.event;
+
+    // Обработка изображения с помощью Sharp
+    const processedFileName = `event_avatar_${generateId()}.jpg`;
+    const outputPath = path.join(__dirname, '../../public/uploads', processedFileName);
+
+    try {
+      let sharpImage = sharp(req.file.path);
+      
+      // Автоповорот на основе EXIF данных
+      sharpImage = sharpImage.rotate();
+
+      // Если указаны параметры обрезки
+      if (width && height) {
+        const cropX = parseInt(x) || 0;
+        const cropY = parseInt(y) || 0;
+        const cropWidth = parseInt(width);
+        const cropHeight = parseInt(height);
+
+        // Проверяем, что параметры обрезки корректны
+        if (cropWidth > 0 && cropHeight > 0 && cropX >= 0 && cropY >= 0) {
+          sharpImage = sharpImage.extract({
+            left: cropX,
+            top: cropY,
+            width: cropWidth,
+            height: cropHeight
+          });
+        }
+      }
+
+      // Изменяем размер до 590x160 и сохраняем как JPEG
+      await sharpImage
+        .resize(590, 160, { fit: 'cover', position: 'center' })
+        .jpeg({ quality: 90 })
+        .toFile(outputPath);
+
+    } catch (sharpError) {
+      console.error('Sharp processing error:', sharpError);
+      // Если ошибка Sharp, пробуем просто изменить размер без обрезки
+      await sharp(req.file.path)
+        .rotate()
+        .resize(590, 160, { fit: 'cover', position: 'center' })
+        .jpeg({ quality: 90 })
+        .toFile(outputPath);
+    }
+
+    // Удаляем временный файл
+    await fs.unlink(req.file.path);
+
+    // Удаляем старый аватар (если есть)
+    if (event.avatar) {
+      const oldAvatarPath = path.join(__dirname, '../../public/uploads', event.avatar);
+      try {
+        await fs.unlink(oldAvatarPath);
+      } catch (err) {
+        console.warn('Не удалось удалить старый аватар:', err.message);
+      }
+    }
+
+    // Обновляем аватар мероприятия
+    await event.update({ avatar: processedFileName });
+
+    res.json({
+      success: true,
+      message: 'Аватар мероприятия успешно загружен',
+      filename: processedFileName,
+      url: `/uploads/${processedFileName}`
+    });
+
+  } catch (error) {
+    console.error('Upload event avatar error:', error);
+    res.status(500).json({ error: 'Ошибка при загрузке аватара мероприятия' });
+  }
+});
+
+// Загрузка изображений мероприятия
+router.post('/events/:eventId/images', authenticateClub, checkEventOwnership, upload.array('images', 10), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'Файлы не были загружены' });
+    }
+
+    const event = req.event;
+    const processedFiles = [];
+
+    for (const file of req.files) {
+      try {
+        // Обработка изображения с помощью Sharp
+        const processedFileName = `event_img_${generateId()}.jpg`;
+        const outputPath = path.join(__dirname, '../../public/uploads', processedFileName);
+
+        await sharp(file.path)
+          .rotate()
+          .resize(1200, 800, { fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality: 85 })
+          .toFile(outputPath);
+
+        // Удаляем временный файл
+        await fs.unlink(file.path);
+
+        processedFiles.push(processedFileName);
+      } catch (error) {
+        console.error('Error processing image:', error);
+        // Удаляем временный файл в случае ошибки
+        try {
+          await fs.unlink(file.path);
+        } catch (unlinkError) {
+          console.error('Error deleting temp file:', unlinkError);
+        }
+      }
+    }
+
+    if (processedFiles.length === 0) {
+      return res.status(500).json({ error: 'Не удалось обработать ни одного изображения' });
+    }
+
+    // Добавляем новые изображения к существующим
+    const currentImages = event.getImages();
+    const updatedImages = [...currentImages, ...processedFiles];
+    
+    await event.update({ images: updatedImages });
+
+    res.json({
+      success: true,
+      message: `Загружено ${processedFiles.length} изображений`,
+      files: processedFiles.map(filename => ({
+        filename,
+        url: `/uploads/${filename}`
+      }))
+    });
+
+  } catch (error) {
+    console.error('Upload event images error:', error);
+    res.status(500).json({ error: 'Ошибка при загрузке изображений мероприятия' });
+  }
+});
+
+// Удаление изображения мероприятия
+router.delete('/events/:eventId/images/:filename', authenticateClub, checkEventOwnership, async (req, res) => {
+  try {
+    const { filename } = req.params;
+    const event = req.event;
+
+    // Удаляем файл с диска
+    const filePath = path.join(__dirname, '../../public/uploads', filename);
+    try {
+      await fs.unlink(filePath);
+    } catch (err) {
+      console.warn('Не удалось удалить файл:', err.message);
+    }
+
+    // Удаляем из массива изображений
+    const currentImages = event.getImages();
+    const updatedImages = currentImages.filter(img => img !== filename);
+    
+    await event.update({ images: updatedImages });
+
+    res.json({
+      success: true,
+      message: 'Изображение удалено'
+    });
+
+  } catch (error) {
+    console.error('Delete event image error:', error);
+    res.status(500).json({ error: 'Ошибка при удалении изображения' });
   }
 });
 

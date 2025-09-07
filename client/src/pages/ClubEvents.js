@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { clubApi } from '../services/clubApi';
 import EventForm from '../components/EventForm';
 import EventParticipants from '../components/EventParticipants';
+import EventDetailsModal from '../components/EventDetailsModal';
 import '../styles/ClubEvents.css';
 
 // Иконки
@@ -89,6 +90,7 @@ const ClubEvents = () => {
   const [clubId, setClubId] = useState(null);
   const [showParticipants, setShowParticipants] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState(null);
+  const [showEventDetails, setShowEventDetails] = useState(false);
 
   useEffect(() => {
     loadEvents();
@@ -145,6 +147,17 @@ const ClubEvents = () => {
 
   const handleCloseParticipants = () => {
     setShowParticipants(false);
+    setSelectedEventId(null);
+  };
+
+  const handleShowEventDetails = (eventId) => {
+    console.log('Opening event details for ID:', eventId);
+    setSelectedEventId(eventId);
+    setShowEventDetails(true);
+  };
+
+  const handleCloseEventDetails = () => {
+    setShowEventDetails(false);
     setSelectedEventId(null);
   };
 
@@ -263,9 +276,17 @@ const ClubEvents = () => {
                      getEventStatus(event.date) === 'ongoing' ? 'Идет' : 'Завершено'}
                   </div>
                   <div className="event-actions">
-                    <Link to={`/club/events/${event.id}`} className="action-btn view">
+                    <button 
+                      className="action-btn view"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleShowEventDetails(event.id);
+                      }}
+                      title="Просмотр деталей"
+                    >
                       <EyeIcon className="icon" />
-                    </Link>
+                    </button>
                     <button 
                       className="action-btn participants"
                       onClick={() => handleShowParticipants(event.id)}
@@ -381,6 +402,13 @@ const ClubEvents = () => {
           onClose={handleCloseParticipants}
         />
       )}
+
+      {/* Event Details Modal */}
+      <EventDetailsModal
+        isOpen={showEventDetails}
+        onClose={handleCloseEventDetails}
+        eventId={selectedEventId}
+      />
     </div>
   );
 };

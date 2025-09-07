@@ -1,9 +1,41 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const multer = require('multer');
+const sharp = require('sharp');
+const path = require('path');
+const fs = require('fs').promises;
 const { sequelize } = require('../config/database');
 const { Clubs, ClubBots } = require('../models');
 const { generateClubToken, authenticateClub } = require('../middleware/clubAuth');
+const { generateId } = require('../utils/helpers');
 const router = express.Router();
+
+// Настройка multer для загрузки файлов
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, '../../public/uploads'));
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, `club_avatar_${uniqueSuffix}${path.extname(file.originalname)}`);
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Только изображения разрешены'), false);
+  }
+};
+
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB
+  }
+});
 
 // Регистрация клуба
 router.post('/register', async (req, res) => {
@@ -220,6 +252,93 @@ router.put('/password', authenticateClub, async (req, res) => {
   } catch (error) {
     console.error('Change password error:', error);
     res.status(500).json({ error: 'Ошибка при изменении пароля' });
+  }
+});
+
+// Загрузка аватарки клуба
+router.post('/profile/avatar', authenticateClub, upload.single('avatar'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Файл не был загружен' });
+    }
+
+    const { x = 0, y = 0, width, height } = req.body;
+    const clubId = req.club.id;
+
+    // Обработка изображения с помощью Sharp
+    const processedFileName = `club_avatar_${generateId()}.jpg`;
+    const outputPath = path.join(__dirname, '../../public/uploads', processedFileName);
+
+    try {
+      let sharpImage = sharp(req.file.path);
+      
+      // Автоповорот на основе EXIF данных
+      sharpImage = sharpImage.rotate();
+
+      // Если указаны параметры обрезки
+      if (width && height) {
+        const cropX = parseInt(x) || 0;
+        const cropY = parseInt(y) || 0;
+        const cropWidth = parseInt(width);
+        const cropHeight = parseInt(height);
+
+        // Проверяем, что параметры обрезки корректны
+        if (cropWidth > 0 && cropHeight > 0 && cropX >= 0 && cropY >= 0) {
+          sharpImage = sharpImage.extract({
+            left: cropX,
+            top: cropY,
+            width: cropWidth,
+            height: cropHeight
+          });
+        }
+      }
+
+      // Изменяем размер до 590x160 и сохраняем как JPEG
+      await sharpImage
+        .resize(590, 160, { fit: 'cover', position: 'center' })
+        .jpeg({ quality: 90 })
+        .toFile(outputPath);
+
+    } catch (sharpError) {
+      console.error('Sharp processing error:', sharpError);
+      // Если ошибка Sharp, пробуем просто изменить размер без обрезки
+      await sharp(req.file.path)
+        .rotate()
+        .resize(590, 160, { fit: 'cover', position: 'center' })
+        .jpeg({ quality: 90 })
+        .toFile(outputPath);
+    }
+
+    // Удаляем временный файл
+    await fs.unlink(req.file.path);
+
+    // Обновляем аватар клуба
+    const club = await Clubs.findByPk(clubId);
+    
+    if (club) {
+      // Удаляем старый аватар (если не стандартный)
+      if (club.avatar && club.avatar !== 'no_photo.jpg') {
+        const oldAvatarPath = path.join(__dirname, '../../public/uploads', club.avatar);
+        try {
+          await fs.unlink(oldAvatarPath);
+        } catch (err) {
+          console.warn('Не удалось удалить старый аватар:', err.message);
+        }
+      }
+
+      await club.update({ avatar: processedFileName });
+    }
+
+    res.json({
+      success: true,
+      message: 'Аватар клуба успешно загружен',
+      filename: processedFileName,
+      url: `/uploads/${processedFileName}`
+    });
+
+  } catch (error) {
+    console.error('Upload club avatar error:', error);
+    res.status(500).json({ error: 'Ошибка при загрузке аватара' });
   }
 });
 

@@ -79,6 +79,23 @@ module.exports = (sequelize) => {
     auto_invite_enabled: {
       type: DataTypes.BOOLEAN,
       defaultValue: true
+    },
+    avatar: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      comment: 'Аватарка мероприятия'
+    },
+    images: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: 'JSON массив с путями к изображениям мероприятия',
+      get() {
+        const value = this.getDataValue('images');
+        return value ? JSON.parse(value) : [];
+      },
+      set(value) {
+        this.setDataValue('images', value ? JSON.stringify(value) : null);
+      }
     }
   }, {
     tableName: 'club_events',
@@ -100,6 +117,24 @@ module.exports = (sequelize) => {
     return this.current_participants || 0;
   };
 
+  ClubEvents.prototype.getImages = function() {
+    return this.images || [];
+  };
+
+  ClubEvents.prototype.addImage = function(imagePath) {
+    const images = this.getImages();
+    images.push(imagePath);
+    this.images = images;
+    return this;
+  };
+
+  ClubEvents.prototype.removeImage = function(imagePath) {
+    const images = this.getImages();
+    const filteredImages = images.filter(img => img !== imagePath);
+    this.images = filteredImages;
+    return this;
+  };
+
   // Статические методы
   ClubEvents.getUpcomingEvents = async function(limit = 10) {
     return await this.findAll({
@@ -110,7 +145,7 @@ module.exports = (sequelize) => {
       },
       include: [
         {
-          model: sequelize.models.Clubs,
+          model: sequelize.models.Clubs || sequelize.model('Clubs'),
           as: 'club',
           attributes: ['id', 'name', 'location', 'type']
         }
@@ -139,9 +174,10 @@ module.exports = (sequelize) => {
       where: whereClause,
       include: [
         {
-          model: sequelize.models.EventParticipants,
+          model: sequelize.models.EventParticipants || sequelize.model('EventParticipants'),
           as: 'participants',
-          attributes: ['id', 'user_id', 'status']
+          attributes: ['id', 'user_id', 'status'],
+          required: false
         }
       ],
       order: [['date', 'DESC']],

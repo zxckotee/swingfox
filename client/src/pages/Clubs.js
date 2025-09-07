@@ -146,11 +146,25 @@ const ClubCard = styled(motion.div)`
 `;
 
 const ClubHeader = styled.div`
-  height: 120px;
-  background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
+  height: 160px;
+  background: ${props => props.$avatarUrl ? `url(${props.$avatarUrl})` : 'linear-gradient(135deg, #dc3522 0%, #ff6b58 100%)'};
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   position: relative;
   padding: 20px;
   color: white;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: ${props => props.$avatarUrl ? 'rgba(0, 0, 0, 0.4)' : 'transparent'};
+    border-radius: 20px 20px 0 0;
+  }
   
   &::after {
     content: '';
@@ -161,6 +175,11 @@ const ClubHeader = styled.div`
     height: 20px;
     background: white;
     border-radius: 20px 20px 0 0;
+  }
+  
+  > * {
+    position: relative;
+    z-index: 1;
   }
 `;
 
@@ -571,7 +590,7 @@ const Clubs = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <ClubHeader>
+                    <ClubHeader $avatarUrl={club.avatar ? `/uploads/${club.avatar}` : null}>
                       <FlexContainer $justify="space-between" $align="flex-start">
                         <div>
                           <ClubTitle style={{ color: 'white', fontSize: '16px' }}>
@@ -639,7 +658,7 @@ const Clubs = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <ClubHeader>
+                    <ClubHeader $avatarUrl={event.avatar ? `/uploads/${event.avatar}` : null}>
                       <FlexContainer $justify="space-between" $align="flex-start">
                         <div>
                           <ClubTitle style={{ color: 'white', fontSize: '16px' }}>
@@ -938,6 +957,59 @@ const Clubs = () => {
                     <p style={{ color: '#4a5568', lineHeight: 1.6, margin: 0 }}>
                       {selectedEventDetails.description}
                     </p>
+                  </div>
+                )}
+
+                {/* Галерея изображений мероприятия */}
+                {selectedEventDetails.images && selectedEventDetails.images.length > 0 && (
+                  <div style={{ 
+                    background: '#f8fafc', 
+                    padding: '20px', 
+                    borderRadius: '12px',
+                    marginBottom: '20px'
+                  }}>
+                    <h3 style={{ margin: '0 0 15px 0', color: '#2d3748', fontSize: '18px' }}>
+                      📸 Фотографии мероприятия ({selectedEventDetails.images.length})
+                    </h3>
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', 
+                      gap: '10px' 
+                    }}>
+                      {selectedEventDetails.images.map((image, index) => (
+                        <div
+                          key={index}
+                          style={{
+                            aspectRatio: '4/3',
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            background: '#e2e8f0',
+                            cursor: 'pointer',
+                            transition: 'transform 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => e.target.style.transform = 'scale(1.02)'}
+                          onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                          onClick={() => {
+                            // Открываем изображение в новом окне
+                            window.open(`/uploads/${image}`, '_blank');
+                          }}
+                        >
+                          <img 
+                            src={`/uploads/${image}`} 
+                            alt={`Фото мероприятия ${index + 1}`}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover'
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.parentElement.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #718096; font-size: 12px;">Ошибка загрузки</div>';
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 

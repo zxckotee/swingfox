@@ -33,6 +33,7 @@ router.get('/public/events', async (req, res) => {
 
     const events = await ClubEvents.findAll({
       where: whereClause,
+      attributes: ['id', 'title', 'description', 'date', 'time', 'location', 'price', 'max_participants', 'current_participants', 'event_type', 'is_premium', 'avatar', 'images'],
       include: [
         {
           model: Clubs,
@@ -87,6 +88,7 @@ router.get('/events', authenticateToken, async (req, res) => {
 
     const events = await ClubEvents.findAll({
       where: whereClause,
+      attributes: ['id', 'title', 'description', 'date', 'time', 'location', 'price', 'max_participants', 'current_participants', 'event_type', 'is_premium', 'avatar', 'images'],
       include: [
         {
           model: Clubs,
@@ -154,7 +156,7 @@ router.get('/events/:eventId', async (req, res) => {
             {
               model: User,
               as: 'user',
-              attributes: ['id', 'login', 'name', 'ava', 'age']
+              attributes: ['id', 'login', 'ava']
             }
           ]
         }

@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { clubApi } from '../services/clubApi';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { clubApi, clubAuth } from '../services/clubApi';
 import EventForm from '../components/EventForm';
+import ClubAvatarCropper from '../components/UI/ClubAvatarCropper';
+import EventDetailsModal from '../components/EventDetailsModal';
 import '../styles/ClubDashboard.css';
 
 // Иконки
@@ -73,15 +75,27 @@ const ClockIcon = () => (
 );
 
 const ClubDashboard = () => {
+  const navigate = useNavigate();
   const [club, setClub] = useState(null);
   const [stats, setStats] = useState({});
   const [recentEvents, setRecentEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateEventModal, setShowCreateEventModal] = useState(false);
+  const [showAvatarCropper, setShowAvatarCropper] = useState(false);
+  const [selectedImageFile, setSelectedImageFile] = useState(null);
+  const [showEventDetails, setShowEventDetails] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
+    // Проверяем аутентификацию клуба
+    if (!clubAuth.isAuthenticated()) {
+      navigate('/club/login');
+      return;
+    }
+    
     loadDashboardData();
-  }, []);
+  }, [navigate]);
 
   const loadDashboardData = async () => {
     try {
@@ -96,6 +110,14 @@ const ClubDashboard = () => {
       setRecentEvents(Array.isArray(eventsData.events) ? eventsData.events : (Array.isArray(eventsData) ? eventsData : []));
     } catch (error) {
       console.error('Ошибка загрузки данных:', error);
+      
+      // Если ошибка аутентификации, перенаправляем на страницу входа
+      if (error.message === 'Unauthorized' || error.message.includes('токен') || error.message.includes('token')) {
+        clubAuth.removeToken();
+        navigate('/club/login');
+        return;
+      }
+      
       // Устанавливаем fallback данные
       setClub(null);
       setStats({});
@@ -121,6 +143,71 @@ const ClubDashboard = () => {
 
   const handleSettings = () => {
     window.location.href = '/club/settings';
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setSelectedImageFile(file);
+      setShowAvatarCropper(true);
+    }
+  };
+
+  const handleAvatarCrop = async (cropData) => {
+    try {
+      const formData = new FormData();
+      formData.append('avatar', cropData.file);
+      
+      // Добавляем параметры обрезки
+      if (cropData.cropParams) {
+        formData.append('x', cropData.cropParams.x);
+        formData.append('y', cropData.cropParams.y);
+        formData.append('width', cropData.cropParams.width);
+        formData.append('height', cropData.cropParams.height);
+      }
+      
+      const response = await clubApi.uploadClubAvatar(formData);
+      
+      if (response.success) {
+        // Обновляем аватар в состоянии
+        setClub(prev => ({
+          ...prev,
+          avatar: response.filename
+        }));
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки аватара:', error);
+      alert('Ошибка при загрузке аватара');
+    }
+  };
+
+  const handleCloseAvatarCropper = () => {
+    setShowAvatarCropper(false);
+    setSelectedImageFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleShowEventDetails = (eventId) => {
+    console.log('=== handleShowEventDetails called ===');
+    console.log('Event ID:', eventId);
+    console.log('Current showEventDetails state:', showEventDetails);
+    console.log('Current selectedEventId state:', selectedEventId);
+    
+    setSelectedEventId(eventId);
+    setShowEventDetails(true);
+    
+    console.log('States updated, showEventDetails should be true now');
+  };
+
+  const handleCloseEventDetails = () => {
+    setShowEventDetails(false);
+    setSelectedEventId(null);
   };
 
   if (loading) {
@@ -149,8 +236,18 @@ const ClubDashboard = () => {
       {/* Header */}
       <div className="club-dashboard-header">
         <div className="club-info">
-          <div className="club-avatar">
-            <img src={club?.avatar ? `/uploads/${club.avatar}` : '/uploads/no_photo.jpg'} alt={club?.name} />
+          <div className="club-avatar-panoramic" onClick={handleAvatarClick}>
+            <img 
+              src={club?.avatar ? `/uploads/${club.avatar}` : '/uploads/no_photo.jpg'} 
+              alt={club?.name}
+              onError={(e) => {
+                e.target.src = '/uploads/no_photo.jpg';
+              }}
+            />
+            <div className="avatar-overlay">
+              <span>📷</span>
+              <span>Изменить аватар</span>
+            </div>
           </div>
           <div className="club-details">
             <h1>{club?.name}</h1>
@@ -172,6 +269,15 @@ const ClubDashboard = () => {
           </button>
         </div>
       </div>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileSelect}
+        style={{ display: 'none' }}
+      />
 
       {/* Stats Cards */}
       <div className="stats-grid">
@@ -283,10 +389,48 @@ const ClubDashboard = () => {
               </div>
               
               <div className="event-actions">
-                <Link to={`/club/events/${event.id}`} className="btn btn-sm btn-primary">
+                <div 
+                  className="btn btn-sm btn-outline"
+                  onClick={(e) => {
+                    console.log('=== EYE BUTTON CLICKED ===');
+                    console.log('Event object:', e);
+                    console.log('Event target:', e.target);
+                    console.log('Event currentTarget:', e.currentTarget);
+                    console.log('Event ID:', event.id);
+                    
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    console.log('About to call handleShowEventDetails');
+                    handleShowEventDetails(event.id);
+                    console.log('handleShowEventDetails called');
+                    
+                    return false;
+                  }}
+                  title="Просмотр деталей"
+                  style={{ cursor: 'pointer', userSelect: 'none' }}
+                >
+                  👁️
+                </div>
+                <div 
+                  className="btn btn-sm btn-primary"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Details button clicked for event:', event.id);
+                    handleShowEventDetails(event.id);
+                    return false;
+                  }}
+                  title="Подробнее"
+                  style={{ cursor: 'pointer', userSelect: 'none' }}
+                >
                   Подробнее
-                </Link>
-                <Link to={`/club/events/${event.id}/edit`} className="btn btn-sm btn-secondary">
+                </div>
+                <Link 
+                  to="/club/events" 
+                  className="btn btn-sm btn-secondary"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   Редактировать
                 </Link>
               </div>
@@ -332,8 +476,24 @@ const ClubDashboard = () => {
           </div>
         </div>
       )}
-    </div>
-  );
-};
+
+        {/* Avatar Cropper Modal */}
+        <ClubAvatarCropper
+          isOpen={showAvatarCropper}
+          onClose={handleCloseAvatarCropper}
+          imageFile={selectedImageFile}
+          onCrop={handleAvatarCrop}
+          aspectRatio={590/160}
+        />
+
+        {/* Event Details Modal */}
+        <EventDetailsModal
+          isOpen={showEventDetails}
+          onClose={handleCloseEventDetails}
+          eventId={selectedEventId}
+        />
+      </div>
+    );
+  };
 
 export default ClubDashboard;

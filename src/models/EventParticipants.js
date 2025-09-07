@@ -81,14 +81,14 @@ module.exports = (sequelize) => {
       where: whereClause,
       include: [
         {
-          model: sequelize.models.User,
+          model: sequelize.models.User || sequelize.model('User'),
           as: 'user',
-          attributes: ['id', 'login', 'name', 'ava', 'age', 'city']
+          attributes: ['id', 'login', 'ava', 'city']
         },
         {
-          model: sequelize.models.User,
+          model: sequelize.models.User || sequelize.model('User'),
           as: 'inviter',
-          attributes: ['id', 'login', 'name'],
+          attributes: ['id', 'login'],
           foreignKey: 'invited_by'
         }
       ],
@@ -110,11 +110,11 @@ module.exports = (sequelize) => {
       where: whereClause,
       include: [
         {
-          model: sequelize.models.ClubEvents,
+          model: sequelize.models.ClubEvents || sequelize.model('ClubEvents'),
           as: 'event',
           include: [
             {
-              model: sequelize.models.Clubs,
+              model: sequelize.models.Clubs || sequelize.model('Clubs'),
               as: 'club',
               attributes: ['id', 'name', 'location', 'type']
             }

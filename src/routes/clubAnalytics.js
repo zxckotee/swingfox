@@ -244,7 +244,7 @@ router.get('/participants', authenticateClub, async (req, res) => {
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'login', 'name', 'ava', 'age', 'city']
+          attributes: ['id', 'login', 'ava', 'city']
         }
       ],
       attributes: [
@@ -268,7 +268,7 @@ router.get('/participants', authenticateClub, async (req, res) => {
         {
           model: User,
           as: 'user',
-          attributes: ['age', 'city']
+          attributes: ['city']
         }
       ],
       attributes: [

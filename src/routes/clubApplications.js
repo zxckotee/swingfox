@@ -21,7 +21,7 @@ router.get('/', authenticateClub, async (req, res) => {
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'login', 'name', 'ava', 'age', 'city', 'description']
+          attributes: ['id', 'login', 'ava', 'city', 'info']
         }
       ],
       order: [['created_at', 'DESC']],
@@ -184,7 +184,7 @@ router.get('/:applicationId', authenticateClub, async (req, res) => {
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'login', 'name', 'ava', 'age', 'city', 'description', 'created_at']
+          attributes: ['id', 'login', 'ava', 'city', 'info', 'created_at']
         }
       ]
     });

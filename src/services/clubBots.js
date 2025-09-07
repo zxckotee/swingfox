@@ -137,7 +137,7 @@ class ClubBotService {
 
     return await User.findAll({
       where: whereClause,
-      attributes: ['id', 'login', 'name', 'age', 'city'],
+      attributes: ['id', 'login', 'city'],
       order: sequelize.random(),
       limit: 100
     });

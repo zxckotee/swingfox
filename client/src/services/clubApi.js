@@ -73,54 +73,54 @@ export const clubApi = {
   // Events
   getEvents: async (params = {}) => {
     const queryString = new URLSearchParams(params).toString();
-    return apiCall(`/events${queryString ? `?${queryString}` : ''}`);
+    return apiCall(`/events/events${queryString ? `?${queryString}` : ''}`);
   },
 
   getEvent: async (eventId) => {
-    return apiCall(`/events/${eventId}`);
+    return apiCall(`/events/events/${eventId}`);
   },
 
   createEvent: async (eventData) => {
-    return apiCall('/events', {
+    return apiCall('/events/events', {
       method: 'POST',
       body: JSON.stringify(eventData)
     });
   },
 
   updateEvent: async (eventId, eventData) => {
-    return apiCall(`/events/${eventId}`, {
+    return apiCall(`/events/events/${eventId}`, {
       method: 'PUT',
       body: JSON.stringify(eventData)
     });
   },
 
   deleteEvent: async (eventId) => {
-    return apiCall(`/events/${eventId}`, {
+    return apiCall(`/events/events/${eventId}`, {
       method: 'DELETE'
     });
   },
 
   // Event Participants
   getEventParticipants: async (eventId) => {
-    return apiCall(`/events/${eventId}/participants`);
+    return apiCall(`/events/events/${eventId}/participants`);
   },
 
   updateParticipantStatus: async (eventId, participantId, status) => {
-    return apiCall(`/events/${eventId}/participants/${participantId}`, {
+    return apiCall(`/events/events/${eventId}/participants/${participantId}`, {
       method: 'PUT',
       body: JSON.stringify({ status })
     });
   },
 
   removeParticipant: async (eventId, participantId) => {
-    return apiCall(`/events/${eventId}/participants/${participantId}`, {
+    return apiCall(`/events/events/${eventId}/participants/${participantId}`, {
       method: 'DELETE'
     });
   },
 
   // Event Applications
   applyToEvent: async (eventId, applicationData) => {
-    return apiCall(`/events/${eventId}/apply`, {
+    return apiCall(`/events/events/${eventId}/apply`, {
       method: 'POST',
       body: JSON.stringify(applicationData)
     });
@@ -137,14 +137,59 @@ export const clubApi = {
   },
 
   inviteParticipants: async (eventId, userIds) => {
-    return apiCall(`/events/${eventId}/invite`, {
+    return apiCall(`/events/events/${eventId}/invite`, {
       method: 'POST',
       body: JSON.stringify({ user_ids: userIds })
     });
   },
 
   removeParticipant: async (eventId, userId) => {
-    return apiCall(`/events/${eventId}/participants/${userId}`, {
+    return apiCall(`/events/events/${eventId}/participants/${userId}`, {
+      method: 'DELETE'
+    });
+  },
+
+  // Event Images
+  uploadEventAvatar: async (eventId, formData) => {
+    const token = localStorage.getItem('clubToken');
+    
+    const response = await fetch(`${API_BASE_URL}/events/events/${eventId}/avatar`, {
+      method: 'POST',
+      headers: {
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      },
+      body: formData
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Upload Error');
+    }
+    
+    return await response.json();
+  },
+
+  uploadEventImages: async (eventId, formData) => {
+    const token = localStorage.getItem('clubToken');
+    
+    const response = await fetch(`${API_BASE_URL}/events/events/${eventId}/images`, {
+      method: 'POST',
+      headers: {
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      },
+      body: formData
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Upload Error');
+    }
+    
+    return await response.json();
+  },
+
+  deleteEventImage: async (eventId, filename) => {
+    return apiCall(`/events/events/${eventId}/images/${filename}`, {
       method: 'DELETE'
     });
   },
@@ -152,35 +197,35 @@ export const clubApi = {
   // Ads
   getAds: async (params = {}) => {
     const queryString = new URLSearchParams(params).toString();
-    return apiCall(`/ads${queryString ? `?${queryString}` : ''}`);
+    return apiCall(`/ads/ads${queryString ? `?${queryString}` : ''}`);
   },
 
   getAd: async (adId) => {
-    return apiCall(`/ads/${adId}`);
+    return apiCall(`/ads/ads/${adId}`);
   },
 
   createAd: async (adData) => {
-    return apiCall('/ads', {
+    return apiCall('/ads/ads', {
       method: 'POST',
       body: JSON.stringify(adData)
     });
   },
 
   updateAd: async (adId, adData) => {
-    return apiCall(`/ads/${adId}`, {
+    return apiCall(`/ads/ads/${adId}`, {
       method: 'PUT',
       body: JSON.stringify(adData)
     });
   },
 
   deleteAd: async (adId) => {
-    return apiCall(`/ads/${adId}`, {
+    return apiCall(`/ads/ads/${adId}`, {
       method: 'DELETE'
     });
   },
 
   getAdStats: async () => {
-    return apiCall('/ads/stats/overview');
+    return apiCall('/ads/ads/stats/overview');
   },
 
   // Analytics
@@ -191,110 +236,110 @@ export const clubApi = {
   // Applications
   getApplications: async (params = {}) => {
     const queryString = new URLSearchParams(params).toString();
-    return apiCall(`/applications${queryString ? `?${queryString}` : ''}`);
+    return apiCall(`/applications/applications${queryString ? `?${queryString}` : ''}`);
   },
 
   getApplication: async (applicationId) => {
-    return apiCall(`/applications/${applicationId}`);
+    return apiCall(`/applications/applications/${applicationId}`);
   },
 
   approveApplication: async (applicationId) => {
-    return apiCall(`/applications/${applicationId}/approve`, {
+    return apiCall(`/applications/applications/${applicationId}/approve`, {
       method: 'PUT'
     });
   },
 
   rejectApplication: async (applicationId, reason = '') => {
-    return apiCall(`/applications/${applicationId}/reject`, {
+    return apiCall(`/applications/applications/${applicationId}/reject`, {
       method: 'PUT',
       body: JSON.stringify({ reason })
     });
   },
 
   bulkApproveApplications: async (applicationIds) => {
-    return apiCall('/applications/bulk-approve', {
+    return apiCall('/applications/applications/bulk-approve', {
       method: 'POST',
       body: JSON.stringify({ application_ids: applicationIds })
     });
   },
 
   bulkRejectApplications: async (applicationIds, reason = '') => {
-    return apiCall('/applications/bulk-reject', {
+    return apiCall('/applications/applications/bulk-reject', {
       method: 'POST',
       body: JSON.stringify({ application_ids: applicationIds, reason })
     });
   },
 
   getApplicationStats: async () => {
-    return apiCall('/applications/stats');
+    return apiCall('/applications/applications/stats');
   },
 
   // Bots
   getBots: async () => {
-    return apiCall('/bots');
+    return apiCall('/bots/bots');
   },
 
   getBot: async (botId) => {
-    return apiCall(`/bots/${botId}`);
+    return apiCall(`/bots/bots/${botId}`);
   },
 
   createBot: async (botData) => {
-    return apiCall('/bots', {
+    return apiCall('/bots/bots', {
       method: 'POST',
       body: JSON.stringify(botData)
     });
   },
 
   updateBotSettings: async (botId, settings) => {
-    return apiCall(`/bots/${botId}/settings`, {
+    return apiCall(`/bots/bots/${botId}/settings`, {
       method: 'PUT',
       body: JSON.stringify(settings)
     });
   },
 
   toggleBot: async (botId) => {
-    return apiCall(`/bots/${botId}/toggle`, {
+    return apiCall(`/bots/bots/${botId}/toggle`, {
       method: 'PUT'
     });
   },
 
   deleteBot: async (botId) => {
-    return apiCall(`/bots/${botId}`, {
+    return apiCall(`/bots/bots/${botId}`, {
       method: 'DELETE'
     });
   },
 
   getBotLogs: async (botId) => {
-    return apiCall(`/bots/${botId}/logs`);
+    return apiCall(`/bots/bots/${botId}/logs`);
   },
 
   // Bot Actions
   sendAutoInvites: async (eventId) => {
-    return apiCall(`/bots/auto-invites/${eventId}`, {
+    return apiCall(`/bots/bots/auto-invites/${eventId}`, {
       method: 'POST'
     });
   },
 
   sendReminders: async () => {
-    return apiCall('/bots/reminders', {
+    return apiCall('/bots/bots/reminders', {
       method: 'POST'
     });
   },
 
   generateRecommendations: async () => {
-    return apiCall('/bots/recommendations', {
+    return apiCall('/bots/bots/recommendations', {
       method: 'POST'
     });
   },
 
   updateStats: async () => {
-    return apiCall('/bots/update-stats', {
+    return apiCall('/bots/bots/update-stats', {
       method: 'POST'
     });
   },
 
   getBotStats: async () => {
-    return apiCall('/bots/stats/overview');
+    return apiCall('/bots/bots/stats/overview');
   },
 
   // User Events (Public API)
@@ -354,14 +399,33 @@ export const clubApi = {
 
   // User Applications
   getUserApplications: async () => {
-    return apiCall('/applications/user');
+    return apiCall('/applications/applications/user');
   },
 
   createApplication: async (clubId, message = '') => {
-    return apiCall('/applications', {
+    return apiCall('/applications/applications', {
       method: 'POST',
       body: JSON.stringify({ club_id: clubId, message })
     });
+  },
+
+  uploadClubAvatar: async (formData) => {
+    const token = localStorage.getItem('clubToken');
+    
+    const response = await fetch(`${API_BASE_URL}/auth/profile/avatar`, {
+      method: 'POST',
+      headers: {
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      },
+      body: formData
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Upload Error');
+    }
+    
+    return await response.json();
   }
 };
 
@@ -403,67 +467,67 @@ export const clubAuth = {
 
   // Ads Management
   getAds: async () => {
-    return apiCall('/ads');
+    return apiCall('/ads/ads');
   },
 
   createAd: async (adData) => {
-    return apiCall('/ads', {
+    return apiCall('/ads/ads', {
       method: 'POST',
       body: JSON.stringify(adData)
     });
   },
 
   updateAd: async (adId, adData) => {
-    return apiCall(`/ads/${adId}`, {
+    return apiCall(`/ads/ads/${adId}`, {
       method: 'PUT',
       body: JSON.stringify(adData)
     });
   },
 
   deleteAd: async (adId) => {
-    return apiCall(`/ads/${adId}`, {
+    return apiCall(`/ads/ads/${adId}`, {
       method: 'DELETE'
     });
   },
 
   // Applications Management
   getApplications: async () => {
-    return apiCall('/applications');
+    return apiCall('/applications/applications');
   },
 
   approveApplication: async (applicationId) => {
-    return apiCall(`/applications/${applicationId}/approve`, {
+    return apiCall(`/applications/applications/${applicationId}/approve`, {
       method: 'POST'
     });
   },
 
   rejectApplication: async (applicationId) => {
-    return apiCall(`/applications/${applicationId}/reject`, {
+    return apiCall(`/applications/applications/${applicationId}/reject`, {
       method: 'POST'
     });
   },
 
   // Bots Management
   getBots: async () => {
-    return apiCall('/bots');
+    return apiCall('/bots/bots');
   },
 
   createBot: async (botData) => {
-    return apiCall('/bots', {
+    return apiCall('/bots/bots', {
       method: 'POST',
       body: JSON.stringify(botData)
     });
   },
 
   updateBot: async (botId, botData) => {
-    return apiCall(`/bots/${botId}`, {
+    return apiCall(`/bots/bots/${botId}`, {
       method: 'PUT',
       body: JSON.stringify(botData)
     });
   },
 
   deleteBot: async (botId) => {
-    return apiCall(`/bots/${botId}`, {
+    return apiCall(`/bots/bots/${botId}`, {
       method: 'DELETE'
     });
   },
@@ -488,7 +552,7 @@ export const clubAuth = {
 
   // Settings Management
   updateProfile: async (profileData) => {
-    return apiCall('/profile', {
+    return apiCall('/auth/profile', {
       method: 'PUT',
       body: JSON.stringify(profileData)
     });
@@ -504,7 +568,7 @@ export const clubAuth = {
   uploadAvatar: async (formData) => {
     const token = localStorage.getItem('clubToken');
     
-    const response = await fetch(`${API_BASE_URL}/profile/avatar`, {
+    const response = await fetch(`${API_BASE_URL}/auth/profile/avatar`, {
       method: 'POST',
       headers: {
         ...(token && { 'Authorization': `Bearer ${token}` })

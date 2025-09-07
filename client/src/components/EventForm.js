@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { clubApi } from '../services/clubApi';
+import ClubAvatarCropper from './UI/ClubAvatarCropper';
+import EventImageUploader from './UI/EventImageUploader';
 import './EventForm.css';
 
 const EventForm = ({ event, onSave, onCancel, clubId }) => {
@@ -18,6 +20,9 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [showAvatarCropper, setShowAvatarCropper] = useState(false);
+  const [selectedImageFile, setSelectedImageFile] = useState(null);
+  const [eventImages, setEventImages] = useState([]);
 
   useEffect(() => {
     if (event) {
@@ -33,8 +38,12 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
         category: event.category || 'party',
         age_restriction: event.age_restriction || '18+',
         dress_code: event.dress_code || '',
-        special_requirements: event.special_requirements || ''
+        special_requirements: event.special_requirements || '',
+        avatar: event.avatar || ''
       });
+      
+      // Загружаем существующие изображения
+      setEventImages(event.images || []);
     }
   }, [event]);
 
@@ -84,6 +93,79 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleAvatarClick = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        setSelectedImageFile(file);
+        setShowAvatarCropper(true);
+      }
+    };
+    input.click();
+  };
+
+  const handleAvatarCrop = async (cropData) => {
+    if (!event?.id) return;
+    
+    try {
+      const formData = new FormData();
+      formData.append('avatar', cropData.file);
+      
+      if (cropData.cropParams) {
+        formData.append('x', cropData.cropParams.x);
+        formData.append('y', cropData.cropParams.y);
+        formData.append('width', cropData.cropParams.width);
+        formData.append('height', cropData.cropParams.height);
+      }
+      
+      const response = await clubApi.uploadEventAvatar(event.id, formData);
+      
+      if (response.success) {
+        // Обновляем аватар в форме
+        setFormData(prev => ({
+          ...prev,
+          avatar: response.filename
+        }));
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки аватара:', error);
+      alert('Ошибка при загрузке аватара мероприятия');
+    }
+  };
+
+  const handleCloseAvatarCropper = () => {
+    setShowAvatarCropper(false);
+    setSelectedImageFile(null);
+  };
+
+  const handleImageUpload = async (eventId, formData) => {
+    try {
+      const response = await clubApi.uploadEventImages(eventId, formData);
+      
+      if (response.success) {
+        setEventImages(prev => [...prev, ...response.files.map(f => f.filename)]);
+      }
+      
+      return response;
+    } catch (error) {
+      console.error('Ошибка загрузки изображений:', error);
+      throw error;
+    }
+  };
+
+  const handleImageRemove = async (eventId, filename) => {
+    try {
+      await clubApi.deleteEventImage(eventId, filename);
+      setEventImages(prev => prev.filter(img => img !== filename));
+    } catch (error) {
+      console.error('Ошибка удаления изображения:', error);
+      throw error;
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -155,6 +237,76 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
           {errors.submit && (
             <div className="error-message">
               {errors.submit}
+            </div>
+          )}
+
+          {/* Аватар мероприятия */}
+          {event && (
+            <div className="form-section">
+              <h3>Аватар мероприятия</h3>
+              <div 
+                className="event-avatar-upload"
+                onClick={handleAvatarClick}
+                style={{
+                  width: '200px',
+                  height: '80px',
+                  border: '2px dashed #e2e8f0',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  backgroundColor: formData.avatar ? 'transparent' : '#f8fafc',
+                  backgroundImage: formData.avatar ? `url(/uploads/${formData.avatar})` : 'none',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat',
+                  position: 'relative'
+                }}
+              >
+                {!formData.avatar && (
+                  <div style={{ textAlign: 'center', color: '#718096' }}>
+                    <div style={{ fontSize: '1.5rem', marginBottom: '5px' }}>📷</div>
+                    <div style={{ fontSize: '12px' }}>Загрузить аватар</div>
+                  </div>
+                )}
+                {formData.avatar && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0,0,0,0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: 0,
+                    transition: 'opacity 0.3s ease',
+                    color: 'white',
+                    fontSize: '12px'
+                  }}
+                  onMouseEnter={(e) => e.target.style.opacity = '1'}
+                  onMouseLeave={(e) => e.target.style.opacity = '0'}
+                  >
+                    Изменить
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Галерея изображений */}
+          {event && (
+            <div className="form-section">
+              <h3>Галерея изображений</h3>
+              <EventImageUploader
+                eventId={event.id}
+                onUpload={handleImageUpload}
+                onRemove={handleImageRemove}
+                existingImages={eventImages}
+                maxFiles={10}
+              />
             </div>
           )}
 
@@ -336,6 +488,15 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
             </button>
           </div>
         </form>
+
+        {/* Модальное окно обрезки аватара */}
+        <ClubAvatarCropper
+          isOpen={showAvatarCropper}
+          onClose={handleCloseAvatarCropper}
+          imageFile={selectedImageFile}
+          onCrop={handleAvatarCrop}
+          aspectRatio={590/160}
+        />
       </div>
     </div>
   );

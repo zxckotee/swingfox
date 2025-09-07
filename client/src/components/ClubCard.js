@@ -28,7 +28,12 @@ const ClubCard = ({ club }) => {
 
   return (
     <div className="club-card">
-      <div className="club-card-header">
+      <div 
+        className="club-card-header"
+        style={{
+          backgroundImage: club.avatar ? `url(/uploads/${club.avatar})` : undefined
+        }}
+      >
         <div className="club-avatar">
           <img 
             src={club.avatar ? `/uploads/${club.avatar}` : '/uploads/no_photo.jpg'} 
@@ -42,10 +47,18 @@ const ClubCard = ({ club }) => {
           <span className="club-type-icon">{getClubTypeIcon(club.type)}</span>
           <span className="club-type-label">{getClubTypeLabel(club.type)}</span>
         </div>
+        <div className="club-header-content">
+          <h3 className="club-name">{club.name}</h3>
+          <div className="club-location">
+            <span className="location-icon">📍</span>
+            <span className="location-text">
+              {club.city}, {club.country}
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="club-card-content">
-        <h3 className="club-name">{club.name}</h3>
         <p className="club-description">
           {club.description ? 
             (club.description.length > 120 ? 
@@ -55,13 +68,6 @@ const ClubCard = ({ club }) => {
             'Описание не указано'
           }
         </p>
-        
-        <div className="club-location">
-          <span className="location-icon">📍</span>
-          <span className="location-text">
-            {club.city}, {club.country}
-          </span>
-        </div>
 
         {club.website && (
           <div className="club-website">
