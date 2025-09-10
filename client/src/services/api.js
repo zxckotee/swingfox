@@ -83,8 +83,8 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && !isRedirecting) {
-      // Токен истек или недействителен
+    if ((error.response?.status === 401 || error.response?.status === 403) && !isRedirecting) {
+      // Токен истек или недействителен (401 или 403)
       isRedirecting = true;
       setToken(null);
       

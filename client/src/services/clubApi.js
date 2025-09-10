@@ -1,6 +1,9 @@
 // Club API Service
 const API_BASE_URL = '/api/club';
 
+// Флаг для предотвращения повторных редиректов
+let isClubRedirecting = false;
+
 // Helper function for API calls
 const apiCall = async (endpoint, options = {}) => {
   const token = localStorage.getItem('clubToken');
@@ -18,6 +21,22 @@ const apiCall = async (endpoint, options = {}) => {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
     
     if (!response.ok) {
+      // Обработка ошибок авторизации
+      if ((response.status === 401 || response.status === 403) && !isClubRedirecting) {
+        isClubRedirecting = true;
+        localStorage.removeItem('clubToken');
+        
+        // Перенаправляем на страницу входа клуба
+        window.location.href = '/club/login';
+        
+        // Сбрасываем флаг через некоторое время
+        setTimeout(() => {
+          isClubRedirecting = false;
+        }, 1000);
+        
+        throw new Error('Недействительный токен');
+      }
+      
       let errorMessage = 'API Error';
       try {
         const error = await response.json();
@@ -512,9 +531,17 @@ export const clubAuth = {
 
 // Error handling
 export const handleApiError = (error) => {
-  if (error.message === 'Unauthorized') {
-    localStorage.removeItem('clubToken');
-    window.location.href = '/club/login';
+  if (error.message === 'Unauthorized' || error.message === 'Недействительный токен') {
+    if (!isClubRedirecting) {
+      isClubRedirecting = true;
+      localStorage.removeItem('clubToken');
+      window.location.href = '/club/login';
+      
+      // Сбрасываем флаг через некоторое время
+      setTimeout(() => {
+        isClubRedirecting = false;
+      }, 1000);
+    }
     return;
   }
   
