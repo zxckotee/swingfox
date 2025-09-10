@@ -91,6 +91,30 @@
   overflow: hidden;
 }
 
+/* Дополнительные стили для чекбоксов поиска */
+.search-status-checkboxes {
+  margin-top: 8px;
+}
+
+.search-status-checkboxes .checkbox-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .search-status-checkboxes .checkbox-group {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .search-status-checkboxes .checkbox-group {
+    gap: 8px;
+  }
+}
+
 .auth-button::before {
   content: '';
   position: absolute;

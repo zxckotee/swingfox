@@ -1430,9 +1430,31 @@ const Profile = () => {
                   {(profile.searchStatus || profile.searchAge || profile.location) && (
                     <InfoSection>
                       <h3>Что ищет</h3>
-                      {profile.searchStatus && <InfoItem><strong>Статус:</strong> {profile.searchStatus}</InfoItem>}
+                      {profile.searchStatus && (
+                        <InfoItem>
+                          <strong>Кого ищет:</strong>
+                          <div style={{ marginTop: '4px', marginLeft: '8px' }}>
+                            {profile.searchStatus.split('&&').map((status, index) => (
+                              <div key={index} style={{ marginBottom: '2px' }}>
+                                • {status.trim()}
+                              </div>
+                            ))}
+                          </div>
+                        </InfoItem>
+                      )}
                       {profile.searchAge && <InfoItem><strong>Возраст:</strong> {profile.searchAge}</InfoItem>}
-                      {profile.location && <InfoItem><strong>Места для встреч:</strong> {profile.location}</InfoItem>}
+                      {profile.location && (
+                        <InfoItem>
+                          <strong>Где предпочитает знакомиться:</strong>
+                          <div style={{ marginTop: '4px', marginLeft: '8px' }}>
+                            {profile.location.split('&&').map((place, index) => (
+                              <div key={index} style={{ marginBottom: '2px' }}>
+                                • {place.trim()}
+                              </div>
+                            ))}
+                          </div>
+                        </InfoItem>
+                      )}
                     </InfoSection>
                   )}
 

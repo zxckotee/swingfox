@@ -6,6 +6,8 @@ import styled from 'styled-components';
 import toast from 'react-hot-toast';
 import { authAPI, apiUtils } from '../services/api';
 import { LocationSelector } from '../components/Geography';
+import SearchStatusCheckboxes from '../components/UI/SearchStatusCheckboxes';
+import LocationCheckboxes from '../components/UI/LocationCheckboxes';
 import '../styles/AuthPages.css';
 
 // Иконки для глаза (показать/скрыть пароль)
@@ -591,6 +593,8 @@ const Register = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedStatus, setSelectedStatus] = useState('');
+  const [selectedSearchStatus, setSelectedSearchStatus] = useState([]);
+  const [selectedLocations, setSelectedLocations] = useState([]);
   const [emailCode, setEmailCode] = useState('');
   const [isCodeSent, setIsCodeSent] = useState(false);
   const [codeTimer, setCodeTimer] = useState(0);
@@ -631,20 +635,20 @@ const Register = () => {
     }
     
     // Проверяем, что выбрано хотя бы одно место для встреч
-    if (allFields.location && Array.isArray(allFields.location) && allFields.location.length > 0) {
+    if (selectedLocations.length > 0) {
       requiredFields.push('location');
     }
     
     const filledFields = requiredFields.filter(field => {
       if (field === 'location') {
-        return allFields.location && Array.isArray(allFields.location) && allFields.location.length > 0;
+        return selectedLocations.length > 0;
       }
       return allFields[field];
     });
     
     const progress = (filledFields.length / requiredFields.length) * 100;
     setFormProgress(progress);
-  }, [allFields, selectedStatus]);
+  }, [allFields, selectedStatus, selectedLocations]);
 
   // Таймер для повторной отправки кода
   useEffect(() => {
@@ -699,6 +703,11 @@ const Register = () => {
       return;
     }
 
+    if (selectedSearchStatus.length === 0) {
+      toast.error('Выберите кого ищете');
+      return;
+    }
+
     // Формируем данные в зависимости от статуса
     let individualData = {};
     
@@ -733,8 +742,10 @@ const Register = () => {
     }
 
     // Обработка поля location (массив чекбоксов)
-    const locationArray = Array.isArray(data.location) ? data.location : [];
-    const locationString = locationArray.join('&&');
+    const locationString = selectedLocations.join('&&');
+
+    // Обработка поля search_status (массив чекбоксов)
+    const searchStatusString = selectedSearchStatus.join('&&');
 
     const submitData = {
       email: data.email,
@@ -745,7 +756,7 @@ const Register = () => {
         status: selectedStatus,
         country: data.country || 'Россия',
         city: data.city,
-        search_status: data.searchStatus,
+        search_status: searchStatusString,
         search_age: data.searchAge,
         location: locationString,
         mobile: data.mobile || '',
@@ -769,6 +780,14 @@ const Register = () => {
     { value: 'Несемейная пара(М+Ж)', label: 'Несемейную пару(М+Ж)' },
     { value: 'Мужчина', label: 'Мужчину' },
     { value: 'Женщина', label: 'Женщину' }
+  ];
+
+  const locationTypes = [
+    { value: 'У себя дома (пригласим к себе)', label: 'У себя дома (пригласим к себе)' },
+    { value: 'У вас дома (примем приглашение)', label: 'У вас дома (примем приглашение)' },
+    { value: 'В свинг-клубе или на закрытой вечеринке', label: 'В свинг-клубе или на закрытой вечеринке' },
+    { value: 'В сауне', label: 'В сауне' },
+    { value: 'В гостинице или на съемной квартире', label: 'В гостинице или на съемной квартире' }
   ];
 
   const ageRanges = [
@@ -816,7 +835,7 @@ const Register = () => {
     } else {
       setCurrentStep(1);
     }
-  }, [allFields, selectedStatus]);
+  }, [allFields, selectedStatus, selectedLocations]);
 
   return (
     <RegisterContainer>
@@ -1021,20 +1040,12 @@ const Register = () => {
             <FormRow>
               <FormGroup>
                 <Label>Кого ищете <span className="required">*</span></Label>
-                <Select
-                  {...register('searchStatus', {
-                    required: 'Выберите кого ищете'
-                  })}
-                  className={errors.searchStatus ? 'error' : ''}
-                >
-                  <option value="">Выберите...</option>
-                  {searchStatusTypes.map(type => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </Select>
-                {errors.searchStatus && <ErrorText>{errors.searchStatus.message}</ErrorText>}
+                <SearchStatusCheckboxes
+                  options={searchStatusTypes}
+                  selectedValues={selectedSearchStatus}
+                  onChange={setSelectedSearchStatus}
+                  error={selectedSearchStatus.length === 0 ? 'Выберите кого ищете' : null}
+                />
               </FormGroup>
 
               <FormGroup>
@@ -1146,24 +1157,11 @@ const Register = () => {
 
               <FormGroup>
                 <Label>Предпочитаемые места для встреч</Label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {[
-                    { id: 'У себя дома (пригласим к себе)', label: 'У себя дома (пригласим к себе)' },
-                    { id: 'У вас дома (примем приглашение)', label: 'У вас дома (примем приглашение)' },
-                    { id: 'В свинг-клубе или на закрытой вечеринке', label: 'В свинг-клубе или на закрытой вечеринке' },
-                    { id: 'В сауне', label: 'В сауне' },
-                    { id: 'В гостинице или на съемной квартире', label: 'В гостинице или на съемной квартире' }
-                  ].map(option => (
-                    <label key={option.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <input
-                        type="checkbox"
-                        value={option.id}
-                        {...register('location')}
-                      />
-                      <span style={{ fontSize: '14px' }}>{option.label}</span>
-                    </label>
-                  ))}
-                </div>
+                <LocationCheckboxes
+                  options={locationTypes}
+                  selectedValues={selectedLocations}
+                  onChange={setSelectedLocations}
+                />
               </FormGroup>
             </FormRow>
 

@@ -549,8 +549,14 @@ const Catalog = () => {
                           border: '1px solid rgba(34, 197, 94, 0.2)',
                           color: '#166534'
                         }}>
-                          <div style={{ fontWeight: 'bold', marginBottom: '3px' }}>🔍 Ищет:</div>
-                          <div>{user.searchStatus}</div>
+                          <div style={{ fontWeight: 'bold', marginBottom: '3px' }}>🔍 Кого ищет</div>
+                          <div>
+                            {user.searchStatus.split('&&').map((status, index) => (
+                              <div key={index} style={{ marginBottom: '1px' }}>
+                                • {status.trim()}
+                              </div>
+                            ))}
+                          </div>
                           {user.searchAge && (
                             <div style={{ fontSize: '10px', marginTop: '3px', opacity: 0.8 }}>
                               Возраст: {user.searchAge}

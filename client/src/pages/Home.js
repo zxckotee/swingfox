@@ -2083,8 +2083,12 @@ const Home = () => {
                     <div className="partner-info search-info">
                       <div className="title">🔍 Кого ищет</div>
                       <div className="details">
-                        <div>
-                          <strong>Ищет:</strong> {currentProfile.searchStatus}
+                        <div style={{ marginTop: '4px', marginLeft: '8px' }}>
+                          {currentProfile.searchStatus.split('&&').map((status, index) => (
+                            <div key={index} style={{ marginBottom: '2px' }}>
+                              • {status.trim()}
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -2093,17 +2097,14 @@ const Home = () => {
                   {/* Предпочитаемое место встречи */}
                   {currentProfile.location && (
                     <div className="partner-info location-info">
-                      <div className="title">📍 Где знакомиться</div>
+                      <div className="title">📍 Где предпочитает знакомиться</div>
                       <div className="details">
-                        <div>
-                          <strong>Предпочитает:</strong>
-                          <div style={{ marginTop: '4px', marginLeft: '8px' }}>
-                            {currentProfile.location.split('&&').map((place, index) => (
-                              <div key={index} style={{ marginBottom: '2px' }}>
-                                • {place.trim()}
-                              </div>
-                            ))}
-                          </div>
+                        <div style={{ marginTop: '4px', marginLeft: '8px' }}>
+                          {currentProfile.location.split('&&').map((place, index) => (
+                            <div key={index} style={{ marginBottom: '2px' }}>
+                              • {place.trim()}
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </div>
