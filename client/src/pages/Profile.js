@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { usersAPI, swipeAPI, chatAPI, giftsAPI, ratingAPI, subscriptionsAPI, apiUtils, privacyAPI } from '../services/api';
 import { LocationSelector } from '../components/Geography';
 import RatingDisplay from '../components/RatingDisplay';
+import ProfileRating from '../components/ProfileRating';
 import PhotoComments from '../components/PhotoComments';
 import ProfileComments from '../components/ProfileComments';
 import Reactions from '../components/Reactions';
@@ -744,6 +745,19 @@ const Profile = () => {
     }
   );
 
+  // Получение рейтинга пользователя (только для чужих профилей)
+  const { data: userRating } = useQuery(
+    ['rating', targetLogin],
+    () => ratingAPI.getUserRating(targetLogin),
+    {
+      enabled: !isOwnProfile && !!targetLogin,
+      retry: false,
+      onError: (error) => {
+        console.error('Rating API error:', error);
+      }
+    }
+  );
+
   // Получение статуса мэтча (только для чужих профилей)
   const { data: matchStatus } = useQuery(
     ['match-status', targetLogin],
@@ -1188,13 +1202,11 @@ const Profile = () => {
         {/* Интеграция рейтинговой системы */}
         {!isOwnProfile && (
           <RatingSection>
-                        <RatingDisplay
+            <ProfileRating
               targetUser={targetLogin}
-              onRatingSubmit={() => {
-                if (targetLogin) {
-                  queryClient.invalidateQueries(['profile', targetLogin]);
-                }
-              }}
+              currentUser={currentUser}
+              initialRating={userRating}
+              canVote={true}
             />
           </RatingSection>
         )}

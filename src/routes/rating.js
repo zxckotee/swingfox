@@ -3,6 +3,7 @@ const router = express.Router();
 const { Rating, User, Notifications } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { APILogger } = require('../utils/logger');
+const { sequelize } = require('../config/database');
 
 // GET /api/rating/leaderboard - Лидерборд рейтинга
 router.get('/leaderboard', authenticateToken, async (req, res) => {
@@ -55,67 +56,92 @@ router.get('/leaderboard', authenticateToken, async (req, res) => {
     }
     userWhereClause.status = { [Rating.sequelize.Sequelize.Op.ne]: 'BANNED' };
 
-    // Получаем лидерборд - используем подзапрос для избежания проблем с GROUP BY
-    const leaderboardQuery = `
-      SELECT 
-        r.to_user,
-        SUM(r.value) as rating_score,
-        COUNT(r.value) as total_votes,
-        SUM(CASE WHEN r.value = 1 THEN 1 ELSE 0 END) as positive_votes
-      FROM rating r
-      WHERE r.created_at >= :startDate
-      GROUP BY r.to_user
-      HAVING COUNT(r.value) >= 3
-      ORDER BY SUM(r.value) DESC, COUNT(r.value) DESC
-      LIMIT :limit
-    `;
-
-    const leaderboard = await Rating.sequelize.query(leaderboardQuery, {
-      replacements: {
-        startDate: whereClause.created_at ? whereClause.created_at[Rating.sequelize.Sequelize.Op.gte] : new Date(0),
-        limit: parseInt(limit)
-      },
-      type: Rating.sequelize.QueryTypes.SELECT
-    });
-
-    // Получаем информацию о пользователях для лидерборда
-    const userIds = leaderboard.map(item => item.to_user);
-    const userData = await User.findAll({
+    // Получаем всех пользователей для комплексного расчета рейтинга
+    const allUsers = await User.findAll({
       where: {
-        login: { [Rating.sequelize.Sequelize.Op.in]: userIds },
         ...userWhereClause
       },
-      attributes: ['login', 'ava', 'city', 'viptype', 'status']
+      attributes: ['login', 'ava', 'city', 'viptype', 'status'],
+      limit: parseInt(limit) * 3 // Берем больше пользователей для сортировки
     });
 
-    // Создаем мапу пользователей для быстрого доступа
-    const userMap = {};
-    userData.forEach(user => {
-      userMap[user.login] = user;
-    });
+    // Рассчитываем комплексный рейтинг для каждого пользователя
+    const usersWithRating = await Promise.all(
+      allUsers.map(async (user) => {
+        try {
+          const comprehensiveRating = await Rating.getComprehensiveRating(user.login);
+          return {
+            user,
+            rating: comprehensiveRating
+          };
+        } catch (error) {
+          console.error(`Error calculating rating for ${user.login}:`, error);
+          return {
+            user,
+            rating: {
+              comprehensive_score: 0,
+              total_activity: 0,
+              direct_rating: { score: 0, votes: 0, positive_votes: 0, negative_votes: 0, percentage_positive: 0 },
+              photo_reactions: { score: 0, count: 0 },
+              profile_reactions: { score: 0, count: 0 },
+              comments: { profile_comments: 0, photo_comments: 0, total_comments: 0 },
+              photo_likes: 0
+            }
+          };
+        }
+      })
+    );
+
+    // Фильтруем пользователей с минимальной активностью и сортируем
+    const leaderboard = usersWithRating
+      .filter(item => item.rating.total_activity >= 3) // Минимум 3 активности
+      .sort((a, b) => {
+        // Сортируем по комплексному рейтингу, затем по общей активности
+        if (b.rating.comprehensive_score !== a.rating.comprehensive_score) {
+          return b.rating.comprehensive_score - a.rating.comprehensive_score;
+        }
+        return b.rating.total_activity - a.rating.total_activity;
+      })
+      .slice(0, parseInt(limit));
 
     // Форматируем результат
-    const formattedUsers = leaderboard.map((rating, index) => {
-      const ratingScore = parseInt(rating.rating_score) || 0;
-      const totalVotes = parseInt(rating.total_votes) || 0;
-      const positiveVotes = parseInt(rating.positive_votes) || 0;
-      const user = userMap[rating.to_user];
+    const formattedUsers = leaderboard.map((item, index) => {
+      const user = item.user;
+      const rating = item.rating;
       
       return {
-        id: rating.to_user,
-        login: rating.to_user,
-        name: rating.to_user, // Using login instead of name since User model doesn't have name
-        avatar: user ? user.ava : null,
-        city: user ? user.city : null,
-        vip_level: user ? user.viptype : null,
-        rating_score: ratingScore,
-        total_votes: totalVotes,
-        positive_votes: positiveVotes,
-        negative_votes: totalVotes - positiveVotes,
-        percentage_positive: totalVotes > 0 ? Math.round((positiveVotes / totalVotes) * 100) : 0,
+        id: user.login,
+        login: user.login,
+        name: user.login, // Using login instead of name since User model doesn't have name
+        avatar: user.ava,
+        city: user.city,
+        vip_level: user.viptype,
+        rating_score: rating.comprehensive_score,
+        total_votes: rating.direct_rating.votes,
+        positive_votes: rating.direct_rating.positive_votes,
+        negative_votes: rating.direct_rating.negative_votes,
+        percentage_positive: rating.direct_rating.percentage_positive,
         position: index + 1,
-        profile_views: 0, // TODO: Добавить когда будет статистика
-        likes_received: 0, // TODO: Добавить когда будет статистика
+        
+        // Детальная активность
+        activity: {
+          total: rating.total_activity,
+          direct_rating: rating.direct_rating.votes,
+          photo_reactions: rating.photo_reactions.count,
+          profile_reactions: rating.profile_reactions.count,
+          comments: rating.comments.total_comments,
+          photo_likes: rating.photo_likes
+        },
+        
+        // Детальные оценки
+        scores: {
+          direct_rating: rating.direct_rating.score,
+          photo_reactions: rating.photo_reactions.score,
+          profile_reactions: rating.profile_reactions.score,
+          comments: rating.comments.total_comments,
+          photo_likes: rating.photo_likes
+        },
+        
         rating_change: 0 // TODO: Добавить расчет изменений
       };
     });
@@ -422,41 +448,67 @@ router.get('/my/stats', authenticateToken, async (req, res) => {
       current_user: currentUser
     }, req);
 
-    // Получаем текущий рейтинг
-    const currentRating = await Rating.getUserRating(currentUser);
+    // Получаем текущий комплексный рейтинг
+    const currentRating = await Rating.getComprehensiveRating(currentUser);
 
-    // Получаем позицию в общем рейтинге
-    const higherRatedUsers = await Rating.findAll({
-      attributes: [
-        'to_user',
-        [Rating.sequelize.fn('SUM', Rating.sequelize.col('value')), 'total_rating']
-      ],
-      include: [
-        {
-          model: User,
-          as: 'rated',
-          attributes: ['login'],
-          where: {
-            status: { [Rating.sequelize.Sequelize.Op.ne]: 'BANNED' }
-          }
-        }
-      ],
-      group: ['to_user', 'rated.login'],
-      having: Rating.sequelize.literal(`SUM(value) > ${currentRating.total_rating} AND COUNT(value) >= 3`),
-      raw: true
+    // Получаем позицию в общем рейтинге на основе комплексного рейтинга
+    const allUsers = await User.findAll({
+      where: {
+        status: { [Rating.sequelize.Sequelize.Op.ne]: 'BANNED' }
+      },
+      attributes: ['login'],
+      limit: 100 // Берем больше пользователей для точного расчета позиции
     });
 
-    const currentPosition = higherRatedUsers.length + 1;
+    // Рассчитываем комплексный рейтинг для всех пользователей
+    const usersWithRating = await Promise.all(
+      allUsers.map(async (user) => {
+        try {
+          const rating = await Rating.getComprehensiveRating(user.login);
+          return {
+            login: user.login,
+            score: rating.comprehensive_score,
+            activity: rating.total_activity
+          };
+        } catch (error) {
+          return {
+            login: user.login,
+            score: 0,
+            activity: 0
+          };
+        }
+      })
+    );
 
-    // Получаем изменение за месяц
+    // Сортируем пользователей по комплексному рейтингу
+    const sortedUsers = usersWithRating
+      .filter(user => user.activity >= 3) // Минимум 3 активности
+      .sort((a, b) => {
+        if (b.score !== a.score) {
+          return b.score - a.score;
+        }
+        return b.activity - a.activity;
+      });
+
+    // Находим позицию текущего пользователя
+    const currentPosition = sortedUsers.findIndex(user => user.login === currentUser) + 1;
+
+    // Получаем изменение за месяц (комплексное)
     const monthAgo = new Date();
     monthAgo.setMonth(monthAgo.getMonth() - 1);
 
-    const monthlyRatings = await Rating.findAll({
+    // Рассчитываем рейтинг месяц назад (упрощенно)
+    // В реальной системе нужно было бы хранить историю рейтингов
+    // Здесь мы используем приблизительный расчет на основе активности за месяц
+    
+    const { Reactions, ProfileComments, PhotoComments } = Rating.sequelize.models;
+    
+    // Прямые оценки за месяц
+    const monthlyDirectRatings = await Rating.findAll({
       where: {
         to_user: currentUser,
         created_at: {
-          [Rating.sequelize.Sequelize.Op.gte]: monthAgo
+          [sequelize.Sequelize.Op.gte]: monthAgo
         }
       },
       attributes: [
@@ -465,7 +517,80 @@ router.get('/my/stats', authenticateToken, async (req, res) => {
       raw: true
     });
 
-    const monthChange = parseInt(monthlyRatings[0]?.month_change) || 0;
+    const monthlyDirectChange = parseInt(monthlyDirectRatings[0]?.month_change) || 0;
+
+    // Реакции на профиль за месяц
+    const monthlyProfileReactions = await Reactions.findAll({
+      where: {
+        object_type: 'profile',
+        object_id: currentUser,
+        created_at: {
+          [sequelize.Sequelize.Op.gte]: monthAgo
+        }
+      },
+      attributes: [
+        [Rating.sequelize.fn('SUM', Rating.sequelize.col('value')), 'month_reactions']
+      ],
+      raw: true
+    });
+
+    const monthlyProfileReactionChange = parseInt(monthlyProfileReactions[0]?.month_reactions) || 0;
+
+    // Реакции на фото за месяц
+    const monthlyPhotoReactions = await Reactions.findAll({
+      where: {
+        object_type: 'image',
+        object_id: { [Rating.sequelize.Sequelize.Op.like]: `%${currentUser}%` },
+        created_at: {
+          [sequelize.Sequelize.Op.gte]: monthAgo
+        }
+      },
+      attributes: [
+        [Rating.sequelize.fn('SUM', Rating.sequelize.col('value')), 'month_reactions']
+      ],
+      raw: true
+    });
+
+    const monthlyPhotoReactionChange = parseInt(monthlyPhotoReactions[0]?.month_reactions) || 0;
+
+    // Комментарии к профилю за месяц
+    const monthlyProfileComments = await ProfileComments.count({
+      where: {
+        to_user: currentUser,
+        is_deleted: false,
+        created_at: {
+          [sequelize.Sequelize.Op.gte]: monthAgo
+        }
+      }
+    });
+
+    // Комментарии к фото за месяц
+    const monthlyPhotoComments = await PhotoComments.count({
+      where: {
+        image_filename: { [Rating.sequelize.Sequelize.Op.like]: `%${currentUser}%` },
+        is_deleted: false,
+        created_at: {
+          [sequelize.Sequelize.Op.gte]: monthAgo
+        }
+      }
+    });
+
+    // Рассчитываем комплексное изменение за месяц с теми же весами
+    const weights = {
+      directRating: 3.0,
+      photoReactions: 2.0,
+      profileReactions: 1.5,
+      profileComments: 1.0,
+      photoComments: 0.8,
+      photoLikes: 0.5
+    };
+
+    const monthChange = 
+      (monthlyDirectChange * weights.directRating) +
+      (monthlyPhotoReactionChange * weights.photoReactions) +
+      (monthlyProfileReactionChange * weights.profileReactions) +
+      (monthlyProfileComments * weights.profileComments) +
+      (monthlyPhotoComments * weights.photoComments);
 
     // Получаем историю изменений (последние 10 оценок)
     const ratingHistory = await Rating.findAll({
@@ -490,23 +615,35 @@ router.get('/my/stats', authenticateToken, async (req, res) => {
     }));
 
     // Получаем максимальный рейтинг (исторический)
-    const maxRating = Math.max(currentRating.total_rating, 0);
+    const maxRating = Math.max(currentRating.comprehensive_score, 0);
 
     const responseData = {
-      current_rating: currentRating.total_rating,
-      current_position: currentPosition,
+      current_rating: currentRating.comprehensive_score,
+      current_position: currentPosition || 999, // Если позиция не найдена, показываем высокий номер
       rating_change: monthChange,
       max_rating: maxRating,
-      total_votes: currentRating.total_votes,
-      positive_votes: currentRating.positive_votes,
-      negative_votes: currentRating.negative_votes,
-      percentage_positive: currentRating.percentage_positive,
+      total_votes: currentRating.direct_rating?.votes || 0,
+      positive_votes: currentRating.direct_rating?.positive_votes || 0,
+      negative_votes: currentRating.direct_rating?.negative_votes || 0,
+      percentage_positive: currentRating.direct_rating?.percentage_positive || 0,
+      total_activity: currentRating.total_activity || 0,
+      
+      // Детальная статистика
+      detailed_stats: {
+        direct_rating: currentRating.direct_rating,
+        photo_reactions: currentRating.photo_reactions,
+        profile_reactions: currentRating.profile_reactions,
+        comments: currentRating.comments,
+        photo_likes: currentRating.photo_likes
+      },
+      
       rating_history: history
     };
 
     logger.logSuccess(req, 200, {
-      current_rating: currentRating.total_rating,
+      current_rating: currentRating.comprehensive_score,
       current_position: currentPosition,
+      total_activity: currentRating.total_activity,
       history_count: history.length
     });
     
@@ -545,8 +682,8 @@ router.get('/:username', authenticateToken, async (req, res) => {
       });
     }
 
-    // Получаем рейтинг пользователя
-    const ratingData = await Rating.getUserRating(username);
+    // Получаем комплексный рейтинг пользователя
+    const comprehensiveRating = await Rating.getComprehensiveRating(username);
     
     // Проверяем, оценивал ли текущий пользователь целевого
     const userRating = await Rating.findOne({
@@ -566,7 +703,7 @@ router.get('/:username', authenticateToken, async (req, res) => {
         avatar: targetUser.ava,
         vip_type: targetUser.viptype
       },
-      rating: ratingData,
+      rating: comprehensiveRating,
       user_vote: userRating ? userRating.value : null,
       can_vote: currentUser !== username, // Нельзя голосовать за себя
       recent_ratings: ratingHistory.map(rating => ({
@@ -583,7 +720,7 @@ router.get('/:username', authenticateToken, async (req, res) => {
 
     logger.logSuccess(req, 200, {
       target_user: username,
-      total_rating: ratingData.total_rating,
+      comprehensive_score: comprehensiveRating.comprehensive_score,
       user_has_voted: !!userRating
     });
     
