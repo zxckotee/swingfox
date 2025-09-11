@@ -54,14 +54,6 @@ const Ads = sequelize.define('Ads', {
       len: [2, 100]
     }
   },
-  price: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: true,
-    defaultValue: 0,
-    validate: {
-      min: 0
-    }
-  },
   contact_info: {
     type: DataTypes.TEXT,
     allowNull: true

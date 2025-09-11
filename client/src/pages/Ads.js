@@ -250,7 +250,7 @@ const AdTitle = styled.h3`
 
 const AdDescription = styled.p`
   color: #4a5568;
-  margin: 0 0 20px 0;
+  margin: 0 0 15px 0;
   font-size: 15px;
   line-height: 1.5;
   display: -webkit-box;
@@ -264,8 +264,42 @@ const AdDescription = styled.p`
   }
 `;
 
+const AdLocation = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+  border-radius: 8px;
+  border-left: 3px solid #dc3522;
+  
+  .location-icon {
+    font-size: 14px;
+    color: #dc3522;
+  }
+  
+  .location-text {
+    font-size: 13px;
+    color: #4a5568;
+    font-weight: 500;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 6px 10px;
+    
+    .location-icon {
+      font-size: 12px;
+    }
+    
+    .location-text {
+      font-size: 12px;
+    }
+  }
+`;
+
 const AdActions = styled(FlexContainer)`
-  gap: 10px;
+  gap: 8px;
   
   .contact-btn {
     flex: 1;
@@ -273,9 +307,23 @@ const AdActions = styled(FlexContainer)`
   
   @media (max-width: 576px) {
     flex-direction: column;
+    gap: 10px;
     
     .contact-btn {
       width: 100%;
+    }
+  }
+  
+  /* Ограничиваем размер кнопок */
+  button {
+    min-width: 0;
+    flex-shrink: 1;
+    font-size: 14px;
+    padding: 8px 12px;
+    
+    @media (max-width: 576px) {
+      font-size: 13px;
+      padding: 10px 16px;
     }
   }
 `;
@@ -831,6 +879,11 @@ const Ads = () => {
                   <AdTitle>{ad.title}</AdTitle>
                   <AdDescription>{ad.description}</AdDescription>
                   
+                  <AdLocation>
+                    <span className="location-icon">📍</span>
+                    <span className="location-text">{ad.country}, {ad.city}</span>
+                  </AdLocation>
+                  
                   <AdActions>
                     {ad.author !== currentUser?.login ? (
                       <Button 
@@ -942,21 +995,6 @@ const Ads = () => {
                 {errors.description && <ErrorText>{errors.description.message}</ErrorText>}
               </FormGroup>
 
-              <FormGroup>
-                <Label>Цена (необязательно)</Label>
-                <Input
-                  {...register('price', {
-                    min: { value: 0, message: 'Цена не может быть отрицательной' },
-                    pattern: { value: /^\d+(\.\d{1,2})?$/, message: 'Введите корректную цену (например: 100 или 100.50)' }
-                  })}
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  className={errors.price ? 'error' : ''}
-                />
-                {errors.price && <ErrorText>{errors.price.message}</ErrorText>}
-              </FormGroup>
 
               <FormGroup>
                 <Label>Контактная информация (необязательно)</Label>

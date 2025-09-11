@@ -57,26 +57,26 @@ INSERT INTO events (id, title, description, organizer, event_date, location, cit
 -- ОБЪЯВЛЕНИЯ (10 объявлений)
 -- ===========================================
 
-INSERT INTO ads (id, title, description, author, type, country, city, price, contact_info, image, status, approved_by, approved_at, expires_at, views_count, is_featured, created_at, updated_at) VALUES
-(1, 'Ищу пару для совместного отдыха', 'Активная семейная пара ищет единомышленников для совместного времяпрепровождения. Интересы: путешествия, спорт, культурные мероприятия.', 'alex_maria_couple', 'Знакомства', 'Россия', 'Москва', 0.00, 'alex.maria@example.com, +7-900-123-4567', 'no_photo.jpg', 'approved', 'admin', NOW() - INTERVAL '2 days', NOW() + INTERVAL '28 days', 45, true, NOW() - INTERVAL '5 days', NOW() - INTERVAL '1 day'),
+INSERT INTO ads (id, title, description, author, type, country, city, contact_info, image, status, approved_by, approved_at, expires_at, views_count, is_featured, viral_share_enabled, referral_bonus, social_proof_count, created_at, updated_at) VALUES
+(1, 'Ищу пару для совместного отдыха', 'Активная семейная пара ищет единомышленников для совместного времяпрепровождения. Интересы: путешествия, спорт, культурные мероприятия.', 'alex_maria_couple', 'Знакомства', 'Россия', 'Москва', 'alex.maria@example.com, +7-900-123-4567', 'no_photo.jpg', 'approved', 'admin', NOW() - INTERVAL '2 days', NOW() + INTERVAL '28 days', 45, true, true, 0.00, 12, NOW() - INTERVAL '5 days', NOW() - INTERVAL '1 day'),
 
-(2, 'Вечеринка в стиле 80-х', 'Организую тематическую вечеринку в стиле 80-х годов. Приглашаю всех желающих окунуться в атмосферу того времени.', 'dmitry_olga_pair', 'Вечеринки', 'Россия', 'Санкт-Петербург', 1500.00, 'dmitry.olga@example.com, +7-900-234-5678', 'no_photo.jpg', 'approved', 'admin', NOW() - INTERVAL '1 day', NOW() + INTERVAL '29 days', 32, false, NOW() - INTERVAL '3 days', NOW() - INTERVAL '2 hours'),
+(2, 'Вечеринка в стиле 80-х', 'Организую тематическую вечеринку в стиле 80-х годов. Приглашаю всех желающих окунуться в атмосферу того времени.', 'dmitry_olga_pair', 'Вечеринки', 'Россия', 'Санкт-Петербург', 'dmitry.olga@example.com, +7-900-234-5678', 'no_photo.jpg', 'approved', 'admin', NOW() - INTERVAL '1 day', NOW() + INTERVAL '29 days', 32, false, true, 0.00, 8, NOW() - INTERVAL '3 days', NOW() - INTERVAL '2 hours'),
 
-(3, 'Поиск партнера для занятий спортом', 'Ищу партнера для совместных тренировок в спортзале. Предпочтительно женщина 25-35 лет.', 'sergey_solo', 'Знакомства', 'Россия', 'Екатеринбург', 0.00, 'sergey@example.com, +7-900-345-6789', 'no_photo.jpg', 'approved', 'admin', NOW() - INTERVAL '3 days', NOW() + INTERVAL '27 days', 28, false, NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour'),
+(3, 'Поиск партнера для занятий спортом', 'Ищу партнера для совместных тренировок в спортзале. Предпочтительно женщина 25-35 лет.', 'sergey_solo', 'Знакомства', 'Россия', 'Екатеринбург', 'sergey@example.com, +7-900-345-6789', 'no_photo.jpg', 'approved', 'admin', NOW() - INTERVAL '3 days', NOW() + INTERVAL '27 days', 28, false, true, 0.00, 5, NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour'),
 
-(4, 'Мастер-класс по танцам', 'Провожу мастер-класс по латиноамериканским танцам для начинающих. Группы до 8 человек.', 'anna_beautiful', 'Мероприятия', 'Россия', 'Новосибирск', 2000.00, 'anna@example.com, +7-900-456-7890', 'no_photo.jpg', 'approved', 'admin', NOW() - INTERVAL '4 days', NOW() + INTERVAL '26 days', 67, true, NOW() - INTERVAL '10 days', NOW() - INTERVAL '30 minutes'),
+(4, 'Мастер-класс по танцам', 'Провожу мастер-класс по латиноамериканским танцам для начинающих. Группы до 8 человек.', 'anna_beautiful', 'Мероприятия', 'Россия', 'Новосибирск', 'anna@example.com, +7-900-456-7890', 'no_photo.jpg', 'approved', 'admin', NOW() - INTERVAL '4 days', NOW() + INTERVAL '26 days', 67, true, true, 0.00, 23, NOW() - INTERVAL '10 days', NOW() - INTERVAL '30 minutes'),
 
-(5, 'Семейный отдых на даче', 'Приглашаем семью с детьми на совместный отдых на нашей даче. Бассейн, мангал, детская площадка.', 'vlad_elena_family', 'Встречи', 'Россия', 'Казань', 0.00, 'vlad.elena@example.com, +7-900-567-8901', 'no_photo.jpg', 'approved', 'admin', NOW() - INTERVAL '1 day', NOW() + INTERVAL '29 days', 23, false, NOW() - INTERVAL '12 days', NOW() - INTERVAL '1 hour'),
+(5, 'Семейный отдых на даче', 'Приглашаем семью с детьми на совместный отдых на нашей даче. Бассейн, мангал, детская площадка.', 'vlad_elena_family', 'Встречи', 'Россия', 'Казань', 'vlad.elena@example.com, +7-900-567-8901', 'no_photo.jpg', 'approved', 'admin', NOW() - INTERVAL '1 day', NOW() + INTERVAL '29 days', 23, false, true, 0.00, 7, NOW() - INTERVAL '12 days', NOW() - INTERVAL '1 hour'),
 
-(6, 'Кулинарные курсы для пар', 'Организую кулинарные курсы специально для пар. Учимся готовить вместе, общаемся, знакомимся.', 'alex_maria_couple', 'Мероприятия', 'Россия', 'Москва', 3000.00, 'alex.maria@example.com, +7-900-123-4567', 'no_photo.jpg', 'approved', 'admin', NOW() - INTERVAL '2 days', NOW() + INTERVAL '28 days', 41, false, NOW() - INTERVAL '5 days', NOW() - INTERVAL '1 day'),
+(6, 'Кулинарные курсы для пар', 'Организую кулинарные курсы специально для пар. Учимся готовить вместе, общаемся, знакомимся.', 'alex_maria_couple', 'Мероприятия', 'Россия', 'Москва', 'alex.maria@example.com, +7-900-123-4567', 'no_photo.jpg', 'approved', 'admin', NOW() - INTERVAL '2 days', NOW() + INTERVAL '28 days', 41, false, true, 0.00, 15, NOW() - INTERVAL '5 days', NOW() - INTERVAL '1 day'),
 
-(7, 'Поиск напарника для путешествий', 'Ищу напарника для совместных путешествий по России. Планируем поездки на выходные и отпуск.', 'dmitry_olga_pair', 'Знакомства', 'Россия', 'Санкт-Петербург', 0.00, 'dmitry.olga@example.com, +7-900-234-5678', 'no_photo.jpg', 'approved', 'admin', NOW() - INTERVAL '3 days', NOW() + INTERVAL '27 days', 35, false, NOW() - INTERVAL '3 days', NOW() - INTERVAL '2 hours'),
+(7, 'Поиск напарника для путешествий', 'Ищу напарника для совместных путешествий по России. Планируем поездки на выходные и отпуск.', 'dmitry_olga_pair', 'Знакомства', 'Россия', 'Санкт-Петербург', 'dmitry.olga@example.com, +7-900-234-5678', 'no_photo.jpg', 'approved', 'admin', NOW() - INTERVAL '3 days', NOW() + INTERVAL '27 days', 35, false, true, 0.00, 9, NOW() - INTERVAL '3 days', NOW() - INTERVAL '2 hours'),
 
-(8, 'Йога для взрослых', 'Провожу занятия йогой для взрослых в небольших группах. Расслабление, медитация, новые знакомства.', 'anna_beautiful', 'Мероприятия', 'Россия', 'Новосибирск', 1500.00, 'anna@example.com, +7-900-456-7890', 'no_photo.jpg', 'approved', 'admin', NOW() - INTERVAL '5 days', NOW() + INTERVAL '25 days', 52, true, NOW() - INTERVAL '10 days', NOW() - INTERVAL '30 minutes'),
+(8, 'Йога для взрослых', 'Провожу занятия йогой для взрослых в небольших группах. Расслабление, медитация, новые знакомства.', 'anna_beautiful', 'Мероприятия', 'Россия', 'Новосибирск', 'anna@example.com, +7-900-456-7890', 'no_photo.jpg', 'approved', 'admin', NOW() - INTERVAL '5 days', NOW() + INTERVAL '25 days', 52, true, true, 0.00, 18, NOW() - INTERVAL '10 days', NOW() - INTERVAL '30 minutes'),
 
-(9, 'Ищу друзей для настольных игр', 'Собираю компанию для игры в настольные игры. Приветствуются пары и одинокие люди.', 'sergey_solo', 'Общение', 'Россия', 'Екатеринбург', 0.00, 'sergey@example.com, +7-900-345-6789', 'no_photo.jpg', 'approved', 'admin', NOW() - INTERVAL '1 day', NOW() + INTERVAL '29 days', 19, false, NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour'),
+(9, 'Ищу друзей для настольных игр', 'Собираю компанию для игры в настольные игры. Приветствуются пары и одинокие люди.', 'sergey_solo', 'Общение', 'Россия', 'Екатеринбург', 'sergey@example.com, +7-900-345-6789', 'no_photo.jpg', 'approved', 'admin', NOW() - INTERVAL '1 day', NOW() + INTERVAL '29 days', 19, false, true, 0.00, 3, NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour'),
 
-(10, 'Семейный клуб выходного дня', 'Создаю семейный клуб для совместного проведения выходных. Планируем различные активности для всей семьи.', 'vlad_elena_family', 'Встречи', 'Россия', 'Казань', 0.00, 'vlad.elena@example.com, +7-900-567-8901', 'no_photo.jpg', 'approved', 'admin', NOW() - INTERVAL '2 days', NOW() + INTERVAL '28 days', 31, false, NOW() - INTERVAL '12 days', NOW() - INTERVAL '1 hour');
+(10, 'Семейный клуб выходного дня', 'Создаю семейный клуб для совместного проведения выходных. Планируем различные активности для всей семьи.', 'vlad_elena_family', 'Встречи', 'Россия', 'Казань', 'vlad.elena@example.com, +7-900-567-8901', 'no_photo.jpg', 'approved', 'admin', NOW() - INTERVAL '2 days', NOW() + INTERVAL '28 days', 31, false, true, 0.00, 11, NOW() - INTERVAL '12 days', NOW() - INTERVAL '1 hour');
 
 -- ===========================================
 -- КОММЕНТАРИИ К ПРОФИЛЯМ (15 комментариев)
@@ -128,39 +128,6 @@ INSERT INTO club_events (id, club_id, title, description, date, time, location, 
 
 (10, 2, 'Винный вечер', 'Дегустация редких вин с сырами и фруктами. Ведущий сомелье расскажет о каждом сорте.', NOW() + INTERVAL '30 days', '20:00:00', 'Ресторан "Вкус", винный погреб', 20, 0, 3500.00, 'dinner', false, true, 'no_photo.jpg', '["no_photo.jpg"]', 3, NOW() + INTERVAL '30 days' + INTERVAL '3 hours', NOW() - INTERVAL '7 days', NOW() - INTERVAL '1 hour');
 
--- ===========================================
--- УЧАСТНИКИ МЕРОПРИЯТИЙ
--- ===========================================
-
-INSERT INTO event_participants (id, event_id, user_id, status, invited_by, created_at) VALUES
--- Участники клубных мероприятий
-(1, 1, 1, 'confirmed', NULL, NOW() - INTERVAL '5 days'),
-(2, 1, 2, 'confirmed', 1, NOW() - INTERVAL '4 days'),
-(3, 1, 3, 'maybe', 1, NOW() - INTERVAL '3 days'),
-(4, 2, 1, 'confirmed', NULL, NOW() - INTERVAL '6 days'),
-(5, 2, 4, 'confirmed', 1, NOW() - INTERVAL '5 days'),
-(6, 3, 2, 'confirmed', NULL, NOW() - INTERVAL '4 days'),
-(7, 3, 5, 'confirmed', 2, NOW() - INTERVAL '3 days'),
-(8, 4, 3, 'confirmed', NULL, NOW() - INTERVAL '7 days'),
-(9, 4, 1, 'confirmed', 3, NOW() - INTERVAL '6 days'),
-(10, 5, 4, 'confirmed', NULL, NOW() - INTERVAL '5 days'),
-(11, 5, 5, 'confirmed', 4, NOW() - INTERVAL '4 days'),
-(12, 6, 1, 'invited', NULL, NOW() - INTERVAL '2 days'),
-(13, 6, 2, 'invited', 1, NOW() - INTERVAL '1 day'),
-(14, 7, 3, 'invited', NULL, NOW() - INTERVAL '1 day'),
-(15, 7, 4, 'invited', 3, NOW() - INTERVAL '1 day'),
-(16, 8, 5, 'invited', NULL, NOW() - INTERVAL '3 days'),
-(17, 8, 1, 'invited', 5, NOW() - INTERVAL '2 days'),
-(18, 9, 2, 'invited', NULL, NOW() - INTERVAL '5 days'),
-(19, 9, 3, 'invited', 2, NOW() - INTERVAL '4 days'),
-(20, 10, 4, 'invited', NULL, NOW() - INTERVAL '7 days'),
-(21, 10, 5, 'invited', 4, NOW() - INTERVAL '6 days');
-
--- Обновляем счетчики участников в клубных мероприятиях
-UPDATE club_events SET current_participants = (
-  SELECT COUNT(*) FROM event_participants 
-  WHERE event_id = club_events.id AND status = 'confirmed'
-);
 
 -- ===========================================
 -- ЗАВЕРШЕНИЕ
@@ -177,4 +144,3 @@ SELECT 'События: ' || COUNT(*) as events_count FROM events;
 SELECT 'Объявления: ' || COUNT(*) as ads_count FROM ads;
 SELECT 'Комментарии: ' || COUNT(*) as comments_count FROM profile_comments;
 SELECT 'Клубные мероприятия: ' || COUNT(*) as club_events_count FROM club_events;
-SELECT 'Участники мероприятий: ' || COUNT(*) as participants_count FROM event_participants;

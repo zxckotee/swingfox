@@ -83,8 +83,10 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if ((error.response?.status === 401 || error.response?.status === 403) && !isRedirecting) {
-      // Токен истек или недействителен (401 или 403)
+    // Только 401 ошибки приводят к логауту (проблемы с токеном)
+    // 403 ошибки - это проблемы с правами доступа, не с токеном
+    if (error.response?.status === 401 && !isRedirecting) {
+      // Токен истек или недействителен
       isRedirecting = true;
       setToken(null);
       
@@ -95,6 +97,10 @@ apiClient.interceptors.response.use(
       setTimeout(() => {
         isRedirecting = false;
       }, 1000);
+    } else if (error.response?.status === 403) {
+      // 403 - проблема с правами доступа, показываем сообщение
+      const errorMessage = error.response?.data?.message || 'Нет прав доступа';
+      toast.error(errorMessage);
     } else if (error.response?.status >= 500) {
       toast.error('Ошибка сервера. Попробуйте позже.');
     }

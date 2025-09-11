@@ -129,7 +129,6 @@ router.get('/', async (req, res) => {
         description: ad.description,
         country: ad.country,
         city: ad.city,
-        price: ad.price,
         contact_info: ad.contact_info,
         image: ad.image,
         status: ad.status,
@@ -203,7 +202,7 @@ router.post('/create', authenticateToken, upload.single('image'), async (req, re
     console.log('Body:', req.body);
     console.log('File:', req.file);
     
-    const { title, type, description, country, city, price, contact_info } = req.body;
+    const { title, type, description, country, city, contact_info } = req.body;
     const userLogin = req.user.login;
     const imageFile = req.file;
 
@@ -294,7 +293,6 @@ router.post('/create', authenticateToken, upload.single('image'), async (req, re
       type,
       country,
       city,
-      price: price ? parseFloat(price) : 0,
       contact_info: contact_info || null,
       image: imageFile ? imageFile.filename : null,
       status: 'pending'
@@ -350,7 +348,7 @@ router.post('/create', authenticateToken, upload.single('image'), async (req, re
 router.put('/:id', authenticateToken, upload.single('image'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, type, description, country, city, price, contact_info } = req.body;
+    const { title, type, description, country, city, contact_info } = req.body;
     const userLogin = req.user.login;
     const imageFile = req.file;
 
@@ -377,13 +375,8 @@ router.put('/:id', authenticateToken, upload.single('image'), async (req, res) =
       });
     }
 
-    // Проверяем, можно ли редактировать (только в статусе pending)
-    if (ad.status !== 'pending') {
-      return res.status(403).json({ 
-        error: 'cannot_edit',
-        message: 'Можно редактировать только объявления на модерации' 
-      });
-    }
+    // Разрешаем редактировать объявления в любом статусе
+    // Пользователь может редактировать свои объявления всегда
 
     // Проверка при смене типа на "Мероприятия"
     if (type === 'Мероприятия' && ad.type !== 'Мероприятия') {
@@ -410,7 +403,6 @@ router.put('/:id', authenticateToken, upload.single('image'), async (req, res) =
       description,
       country,
       city,
-      price: price ? parseFloat(price) : 0,
       contact_info: contact_info || null,
       updated_at: new Date()
     };
@@ -441,7 +433,6 @@ router.put('/:id', authenticateToken, upload.single('image'), async (req, res) =
         description: ad.description,
         country: ad.country,
         city: ad.city,
-        price: ad.price,
         contact_info: ad.contact_info,
         image: ad.image,
         status: ad.status,
@@ -491,13 +482,8 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       });
     }
 
-    // Проверяем статус объявления (только для удаления)
-    if (ad.status !== 'pending') {
-      return res.status(403).json({ 
-        error: 'cannot_delete',
-        message: 'Можно удалять только объявления на модерации' 
-      });
-    }
+    // Разрешаем удалять объявления в любом статусе
+    // Пользователь может удалять свои объявления всегда
 
     await ad.destroy();
 

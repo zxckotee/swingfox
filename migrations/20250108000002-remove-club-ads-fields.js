@@ -2,16 +2,39 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    // Удаляем поля связанные с клубными объявлениями из таблицы ads
-    await queryInterface.removeColumn('ads', 'club_id');
-    await queryInterface.removeColumn('ads', 'is_club_ad');
-    await queryInterface.removeColumn('ads', 'club_contact_info');
-    await queryInterface.removeColumn('ads', 'event_id');
+    // Проверяем существование колонок перед удалением
+    const tableDescription = await queryInterface.describeTable('ads');
     
-    // Удаляем индексы связанные с клубными объявлениями
-    await queryInterface.removeIndex('ads', 'idx_ads_club_id');
-    await queryInterface.removeIndex('ads', 'idx_ads_is_club_ad');
-    await queryInterface.removeIndex('ads', 'idx_ads_event_id');
+    // Удаляем поля связанные с клубными объявлениями из таблицы ads, если они существуют
+    if (tableDescription.club_id) {
+      await queryInterface.removeColumn('ads', 'club_id');
+    }
+    if (tableDescription.is_club_ad) {
+      await queryInterface.removeColumn('ads', 'is_club_ad');
+    }
+    if (tableDescription.club_contact_info) {
+      await queryInterface.removeColumn('ads', 'club_contact_info');
+    }
+    if (tableDescription.event_id) {
+      await queryInterface.removeColumn('ads', 'event_id');
+    }
+    
+    // Удаляем индексы связанные с клубными объявлениями (игнорируем ошибки если индексы не существуют)
+    try {
+      await queryInterface.removeIndex('ads', 'idx_ads_club_id');
+    } catch (e) {
+      // Индекс не существует, игнорируем
+    }
+    try {
+      await queryInterface.removeIndex('ads', 'idx_ads_is_club_ad');
+    } catch (e) {
+      // Индекс не существует, игнорируем
+    }
+    try {
+      await queryInterface.removeIndex('ads', 'idx_ads_event_id');
+    } catch (e) {
+      // Индекс не существует, игнорируем
+    }
   },
 
   async down(queryInterface, Sequelize) {
