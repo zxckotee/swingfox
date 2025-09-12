@@ -24,10 +24,10 @@ module.exports = (sequelize) => {
       }
     },
     status: {
-      type: DataTypes.ENUM('invited', 'confirmed', 'declined', 'maybe'),
+      type: DataTypes.ENUM('invited', 'confirmed', 'declined', 'maybe', 'attended', 'no_show'),
       defaultValue: 'invited',
       validate: {
-        isIn: [['invited', 'confirmed', 'declined', 'maybe']]
+        isIn: [['invited', 'confirmed', 'declined', 'maybe', 'attended', 'no_show']]
       }
     },
     invited_by: {
@@ -66,6 +66,14 @@ module.exports = (sequelize) => {
 
   EventParticipants.prototype.isMaybe = function() {
     return this.status === 'maybe';
+  };
+
+  EventParticipants.prototype.isAttended = function() {
+    return this.status === 'attended';
+  };
+
+  EventParticipants.prototype.isNoShow = function() {
+    return this.status === 'no_show';
   };
 
   // Статические методы

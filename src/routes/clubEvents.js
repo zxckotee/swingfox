@@ -244,7 +244,10 @@ router.post('/events/:eventId/invite', authenticateClub, checkEventOwnership, as
     // Проверяем, не превышает ли количество приглашений лимит
     if (event.max_participants) {
       const currentParticipants = await EventParticipants.count({
-        where: { event_id: event.id }
+        where: { 
+          event_id: event.id,
+          status: 'confirmed'
+        }
       });
       
       if (currentParticipants + userIds.length > event.max_participants) {
@@ -289,9 +292,22 @@ router.post('/events/:eventId/invite', authenticateClub, checkEventOwnership, as
       }
     }
 
+    // Обновляем счетчик участников в мероприятии
+    const currentParticipantsCount = await EventParticipants.count({
+      where: { 
+        event_id: event.id,
+        status: 'confirmed'
+      }
+    });
+
+    await event.update({
+      current_participants: currentParticipantsCount
+    });
+
     res.json({
       message: `Приглашено ${invitations.length} пользователей`,
       invitations: invitations.length,
+      current_participants: currentParticipantsCount,
       errors: errors.length > 0 ? errors : undefined
     });
 
@@ -353,7 +369,22 @@ router.delete('/events/:eventId/participants/:userId', authenticateClub, checkEv
 
     await participant.destroy();
 
-    res.json({ message: 'Участник удален из мероприятия' });
+    // Обновляем счетчик участников в мероприятии
+    const currentParticipantsCount = await EventParticipants.count({
+      where: { 
+        event_id: event.id,
+        status: 'confirmed'
+      }
+    });
+
+    await event.update({
+      current_participants: currentParticipantsCount
+    });
+
+    res.json({ 
+      message: 'Участник удален из мероприятия',
+      current_participants: currentParticipantsCount
+    });
   } catch (error) {
     console.error('Remove participant error:', error);
     res.status(500).json({ error: 'Ошибка при удалении участника' });

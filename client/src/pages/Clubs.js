@@ -247,6 +247,29 @@ const ClubType = styled.span`
   `}
 `;
 
+const ClubActions = styled.div`
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+`;
+
+const LearnMoreButton = styled(Button)`
+  flex: 1;
+  font-size: 14px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+`;
+
 const MyClubCard = styled(ClubCard)`
   border: 2px solid #dc3522;
   
@@ -912,6 +935,17 @@ const Clubs = () => {
                           {club.is_private ? '🔒 Приватный клуб' : '🌐 Открытый клуб'}
                         </div>
                       </ClubMeta>
+                      
+                      <ClubActions>
+                        <LearnMoreButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/club-profile/${club.id}`);
+                          }}
+                        >
+                          Узнать больше
+                        </LearnMoreButton>
+                      </ClubActions>
                     </ClubContent>
                   </ClubCard>
                 ))}
@@ -980,7 +1014,7 @@ const Clubs = () => {
                         
                         <EventDetailItem>
                           <EventDetailIcon>👥</EventDetailIcon>
-                          <EventDetailTextResponsive>{event.participants?.length || 0}/{event.max_participants || '∞'}</EventDetailTextResponsive>
+                          <EventDetailTextResponsive>{event.current_participants || 0}/{event.max_participants || '∞'}</EventDetailTextResponsive>
                         </EventDetailItem>
                         
                         {event.price && (
@@ -1147,22 +1181,15 @@ const Clubs = () => {
               </div>
 
               <FlexContainer $justify="center">
-                <div style={{ 
-                  textAlign: 'center', 
-                  color: '#718096',
-                  background: '#f7fafc',
-                  padding: '20px',
-                  borderRadius: '12px',
-                  border: '2px dashed #cbd5e0'
-                }}>
-                  <div style={{ fontSize: '24px', marginBottom: '10px' }}>🎉</div>
-                  <p style={{ margin: '0 0 10px 0', fontSize: '16px' }}>
-                    Для участия в мероприятиях клуба
-                  </p>
-                  <p style={{ margin: 0, fontWeight: 'bold', color: '#2d3748' }}>
-                    перейдите во вкладку "Мероприятия"
-                  </p>
-                </div>
+                <LearnMoreButton
+                  onClick={() => {
+                    setShowDetailsModal(false);
+                    navigate(`/club-profile/${selectedClub.id}`);
+                  }}
+                  style={{ minWidth: '200px' }}
+                >
+                  Узнать больше
+                </LearnMoreButton>
               </FlexContainer>
             </ModalContent>
           </Modal>
@@ -1224,7 +1251,7 @@ const Clubs = () => {
                     <div>
                       <strong>👥 Участники:</strong><br />
                       <span style={{ color: '#4a5568' }}>
-                        {selectedEventDetails.participants?.length || 0} из {selectedEventDetails.max_participants || '∞'}
+                        {selectedEventDetails.current_participants || 0} из {selectedEventDetails.max_participants || '∞'}
                       </span>
                     </div>
                     
@@ -1439,7 +1466,7 @@ const Clubs = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '16px' }}>👥</span>
                       <span style={{ color: '#4a5568' }}>
-                        {selectedEvent.participants?.length || 0} из {selectedEvent.max_participants || '∞'} участников
+                        {selectedEvent.current_participants || 0} из {selectedEvent.max_participants || '∞'} участников
                       </span>
                     </div>
                     
