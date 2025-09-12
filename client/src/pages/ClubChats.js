@@ -63,7 +63,6 @@ const ClubChats = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [eventFilter, setEventFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
@@ -173,9 +172,8 @@ const ClubChats = () => {
     const matchesSearch = chat.user?.login?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          chat.user?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          getEventTitle(chat.event_id).toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesEvent = eventFilter === 'all' || chat.event_id === parseInt(eventFilter);
     const matchesStatus = statusFilter === 'all' || chat.participation_status === statusFilter;
-    return matchesSearch && matchesEvent && matchesStatus;
+    return matchesSearch && matchesStatus;
   });
 
   if (loading) {
@@ -191,13 +189,15 @@ const ClubChats = () => {
     <div className="club-chats">
       {/* Header */}
       <div className="chats-header">
-        <div className="header-content">
-          <h1>Чаты с участниками</h1>
-          <p>Управление чатами с участниками ваших мероприятий</p>
+        <div className="chats-header-content">
+          <div className="header-content">
+            <h1>Чаты с участниками</h1>
+            <p>Управление чатами с участниками ваших мероприятий</p>
+          </div>
+          <Link to="/club/dashboard" className="btn btn-secondary">
+            ← Назад к дашборду
+          </Link>
         </div>
-        <Link to="/club/dashboard" className="btn btn-secondary">
-          ← Назад к дашборду
-        </Link>
       </div>
 
       {/* Stats */}
@@ -226,28 +226,13 @@ const ClubChats = () => {
           <SearchIcon className="search-icon" />
           <input
             type="text"
-            placeholder="Поиск по участникам или мероприятиям..."
+            placeholder="Поиск по участникам..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
         
         <div className="filter-group">
-          <div className="filter-item">
-            <FilterIcon className="filter-icon" />
-            <select
-              value={eventFilter}
-              onChange={(e) => setEventFilter(e.target.value)}
-            >
-              <option value="all">Все мероприятия</option>
-              {events.map(event => (
-                <option key={event.id} value={event.id}>
-                  {event.title}
-                </option>
-              ))}
-            </select>
-          </div>
-          
           <div className="filter-item">
             <FilterIcon className="filter-icon" />
             <select
@@ -276,7 +261,7 @@ const ClubChats = () => {
             <div className="empty-icon">💬</div>
             <h3>Нет чатов</h3>
             <p>
-              {searchQuery || eventFilter !== 'all' || statusFilter !== 'all'
+              {searchQuery || statusFilter !== 'all'
                 ? 'Не найдено чатов по заданным критериям'
                 : 'Пока нет чатов с участниками мероприятий'
               }

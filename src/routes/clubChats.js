@@ -47,12 +47,16 @@ router.get('/', authenticateClub, async (req, res) => {
       const event = await ClubEvents.findByPk(chatGroup.event_id);
       
       // Получаем последнее сообщение для этой комбинации пользователь + мероприятие
+      // Ищем сообщения где пользователь участвует в диалоге (как отправитель или получатель)
       const lastMessage = await Chat.findOne({
         where: {
           event_id: chatGroup.event_id,
-          by_user: chatGroup.by_user,
           club_id: clubId,
-          chat_type: 'event'
+          chat_type: 'event',
+          [Op.or]: [
+            { by_user: chatGroup.by_user },
+            { to_user: chatGroup.by_user }
+          ]
         },
         order: [['created_at', 'DESC']]
       });
@@ -62,21 +66,25 @@ router.get('/', authenticateClub, async (req, res) => {
         where: { login: chatGroup.by_user }
       });
       
+      // Пропускаем чаты с несуществующими пользователями
+      if (!user) {
+        console.log(`Skipping chat for non-existent user: ${chatGroup.by_user}`);
+        return null;
+      }
+      
       // Затем ищем участие в мероприятии по user_id (числовой ID)
       let participation = null;
-      if (user) {
-        participation = await EventParticipants.findOne({
-          where: {
-            event_id: chatGroup.event_id,
-            user_id: user.id
-          }
-        });
-      }
+      participation = await EventParticipants.findOne({
+        where: {
+          event_id: chatGroup.event_id,
+          user_id: user.id
+        }
+      });
 
       return {
         id: chatGroup.last_chat_id || `temp_${chatGroup.event_id}_${chatGroup.by_user}`,
         event_id: chatGroup.event_id,
-        user_id: chatGroup.by_user,
+        user_id: user.id,
         user: {
           login: chatGroup.by_user,
           ava: user?.ava || null,
@@ -91,14 +99,17 @@ router.get('/', authenticateClub, async (req, res) => {
       };
     }));
 
+    // Фильтруем null значения (чаты с несуществующими пользователями)
+    const validChats = chatsWithDetails.filter(chat => chat !== null);
+
     logger.logSuccess(req, 200, {
       club_id: clubId,
-      chats_count: chatsWithDetails.length
+      chats_count: validChats.length
     });
     
     res.json({
       success: true,
-      chats: chatsWithDetails
+      chats: validChats
     });
   } catch (error) {
     logger.logError(req, error);
@@ -128,24 +139,40 @@ router.get('/messages', authenticateClub, async (req, res) => {
       });
     }
     
+    console.log('Getting messages for:', { event_id, user_id, club_id: req.club.id });
+    
+    // Получаем логин пользователя по ID
+    const user = await User.findByPk(user_id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Пользователь не найден'
+      });
+    }
+    
     // Получаем все сообщения между клубом и пользователем по мероприятию
+    const clubLogin = `club_${req.club.id}`;
+    const userLogin = user.login;
+    
     const messages = await Chat.findAll({
       where: { 
         event_id: parseInt(event_id),
         club_id: req.club.id,
         chat_type: 'event',
         [Op.or]: [
-          { by_user: user_id },
-          { to_user: user_id }
+          { by_user: userLogin, to_user: clubLogin },
+          { by_user: clubLogin, to_user: userLogin },
+          { by_user: 'bot', to_user: userLogin },
+          // Также ищем сообщения где to_user может быть ID пользователя
+          { by_user: userLogin, to_user: user.id.toString() },
+          { by_user: clubLogin, to_user: user.id.toString() },
+          { by_user: 'bot', to_user: user.id.toString() }
         ]
       },
       order: [['created_at', 'ASC']]
     });
 
-    // Получаем информацию о пользователе
-    const user = await User.findOne({
-      where: { login: messages[0]?.by_user }
-    });
+    console.log('Found messages:', messages.map(m => ({ id: m.id, by_user: m.by_user, to_user: m.to_user, message: m.message.substring(0, 50) })));
 
     logger.logSuccess(req, 200, {
       event_id: event_id,
@@ -155,13 +182,21 @@ router.get('/messages', authenticateClub, async (req, res) => {
     
     res.json({
       success: true,
-      messages: messages.map(msg => ({
-        id: msg.id,
-        message: msg.message,
-        by_user: msg.by_user,
-        user_avatar: user?.ava || null,
-        created_at: msg.created_at
-      }))
+      data: {
+        messages: messages.map(msg => ({
+          id: msg.id,
+          message: msg.message,
+          by_user: msg.by_user,
+          to_user: msg.to_user,
+          created_at: msg.created_at,
+          user_avatar: user?.ava || null
+        })),
+        user: {
+          login: user.login,
+          ava: user.ava || null,
+          email: user.email || null
+        }
+      }
     });
   } catch (error) {
     logger.logError(req, error);
@@ -197,10 +232,20 @@ router.post('/messages', authenticateClub, async (req, res) => {
       });
     }
 
+    // Получаем логин пользователя по ID
+    const { User } = require('../models');
+    const user = await User.findByPk(to_user);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Пользователь не найден'
+      });
+    }
+
     // Создаем новое сообщение от клуба пользователю
     const newMessage = await Chat.create({
       by_user: `club_${req.club.id}`,
-      to_user: to_user,
+      to_user: user.login, // Используем логин вместо ID
       message: message.trim(),
       date: new Date(),
       club_id: req.club.id,

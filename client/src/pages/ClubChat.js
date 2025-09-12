@@ -81,7 +81,7 @@ const ClubChat = () => {
         event_id: chatData.event_id,
         user_id: chatData.user_id
       });
-      setMessages(Array.isArray(messagesData.messages) ? messagesData.messages : []);
+      setMessages(Array.isArray(messagesData.data?.messages) ? messagesData.data.messages : []);
 
       // Загружаем конфигурацию бота клуба
       const botData = await clubApi.getBotConfig();
@@ -118,8 +118,8 @@ const ClubChat = () => {
           id: response.data.id,
           message: newMessage.trim(),
           by_user: `club_${chatData.club_id}`,
-          created_at: new Date().toISOString(),
-          is_from_club: true
+          to_user: chatData.user_id,
+          created_at: new Date().toISOString()
         };
         
         setMessages(prev => [...prev, newMsg]);
@@ -152,11 +152,11 @@ const ClubChat = () => {
       if (botResponse.success && botResponse.message) {
         // Добавляем ответ бота в чат
         const botMsg = {
-          id: `bot_${Date.now()}`,
+          id: botResponse.message_id || `bot_${Date.now()}`,
           message: botResponse.message,
           by_user: 'bot',
-          created_at: new Date().toISOString(),
-          is_from_bot: true
+          to_user: chatData.user_id,
+          created_at: new Date().toISOString()
         };
         
         setMessages(prev => [...prev, botMsg]);
@@ -176,8 +176,8 @@ const ClubChat = () => {
   };
 
   const getMessageClass = (message) => {
-    if (message.is_from_bot) return 'message-bot';
-    if (message.is_from_club) return 'message-club';
+    if (message.by_user === 'bot') return 'message-bot';
+    if (message.by_user.startsWith('club_')) return 'message-club';
     return 'message-user';
   };
 
@@ -257,9 +257,9 @@ const ClubChat = () => {
                 <div className="message-content">
                   <div className="message-header">
                     <span className="message-sender">
-                      {message.is_from_bot ? 'Бот' : 
-                       message.is_from_club ? 'Клуб' : 
-                       chatInfo?.user?.login}
+                      {message.by_user === 'bot' ? 'Бот' : 
+                       message.by_user.startsWith('club_') ? 'Клуб' : 
+                       message.by_user}
                     </span>
                     <span className="message-time">
                       {formatMessageTime(message.created_at)}
