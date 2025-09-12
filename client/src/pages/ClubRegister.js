@@ -104,7 +104,7 @@ const ClubRegister = () => {
       location: data.location,
       contact_info: data.contact_info,
       website: data.website,
-      type: 'general', // Заглушка - всегда "Общий"
+      type: data.type || 'other',
       mail_code: emailCode
     });
   };
@@ -169,6 +169,33 @@ const ClubRegister = () => {
               className={errors.login ? 'error' : ''}
             />
             {errors.login && <ErrorText>{errors.login.message}</ErrorText>}
+          </FormGroup>
+
+          <FormGroup>
+            <Label htmlFor="type">Тип клуба</Label>
+            <select
+              id="type"
+              {...register('type')}
+              className="form-select"
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                fontSize: '14px',
+                backgroundColor: 'white',
+                color: '#2d3748',
+                outline: 'none',
+                transition: 'all 0.2s ease',
+                fontFamily: 'inherit',
+                boxSizing: 'border-box'
+              }}
+            >
+              <option value="other">Другое</option>
+              <option value="nightclub">Ночной клуб</option>
+              <option value="restaurant">Ресторан</option>
+              <option value="event_space">Площадка для мероприятий</option>
+            </select>
           </FormGroup>
 
           <FormGroup>
@@ -425,5 +452,50 @@ const ClubRegister = () => {
     </PageContainer>
   );
 };
+
+// CSS стили для select элемента
+const selectStyles = `
+  .form-select {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    background-color: white;
+    color: #2d3748;
+    outline: none;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    box-sizing: border-box;
+    cursor: pointer;
+  }
+
+  .form-select:hover {
+    border-color: #cbd5e0;
+  }
+
+  .form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+
+  .form-select:focus-visible {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+  }
+
+  .form-select option {
+    padding: 8px;
+    background-color: white;
+    color: #2d3748;
+  }
+`;
+
+// Добавляем стили в head документа
+if (typeof document !== 'undefined') {
+  const styleElement = document.createElement('style');
+  styleElement.textContent = selectStyles;
+  document.head.appendChild(styleElement);
+}
 
 export default ClubRegister;

@@ -324,7 +324,7 @@ router.get('/:username', authenticateToken, async (req, res) => {
 // POST /api/chat/send - Отправка сообщения
 router.post('/send', authenticateToken, upload.array('images', 5), async (req, res) => {
   try {
-    const { to_user, message } = req.body;
+    const { to_user, message, source } = req.body;
     const fromUser = req.user.login;
 
     if (!to_user) {
@@ -384,7 +384,8 @@ router.post('/send', authenticateToken, upload.array('images', 5), async (req, r
     let sendAllowed = true;
     let matchWarning = null;
     
-    if (ENABLE_MATCH_CHECKING) {
+    // Для общения по объявлениям не проверяем матч
+    if (ENABLE_MATCH_CHECKING && source !== 'ad') {
       try {
         const permission = await MatchChecker.canSendMessage(fromUser, to_user);
         
@@ -434,6 +435,12 @@ router.post('/send', authenticateToken, upload.array('images', 5), async (req, r
         // Продолжаем отправку в случае ошибки
         matchWarning = 'Проверка мэтча недоступна';
       }
+    } else if (source === 'ad') {
+      console.log('Message sending allowed for ad conversation:', {
+        fromUser,
+        toUser: to_user,
+        source: 'ad'
+      });
     }
 
     // Обрабатываем загруженные изображения

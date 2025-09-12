@@ -81,7 +81,7 @@ module.exports = (sequelize) => {
       allowNull: true
     },
     type: {
-      type: DataTypes.ENUM('nightclub', 'restaurant', 'event_space', 'other'),
+      type: DataTypes.ENUM('nightclub', 'restaurant', 'event_space', 'general', 'swing', 'bdsm', 'fetish', 'lifestyle', 'other'),
       allowNull: true,
       defaultValue: 'other'
     },

@@ -258,7 +258,7 @@ const GeneralSettings = ({ club, onSave, saving }) => {
       setFormData({
         name: club.name || '',
         description: club.description || '',
-        type: club.type || 'general',
+        type: club.type || 'other',
         website: club.website || '',
         contact_info: club.contact_info || ''
       });
@@ -308,11 +308,9 @@ const GeneralSettings = ({ club, onSave, saving }) => {
           <div className="form-group">
             <label htmlFor="type">Тип клуба</label>
             <select id="type" name="type" value={formData.type} onChange={handleChange}>
-              <option value="general">Общий</option>
-              <option value="swing">Свинг</option>
-              <option value="bdsm">БДСМ</option>
-              <option value="fetish">Фетиш</option>
-              <option value="lifestyle">Лайфстайл</option>
+              <option value="nightclub">Ночной клуб</option>
+              <option value="restaurant">Ресторан</option>
+              <option value="event_space">Площадка для мероприятий</option>
               <option value="other">Другое</option>
             </select>
           </div>

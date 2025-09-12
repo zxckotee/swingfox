@@ -701,7 +701,7 @@ const Ads = () => {
   };
 
   const handleContact = (authorLogin) => {
-    navigate(`/chat/${authorLogin}`);
+    navigate(`/chat/${authorLogin}?source=ad`);
   };
 
   const handleCloseModal = () => {

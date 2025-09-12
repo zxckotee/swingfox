@@ -186,6 +186,17 @@ const ChatItem = styled.div`
       margin-bottom: 6px;
       color: #2d3748;
       font-size: 16px;
+      
+      &.clickable {
+        color: #dc3522;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        
+        &:hover {
+          color: #ff6b58;
+          text-decoration: underline;
+        }
+      }
     }
     
     .last-message {
@@ -763,12 +774,20 @@ const Chat = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [matchStatus, setMatchStatus] = useState(null);
+  const [isAdConversation, setIsAdConversation] = useState(false);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const queryClient = useQueryClient();
   const lastSelectedChatRef = useRef(null); // Ref для отслеживания последнего выбранного чата
   
   const currentUser = apiUtils.getCurrentUser();
+
+  // Проверяем, является ли это общением по объявлению
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const source = urlParams.get('source');
+    setIsAdConversation(source === 'ad');
+  }, [chatId]);
 
   // Получение списка чатов
   const { data: chats = [], error: chatsError, isLoading: chatsLoading } = useQuery(
@@ -797,7 +816,7 @@ const Chat = () => {
     companion_info: {
       login: chatId,
       ava: 'no_photo.jpg',
-      status: 'Новый мэтч',
+      status: isAdConversation ? 'Общение по объявлению' : 'Новый мэтч',
       online: null,
       viptype: 'FREE'
     }
@@ -814,7 +833,7 @@ const Chat = () => {
     companion_info: {
       login: chatId,
       ava: 'no_photo.jpg',
-      status: 'Новый мэтч',
+      status: isAdConversation ? 'Общение по объявлению' : 'Новый мэтч',
       online: null,
       viptype: 'FREE'
     }
@@ -1008,10 +1027,15 @@ const Chat = () => {
     }
   };
 
+  const handleUsernameClick = (username, event) => {
+    event.stopPropagation(); // Предотвращаем открытие чата
+    navigate(`/profile/${username}`);
+  };
+
   const handleSendMessage = () => {
     if (messageText.trim() && selectedChat) {
-      // Проверяем статус мэтча перед отправкой
-      if (matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown') {
+      // Проверяем статус мэтча перед отправкой только если это не общение по объявлению
+      if (!isAdConversation && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown') {
         toast.error(`${matchStatus.message} ${matchStatus.icon}`);
         return;
       }
@@ -1019,6 +1043,9 @@ const Chat = () => {
       const formData = new FormData();
       formData.append('to_user', selectedChat);
       formData.append('message', messageText.trim());
+      if (isAdConversation) {
+        formData.append('source', 'ad');
+      }
       sendMessageMutation.mutate(formData);
     }
   };
@@ -1033,8 +1060,8 @@ const Chat = () => {
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file && selectedChat) {
-      // Проверяем статус мэтча перед отправкой файла
-      if (matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown') {
+      // Проверяем статус мэтча перед отправкой файла только если это не общение по объявлению
+      if (!isAdConversation && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown') {
         toast.error(`${matchStatus.message} ${matchStatus.icon}`);
         return;
       }
@@ -1042,6 +1069,9 @@ const Chat = () => {
       const formData = new FormData();
       formData.append('images', file);
       formData.append('to_user', selectedChat);
+      if (isAdConversation) {
+        formData.append('source', 'ad');
+      }
       sendFileMutation.mutate(formData);
     }
   };
@@ -1105,14 +1135,21 @@ const Chat = () => {
                   </Avatar>
                   
                   <div className="chat-info">
-                    <div className="name">@{forceVirtualChat.companion}</div>
+                    <div 
+                      className="name clickable"
+                      onClick={(e) => handleUsernameClick(forceVirtualChat.companion, e)}
+                    >
+                      @{forceVirtualChat.companion}
+                    </div>
                     <div className="last-message">
-                      <span className="new-match-indicator">💕 Новый мэтч - начните общение</span>
+                      <span className="new-match-indicator">
+                        {isAdConversation ? '📢 Общение по объявлению' : '💕 Новый мэтч - начните общение'}
+                      </span>
                     </div>
                     <div className="time">Сейчас</div>
                   </div>
                   
-                  <div className="new-match-badge">💕</div>
+                  <div className="new-match-badge">{isAdConversation ? '📢' : '💕'}</div>
                 </ChatItem>
               )}
               
@@ -1133,7 +1170,12 @@ const Chat = () => {
                   </Avatar>
                   
                   <div className="chat-info">
-                    <div className="name">@{chat.companion}</div>
+                    <div 
+                      className="name clickable"
+                      onClick={(e) => handleUsernameClick(chat.companion, e)}
+                    >
+                      @{chat.companion}
+                    </div>
                     <div className="last-message">
                       {chat.last_message ? (
                         chat.last_message
@@ -1187,7 +1229,12 @@ const Chat = () => {
               </Avatar>
               
               <div className="user-info">
-                <div className="name">@{selectedChat}</div>
+                <div 
+                  className="name clickable"
+                  onClick={(e) => handleUsernameClick(selectedChat, e)}
+                >
+                  @{selectedChat}
+                </div>
                 <div className="status">
                   {selectedChatData?.companion_info?.online && <div className="online-dot" />}
                   {selectedChatData?.companion_info?.online ? 'онлайн' : 'не в сети'}
@@ -1253,38 +1300,69 @@ const Chat = () => {
               ) : (
                 <NewChatWelcome>
                   <div className="welcome-content">
-                    <div className="match-icon">💕</div>
-                    <h3>Взаимная симпатия!</h3>
-                    <p>У вас совпадение с @{selectedChat}</p>
+                    <div className="match-icon">{isAdConversation ? '📢' : '💕'}</div>
+                    <h3>{isAdConversation ? 'Общение по объявлению' : 'Взаимная симпатия!'}</h3>
+                    <p>{isAdConversation ? `Общайтесь с @${selectedChat} по поводу объявления` : `У вас совпадение с @${selectedChat}`}</p>
                     <p className="subtitle">Начните общение первым сообщением</p>
                     
                     <div className="suggestions">
                       <h4>Идеи для первого сообщения:</h4>
                       <div className="suggestion-buttons">
-                        <button 
-                          className="suggestion-btn"
-                          onClick={() => setMessageText('Привет! Рад нашему совпадению 😊')}
-                        >
-                          Привет! Рад нашему совпадению 😊
-                        </button>
-                        <button 
-                          className="suggestion-btn"
-                          onClick={() => setMessageText('Привет! Как дела?')}
-                        >
-                          Привет! Как дела?
-                        </button>
-                        <button 
-                          className="suggestion-btn"
-                          onClick={() => setMessageText('Привет! Интересно познакомиться поближе')}
-                        >
-                          Интересно познакомиться поближе
-                        </button>
-                        <button 
-                          className="suggestion-btn"
-                          onClick={() => setMessageText('Привет! Что планируешь на выходные?')}
-                        >
-                          Что планируешь на выходные?
-                        </button>
+                        {isAdConversation ? (
+                          <>
+                            <button 
+                              className="suggestion-btn"
+                              onClick={() => setMessageText('Привет! Интересует ваше объявление')}
+                            >
+                              Привет! Интересует ваше объявление
+                            </button>
+                            <button 
+                              className="suggestion-btn"
+                              onClick={() => setMessageText('Здравствуйте! Можно узнать подробности?')}
+                            >
+                              Здравствуйте! Можно узнать подробности?
+                            </button>
+                            <button 
+                              className="suggestion-btn"
+                              onClick={() => setMessageText('Привет! Когда планируете встречу?')}
+                            >
+                              Привет! Когда планируете встречу?
+                            </button>
+                            <button 
+                              className="suggestion-btn"
+                              onClick={() => setMessageText('Добрый день! Есть вопросы по объявлению')}
+                            >
+                              Добрый день! Есть вопросы по объявлению
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button 
+                              className="suggestion-btn"
+                              onClick={() => setMessageText('Привет! Рад нашему совпадению 😊')}
+                            >
+                              Привет! Рад нашему совпадению 😊
+                            </button>
+                            <button 
+                              className="suggestion-btn"
+                              onClick={() => setMessageText('Привет! Как дела?')}
+                            >
+                              Привет! Как дела?
+                            </button>
+                            <button 
+                              className="suggestion-btn"
+                              onClick={() => setMessageText('Привет! Интересно познакомиться поближе')}
+                            >
+                              Интересно познакомиться поближе
+                            </button>
+                            <button 
+                              className="suggestion-btn"
+                              onClick={() => setMessageText('Привет! Что планируешь на выходные?')}
+                            >
+                              Что планируешь на выходные?
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1300,7 +1378,7 @@ const Chat = () => {
               <div ref={messagesEndRef} />
             </MessagesContainer>
 
-            <MessageInputWrapper $disabled={matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown'}>
+            <MessageInputWrapper $disabled={!isAdConversation && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown'}>
               <MessageInput>
               <InputContainer>
                 <TextInput
@@ -1324,7 +1402,7 @@ const Chat = () => {
                 disabled={
                   !messageText.trim() ||
                   sendMessageMutation.isLoading ||
-                  (matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown')
+                  (!isAdConversation && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown')
                 }
               >
                 <SendIcon />
