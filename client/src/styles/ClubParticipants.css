@@ -505,6 +505,22 @@
   border-top: 1px solid #e2e8f0;
 }
 
+.participant-actions .btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  order: -1; /* Размещаем кнопку чата первой */
+  flex: 1;
+  min-width: 120px;
+  justify-content: center;
+}
+
+.participant-actions .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;

@@ -56,6 +56,12 @@ const ClockIcon = () => (
   </svg>
 );
 
+const MessageIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+  </svg>
+);
+
 const ClubParticipants = () => {
   const navigate = useNavigate();
   const [events, setEvents] = useState([]);
@@ -140,6 +146,31 @@ const ClubParticipants = () => {
       console.error('Ошибка удаления участника:', error);
       toast.error('Ошибка при удалении участника');
     }
+  };
+
+  const handleOpenChat = (participant) => {
+    // Создаем данные чата для навигации
+    const chatData = {
+      id: `temp_${selectedEvent.id}_${participant.user_id}`,
+      event_id: selectedEvent.id,
+      user_id: participant.user_id,
+      user: {
+        login: participant.user?.login,
+        ava: participant.user?.ava,
+        email: participant.user?.email
+      },
+      event_title: selectedEvent.title,
+      event_date: selectedEvent.date,
+      participation_status: participant.status,
+      last_message: '',
+      last_message_at: null,
+      unread_count: 0
+    };
+
+    // Переходим к чату
+    navigate(`/club/chat/${chatData.id}`, {
+      state: { chatData }
+    });
   };
 
   const getStatusText = (status) => {
@@ -351,6 +382,14 @@ const ClubParticipants = () => {
                         </div>
                         
                         <div className="participant-actions">
+                          <button
+                            className="btn btn-sm btn-primary"
+                            onClick={() => handleOpenChat(participant)}
+                          >
+                            <MessageIcon className="icon" />
+                            Открыть чат
+                          </button>
+                          
                           {participant.status === 'pending' && (
                             <>
                               <button
