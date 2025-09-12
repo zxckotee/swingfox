@@ -5,6 +5,7 @@ const Chat = sequelize.define('Chat', {
   id: {
     type: DataTypes.BIGINT,
     primaryKey: true,
+    autoIncrement: true,
     allowNull: false
   },
   by_user: {
@@ -46,6 +47,14 @@ const Chat = sequelize.define('Chat', {
   chat_type: {
     type: DataTypes.ENUM('user', 'club', 'event'),
     defaultValue: 'user'
+  },
+  event_id: {
+    type: DataTypes.BIGINT,
+    allowNull: true,
+    references: {
+      model: 'club_events',
+      key: 'id'
+    }
   }
 }, {
   tableName: 'chat',
@@ -101,11 +110,57 @@ Chat.getClubChat = function(clubId, limit = 50) {
 };
 
 Chat.isClubChat = function() {
-  return this.is_club_chat === true;
+  return this.chat_type === 'club' || this.is_club_chat === true;
 };
 
 Chat.isEventChat = function() {
   return this.chat_type === 'event';
+};
+
+// Создание чата с клубом по мероприятию
+Chat.createClubEventChat = async function(userLogin, clubId, eventId, message) {
+  const clubLogin = `club_${clubId}`;
+  
+  // Получаем максимальный ID и увеличиваем на 1
+  const maxId = await this.max('id');
+  const newId = (maxId || 0) + 1;
+  
+  return await this.create({
+    id: newId,
+    by_user: userLogin,
+    to_user: clubLogin,
+    message: message,
+    date: new Date(),
+    is_read: false,
+    club_id: clubId,
+    is_club_chat: true,
+    chat_type: 'event',
+    event_id: eventId
+  });
+};
+
+// Получение чата с клубом
+Chat.getClubChat = function(userLogin, clubId, eventId = null) {
+  const clubLogin = `club_${clubId}`;
+  
+  const whereClause = {
+    [sequelize.Sequelize.Op.or]: [
+      { by_user: userLogin, to_user: clubLogin },
+      { by_user: clubLogin, to_user: userLogin }
+    ],
+    club_id: clubId,
+    is_club_chat: true
+  };
+  
+  if (eventId) {
+    whereClause.event_id = eventId;
+  }
+  
+  return this.findAll({
+    where: whereClause,
+    order: [['date', 'DESC']],
+    limit: 50
+  });
 };
 
 module.exports = Chat;

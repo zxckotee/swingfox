@@ -766,6 +766,43 @@ const MatchStatusBanner = styled.div`
   }
 `;
 
+const EventParticipationBanner = styled.div`
+  padding: 15px 20px;
+  margin: 0 20px 20px 20px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  
+  background: ${props => {
+    switch (props.$status) {
+      case 'confirmed':
+        return 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)';
+      case 'invited':
+        return 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+      case 'declined':
+        return 'linear-gradient(135deg, #e53e3e 0%, #c53030 100%)';
+      case 'maybe':
+        return 'linear-gradient(135deg, #ed8936 0%, #dd6b20 100%)';
+      case 'not_participant':
+        return 'linear-gradient(135deg, #a0aec0 0%, #718096 100%)';
+      default:
+        return 'linear-gradient(135deg, #a0aec0 0%, #718096 100%)';
+    }
+  }};
+  color: white;
+  
+  .icon {
+    font-size: 16px;
+  }
+  
+  .message {
+    flex: 1;
+  }
+`;
+
 const Chat = () => {
   const { username: chatId } = useParams();
   const navigate = useNavigate();
@@ -774,7 +811,11 @@ const Chat = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [matchStatus, setMatchStatus] = useState(null);
+  const [eventParticipationStatus, setEventParticipationStatus] = useState(null);
   const [isAdConversation, setIsAdConversation] = useState(false);
+  const [isClubChat, setIsClubChat] = useState(false);
+  const [clubInfo, setClubInfo] = useState(null);
+  const [eventInfo, setEventInfo] = useState(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const queryClient = useQueryClient();
@@ -782,11 +823,24 @@ const Chat = () => {
   
   const currentUser = apiUtils.getCurrentUser();
 
-  // Проверяем, является ли это общением по объявлению
+  // Проверяем, является ли это общением по объявлению или клубным чатом
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const source = urlParams.get('source');
+    const eventId = urlParams.get('event');
+    
     setIsAdConversation(source === 'ad');
+    
+    // Проверяем, является ли это клубным чатом
+    if (chatId && chatId.startsWith('club_')) {
+      setIsClubChat(true);
+      const clubId = chatId.replace('club_', '');
+      setClubInfo({ id: clubId });
+      
+      if (eventId) {
+        setEventInfo({ id: eventId });
+      }
+    }
   }, [chatId]);
 
   // Получение списка чатов
@@ -863,9 +917,15 @@ const Chat = () => {
 
 
   // Получение сообщений текущего чата
-  const { data: messages = [], error: messagesError, isLoading: messagesLoading } = useQuery(
-    ['messages', selectedChat],
-    () => chatAPI.getMessages(selectedChat, 100, 0), // Увеличим лимит сообщений
+  const { data: messagesData, error: messagesError, isLoading: messagesLoading } = useQuery(
+    ['messages', selectedChat, isClubChat, clubInfo?.id, eventInfo?.id],
+    () => {
+      if (isClubChat && clubInfo?.id) {
+        return chatAPI.getClubChat(clubInfo.id, eventInfo?.id);
+      } else {
+        return chatAPI.getMessages(selectedChat, 100, 0);
+      }
+    },
     {
       enabled: !!selectedChat && !chatsLoading,
       refetchInterval: 2000, // Обновляем каждые 2 секунды
@@ -884,12 +944,14 @@ const Chat = () => {
     }
   );
 
-  // Получение статуса мэтча для текущего чата
+  const messages = isClubChat ? (messagesData?.messages || []) : (messagesData?.messages || []);
+
+  // Получение статуса мэтча для текущего чата (только для обычных чатов, не клубных)
   const { data: matchData } = useQuery(
     ['match-status', selectedChat],
     () => chatAPI.getMatchStatus(selectedChat),
     {
-      enabled: !!selectedChat && !chatsLoading,
+      enabled: !!selectedChat && !chatsLoading && !isClubChat && !isAdConversation,
       refetchOnWindowFocus: false, // Не обновляем при фокусе окна
       staleTime: 30000, // Данные считаются свежими 30 секунд
       onError: (error) => {
@@ -898,6 +960,25 @@ const Chat = () => {
       onSuccess: (data) => {
         if (data) {
           setMatchStatus(data);
+        }
+      }
+    }
+  );
+
+  // Получение статуса участия в мероприятии для клубных чатов
+  const { data: eventParticipationData } = useQuery(
+    ['event-participation-status', clubInfo?.id, eventInfo?.id],
+    () => chatAPI.getEventParticipationStatus(clubInfo.id, eventInfo.id),
+    {
+      enabled: !!isClubChat && !!clubInfo?.id && !!eventInfo?.id,
+      refetchOnWindowFocus: false,
+      staleTime: 30000,
+      onError: (error) => {
+        console.error('Ошибка при получении статуса участия в мероприятии:', error);
+      },
+      onSuccess: (data) => {
+        if (data?.success) {
+          setEventParticipationStatus(data);
         }
       }
     }
@@ -936,31 +1017,40 @@ const Chat = () => {
   }, [virtualChat, userInfo, chatsLoading]);
 
   // Мутации
-  const sendMessageMutation = useMutation(chatAPI.sendMessage, {
-    onSuccess: (data) => {
-      setMessageText('');
-      queryClient.invalidateQueries(['messages', selectedChat]);
-      queryClient.invalidateQueries('conversations');
-      
-      // Показываем предупреждение если есть
-      if (data?.match_warning) {
-        toast.warning(data.match_warning);
+  const sendMessageMutation = useMutation(
+    (messageData) => {
+      if (isClubChat && clubInfo?.id) {
+        return chatAPI.createClubEventChat(clubInfo.id, eventInfo?.id, messageData.message);
+      } else {
+        return chatAPI.sendMessage(messageData);
       }
     },
-    onError: (error) => {
-      console.error('Ошибка отправки сообщения:', error);
-      // Обрабатываем ошибки мэтча отдельно
-      if (error.response?.data?.error === 'no_match') {
-        toast.error('Для отправки сообщений нужен взаимный лайк! 💕');
-      } else if (error.response?.status === 404) {
-        toast.error('Пользователь не найден или чат недоступен');
-      } else if (error.response?.status === 403) {
-        toast.error('У вас нет прав для отправки сообщений в этот чат');
-      } else {
-        toast.error(apiUtils.handleError(error) || 'Ошибка отправки сообщения');
+    {
+      onSuccess: (data) => {
+        setMessageText('');
+        queryClient.invalidateQueries(['messages', selectedChat]);
+        queryClient.invalidateQueries('conversations');
+        
+        // Показываем предупреждение если есть
+        if (data?.match_warning) {
+          toast.warning(data.match_warning);
+        }
+      },
+      onError: (error) => {
+        console.error('Ошибка отправки сообщения:', error);
+        // Обрабатываем ошибки мэтча отдельно
+        if (error.response?.data?.error === 'no_match') {
+          toast.error('Для отправки сообщений нужен взаимный лайк! 💕');
+        } else if (error.response?.status === 404) {
+          toast.error('Пользователь не найден или чат недоступен');
+        } else if (error.response?.status === 403) {
+          toast.error('У вас нет прав для отправки сообщений в этот чат');
+        } else {
+          toast.error(apiUtils.handleError(error) || 'Ошибка отправки сообщения');
+        }
       }
     }
-  });
+  );
 
   const sendFileMutation = useMutation(chatAPI.sendMessage, {
     onSuccess: () => {
@@ -1034,19 +1124,31 @@ const Chat = () => {
 
   const handleSendMessage = () => {
     if (messageText.trim() && selectedChat) {
-      // Проверяем статус мэтча перед отправкой только если это не общение по объявлению
-      if (!isAdConversation && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown') {
+      // Проверяем статус мэтча перед отправкой только для обычных чатов (не клубных и не по объявлениям)
+      if (!isAdConversation && !isClubChat && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown') {
         toast.error(`${matchStatus.message} ${matchStatus.icon}`);
         return;
       }
 
-      const formData = new FormData();
-      formData.append('to_user', selectedChat);
-      formData.append('message', messageText.trim());
-      if (isAdConversation) {
-        formData.append('source', 'ad');
+      // Проверяем статус участия в мероприятии для клубных чатов
+      if (isClubChat && eventParticipationStatus && !eventParticipationStatus.canChat && eventParticipationStatus.status !== 'unknown') {
+        toast.error(`${eventParticipationStatus.message} ${eventParticipationStatus.icon}`);
+        return;
       }
-      sendMessageMutation.mutate(formData);
+
+      if (isClubChat && clubInfo?.id) {
+        // Для клубных чатов используем специальный API
+        sendMessageMutation.mutate({ message: messageText.trim() });
+      } else {
+        // Для обычных чатов используем FormData
+        const formData = new FormData();
+        formData.append('to_user', selectedChat);
+        formData.append('message', messageText.trim());
+        if (isAdConversation) {
+          formData.append('source', 'ad');
+        }
+        sendMessageMutation.mutate(formData);
+      }
     }
   };
 
@@ -1233,11 +1335,17 @@ const Chat = () => {
                   className="name clickable"
                   onClick={(e) => handleUsernameClick(selectedChat, e)}
                 >
-                  @{selectedChat}
+                  {isClubChat ? `🏛️ Клуб ${clubInfo?.id}` : `@${selectedChat}`}
                 </div>
                 <div className="status">
-                  {selectedChatData?.companion_info?.online && <div className="online-dot" />}
-                  {selectedChatData?.companion_info?.online ? 'онлайн' : 'не в сети'}
+                  {isClubChat ? (
+                    eventInfo ? `Мероприятие #${eventInfo.id}` : 'Чат с клубом'
+                  ) : (
+                    <>
+                      {selectedChatData?.companion_info?.online && <div className="online-dot" />}
+                      {selectedChatData?.companion_info?.online ? 'онлайн' : 'не в сети'}
+                    </>
+                  )}
                 </div>
               </div>
               
@@ -1246,12 +1354,20 @@ const Chat = () => {
               </IconButton>
             </ChatWindowHeader>
 
-            {/* Баннер статуса мэтча */}
-            {matchStatus && matchStatus.status !== 'unknown' && (
+            {/* Баннер статуса мэтча (только для обычных чатов, не клубных и не по объявлениям) */}
+            {!isClubChat && !isAdConversation && matchStatus && matchStatus.status !== 'unknown' && (
               <MatchStatusBanner $status={matchStatus.status}>
                 <span className="icon">{matchStatus.icon}</span>
                 <span className="message">{matchStatus.message}</span>
               </MatchStatusBanner>
+            )}
+
+            {/* Баннер статуса участия в мероприятии */}
+            {isClubChat && eventParticipationStatus && eventParticipationStatus.status !== 'unknown' && (
+              <EventParticipationBanner $status={eventParticipationStatus.status}>
+                <span className="icon">{eventParticipationStatus.icon}</span>
+                <span className="message">{eventParticipationStatus.message}</span>
+              </EventParticipationBanner>
             )}
 
             <MessagesContainer>
@@ -1264,10 +1380,10 @@ const Chat = () => {
                 <EmptyState>
                   <p>Загрузка сообщений...</p>
                 </EmptyState>
-              ) : (messages?.messages || []).length > 0 ? (
-                (messages?.messages || []).map((message, index) => {
+              ) : messages.length > 0 ? (
+                messages.map((message, index) => {
                   const isOwn = message.by_user === currentUser.login;
-                  const prevMessage = messages.messages[index - 1];
+                  const prevMessage = messages[index - 1];
                   const isNewGroup = !prevMessage ||
                     prevMessage.by_user !== message.by_user ||
                     (new Date(message.date) - new Date(prevMessage.date)) > 300000;
@@ -1300,9 +1416,9 @@ const Chat = () => {
               ) : (
                 <NewChatWelcome>
                   <div className="welcome-content">
-                    <div className="match-icon">{isAdConversation ? '📢' : '💕'}</div>
-                    <h3>{isAdConversation ? 'Общение по объявлению' : 'Взаимная симпатия!'}</h3>
-                    <p>{isAdConversation ? `Общайтесь с @${selectedChat} по поводу объявления` : `У вас совпадение с @${selectedChat}`}</p>
+                    <div className="match-icon">{isAdConversation ? '📢' : isClubChat ? '🏛️' : '💕'}</div>
+                    <h3>{isAdConversation ? 'Общение по объявлению' : isClubChat ? 'Чат с клубом' : 'Взаимная симпатия!'}</h3>
+                    <p>{isAdConversation ? `Общайтесь с @${selectedChat} по поводу объявления` : isClubChat ? `Общайтесь с клубом по поводу мероприятия` : `У вас совпадение с @${selectedChat}`}</p>
                     <p className="subtitle">Начните общение первым сообщением</p>
                     
                     <div className="suggestions">
@@ -1333,6 +1449,33 @@ const Chat = () => {
                               onClick={() => setMessageText('Добрый день! Есть вопросы по объявлению')}
                             >
                               Добрый день! Есть вопросы по объявлению
+                            </button>
+                          </>
+                        ) : isClubChat ? (
+                          <>
+                            <button 
+                              className="suggestion-btn"
+                              onClick={() => setMessageText('Привет! У меня есть вопрос по поводу мероприятия')}
+                            >
+                              Привет! У меня есть вопрос по поводу мероприятия
+                            </button>
+                            <button 
+                              className="suggestion-btn"
+                              onClick={() => setMessageText('Здравствуйте! Можно узнать подробности о мероприятии?')}
+                            >
+                              Здравствуйте! Можно узнать подробности о мероприятии?
+                            </button>
+                            <button 
+                              className="suggestion-btn"
+                              onClick={() => setMessageText('Привет! Когда и где будет мероприятие?')}
+                            >
+                              Привет! Когда и где будет мероприятие?
+                            </button>
+                            <button 
+                              className="suggestion-btn"
+                              onClick={() => setMessageText('Добрый день! Есть вопросы по мероприятию')}
+                            >
+                              Добрый день! Есть вопросы по мероприятию
                             </button>
                           </>
                         ) : (
@@ -1378,7 +1521,7 @@ const Chat = () => {
               <div ref={messagesEndRef} />
             </MessagesContainer>
 
-            <MessageInputWrapper $disabled={!isAdConversation && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown'}>
+            <MessageInputWrapper $disabled={(!isAdConversation && !isClubChat && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown') || (isClubChat && eventParticipationStatus && !eventParticipationStatus.canChat && eventParticipationStatus.status !== 'unknown')}>
               <MessageInput>
               <InputContainer>
                 <TextInput
@@ -1402,7 +1545,8 @@ const Chat = () => {
                 disabled={
                   !messageText.trim() ||
                   sendMessageMutation.isLoading ||
-                  (!isAdConversation && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown')
+                  (!isAdConversation && !isClubChat && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown') ||
+                  (isClubChat && eventParticipationStatus && !eventParticipationStatus.canChat && eventParticipationStatus.status !== 'unknown')
                 }
               >
                 <SendIcon />

@@ -572,6 +572,22 @@ export const chatAPI = {
     return response.data;
   },
 
+  // Клубные чаты
+  createClubEventChat: async (clubId, eventId, message) => {
+    const response = await apiClient.post('/chat/club-event', {
+      club_id: clubId,
+      event_id: eventId,
+      message: message
+    });
+    return response.data;
+  },
+
+  getClubChat: async (clubId, eventId = null) => {
+    const params = eventId ? `?event_id=${eventId}` : '';
+    const response = await apiClient.get(`/chat/club/${clubId}${params}`);
+    return response.data;
+  },
+
   deleteConversation: async (username) => {
     const response = await apiClient.delete(`/chat/${username}`);
     return response.data;
@@ -585,6 +601,12 @@ export const chatAPI = {
 
   checkMatchPermission: async (targetUser) => {
     const response = await apiClient.get(`/chat/can-message/${targetUser}`);
+    return response.data;
+  },
+
+  // Получение статуса участия в мероприятии
+  getEventParticipationStatus: async (clubId, eventId) => {
+    const response = await apiClient.get(`/chat/event-participation-status/${clubId}/${eventId}`);
     return response.data;
   }
 };

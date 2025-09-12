@@ -4,7 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
 const { Op } = require('sequelize');
-const { Chat, User, Notifications } = require('../models');
+const { Chat, User, Notifications, EventParticipants } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { generateId } = require('../utils/helpers');
 const MatchChecker = require('../utils/matchChecker');
@@ -1136,6 +1136,90 @@ router.get('/match-status/:username', authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/chat/event-participation-status/:clubId/:eventId - Получение статуса участия в мероприятии
+router.get('/event-participation-status/:clubId/:eventId', authenticateToken, async (req, res) => {
+  try {
+    const { clubId, eventId } = req.params;
+    const currentUser = req.user.login;
+
+    // Получаем ID пользователя по логину
+    const user = await User.findOne({
+      where: { login: currentUser },
+      attributes: ['id']
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        error: 'user_not_found',
+        message: 'Пользователь не найден'
+      });
+    }
+
+    // Проверяем участие в мероприятии
+    const participation = await EventParticipants.findOne({
+      where: {
+        event_id: eventId,
+        user_id: user.id
+      }
+    });
+
+    let status = 'not_participant';
+    let message = 'Вы не участвуете в этом мероприятии';
+    let icon = '❌';
+    let canChat = false;
+
+    if (participation) {
+      switch (participation.status) {
+        case 'confirmed':
+          status = 'confirmed';
+          message = 'Вы участвуете в мероприятии! Можете общаться с клубом';
+          icon = '✅';
+          canChat = true;
+          break;
+        case 'invited':
+          status = 'invited';
+          message = 'Вас пригласили на мероприятие. Подтвердите участие';
+          icon = '📨';
+          canChat = false;
+          break;
+        case 'declined':
+          status = 'declined';
+          message = 'Вы отказались от участия в мероприятии';
+          icon = '❌';
+          canChat = false;
+          break;
+        case 'maybe':
+          status = 'maybe';
+          message = 'Вы рассматриваете участие в мероприятии';
+          icon = '🤔';
+          canChat = true;
+          break;
+      }
+    }
+
+    res.json({
+      success: true,
+      status,
+      message,
+      icon,
+      canChat,
+      participationData: {
+        isParticipant: !!participation,
+        status: participation?.status || null,
+        eventId: parseInt(eventId),
+        clubId: parseInt(clubId)
+      }
+    });
+
+  } catch (error) {
+    console.error('Get event participation status error:', error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при получении статуса участия в мероприятии'
+    });
+  }
+});
+
 // GET /api/chat/can-message/:username - Проверка разрешения на отправку сообщений
 router.get('/can-message/:username', authenticateToken, async (req, res) => {
   try {
@@ -1187,6 +1271,114 @@ router.get('/can-message/:username', authenticateToken, async (req, res) => {
     res.status(500).json({
       error: 'server_error',
       message: 'Ошибка при проверке разрешения на отправку сообщений'
+    });
+  }
+});
+
+// POST /api/chat/club-event - Создание чата с клубом по мероприятию
+router.post('/club-event', authenticateToken, async (req, res) => {
+  try {
+    const { club_id, event_id, message } = req.body;
+    const fromUser = req.user.login;
+
+    if (!club_id || !event_id || !message) {
+      return res.status(400).json({
+        error: 'missing_data',
+        message: 'Не указаны обязательные параметры'
+      });
+    }
+
+    // Получаем ID пользователя по логину
+    const user = await User.findOne({
+      where: { login: fromUser },
+      attributes: ['id']
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        error: 'user_not_found',
+        message: 'Пользователь не найден'
+      });
+    }
+
+    // Проверяем, что пользователь участвует в мероприятии
+    const participation = await EventParticipants.findOne({
+      where: {
+        event_id: event_id,
+        user_id: user.id,
+        status: 'confirmed'
+      }
+    });
+
+    if (!participation) {
+      return res.status(403).json({
+        error: 'not_participant',
+        message: 'Вы не участвуете в этом мероприятии'
+      });
+    }
+
+    // Создаем чат с клубом
+    const chatMessage = await Chat.createClubEventChat(fromUser, club_id, event_id, message);
+
+    res.json({
+      success: true,
+      message: 'Сообщение отправлено клубу',
+      data: {
+        id: chatMessage.id,
+        by_user: chatMessage.by_user,
+        to_user: chatMessage.to_user,
+        message: chatMessage.message,
+        date: chatMessage.date,
+        club_id: club_id,
+        event_id: event_id
+      }
+    });
+
+  } catch (error) {
+    console.error('Create club event chat error:', error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при создании чата с клубом'
+    });
+  }
+});
+
+// GET /api/chat/club/:clubId - Получение чата с клубом
+router.get('/club/:clubId', authenticateToken, async (req, res) => {
+  try {
+    const { clubId } = req.params;
+    const { event_id } = req.query;
+    const currentUser = req.user.login;
+
+    const messages = await Chat.getClubChat(currentUser, clubId, event_id);
+
+    // Форматируем сообщения
+    const formattedMessages = messages.map(msg => ({
+      id: msg.id,
+      by_user: msg.by_user,
+      to_user: msg.to_user,
+      message: msg.message,
+      images: msg.images && msg.images !== '0' && msg.images !== 'null' ? 
+        msg.images.split('&&').filter(Boolean) : [],
+      date: msg.date,
+      is_read: msg.is_read,
+      is_mine: msg.by_user === currentUser,
+      club_id: msg.club_id,
+      event_id: msg.event_id
+    }));
+
+    res.json({
+      success: true,
+      messages: formattedMessages.reverse(),
+      club_id: clubId,
+      event_id: event_id
+    });
+
+  } catch (error) {
+    console.error('Get club chat error:', error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при получении чата с клубом'
     });
   }
 });

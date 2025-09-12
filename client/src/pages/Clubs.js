@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from 'react-query';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { clubsAPI, apiUtils } from '../services/api';
+import { clubsAPI, apiUtils, chatAPI } from '../services/api';
 import {
   PageContainer,
   ContentCard,
@@ -549,6 +549,46 @@ const EventButton = styled(Button)`
   }
 `;
 
+const EventActions = styled.div`
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 8px;
+  }
+`;
+
+const MessageButton = styled(Button)`
+  min-width: 120px;
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-size: 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+  transition: all 0.3s ease;
+  
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+  }
+  
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+  }
+  
+  @media (max-width: 768px) {
+    min-width: 100px;
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+`;
+
 // Адаптивность для карточек мероприятий
 const EventCardResponsive = styled(EventCard)`
   @media (max-width: 768px) {
@@ -679,6 +719,30 @@ const Clubs = () => {
     } catch (error) {
       console.error('Join event error:', error);
       toast.error(error.response?.data?.error || 'Ошибка при записи на мероприятие');
+    }
+  };
+
+  // Функция для создания чата с клубом по мероприятию
+  const handleMessageClub = async (event) => {
+    try {
+      if (!event.club?.id) {
+        toast.error('Информация о клубе недоступна');
+        return;
+      }
+
+      // Создаем чат с клубом по мероприятию
+      const message = `Привет! У меня есть вопрос по поводу мероприятия "${event.title}"`;
+      
+      await chatAPI.createClubEventChat(event.club.id, event.id, message);
+      
+      toast.success('Сообщение отправлено клубу!');
+      
+      // Переходим в чат
+      window.location.href = `/chat/club_${event.club.id}?event=${event.id}`;
+      
+    } catch (error) {
+      console.error('Error creating club chat:', error);
+      toast.error(error.response?.data?.message || 'Не удалось создать чат с клубом');
     }
   };
 
@@ -909,21 +973,34 @@ const Clubs = () => {
                       </EventDetailsResponsive>
                       
                       <EventAction>
-                        <EventButton 
-                          $size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (event.user_participation?.is_participating) {
-                              return;
-                            }
-                            handleJoinEvent(event);
-                          }}
-                          disabled={joinEventMutation.isLoading || event.user_participation?.is_participating}
-                          $variant={event.user_participation?.is_participating ? 'secondary' : 'primary'}
-                        >
-                          {joinEventMutation.isLoading ? 'Записываемся...' : 
-                           event.user_participation?.is_participating ? 'Вы участвуете' : 'Участвовать'}
-                        </EventButton>
+                        <EventActions>
+                          <EventButton 
+                            $size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (event.user_participation?.is_participating) {
+                                return;
+                              }
+                              handleJoinEvent(event);
+                            }}
+                            disabled={joinEventMutation.isLoading || event.user_participation?.is_participating}
+                            $variant={event.user_participation?.is_participating ? 'secondary' : 'primary'}
+                          >
+                            {joinEventMutation.isLoading ? 'Записываемся...' : 
+                             event.user_participation?.is_participating ? 'Вы участвуете' : 'Участвовать'}
+                          </EventButton>
+                          
+                          {event.user_participation?.is_participating && event.club?.id && (
+                            <MessageButton
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleMessageClub(event);
+                              }}
+                            >
+                              💬 Написать
+                            </MessageButton>
+                          )}
+                        </EventActions>
                       </EventAction>
                     </EventContentResponsive>
                   </EventCardResponsive>
@@ -1263,12 +1340,24 @@ const Clubs = () => {
                   </Button>
                 )}
                 {selectedEventDetails.user_participation?.is_participating && (
-                  <Button 
-                    $variant="secondary"
-                    disabled
-                  >
-                    Вы уже участвуете
-                  </Button>
+                  <>
+                    <Button 
+                      $variant="secondary"
+                      disabled
+                    >
+                      Вы уже участвуете
+                    </Button>
+                    {selectedEventDetails.club?.id && (
+                      <MessageButton
+                        onClick={() => {
+                          setShowEventDetailsModal(false);
+                          handleMessageClub(selectedEventDetails);
+                        }}
+                      >
+                        💬 Написать клубу
+                      </MessageButton>
+                    )}
+                  </>
                 )}
               </FlexContainer>
             </ModalContent>
