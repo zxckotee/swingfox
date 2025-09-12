@@ -34,8 +34,9 @@ import ClubAnalytics from './pages/ClubAnalytics';
 import ClubBots from './pages/ClubBots';
 import ClubSettings from './pages/ClubSettings';
 import ClubParticipants from './pages/ClubParticipants';
-import ClubChats from './pages/ClubChats';
 import ClubLayout from './components/ClubLayout';
+import ClubChats from './pages/ClubChats';
+import ClubChat from './pages/ClubChat';
 
 // Публичные страницы клубов
 import PublicClubs from './pages/PublicClubs';
@@ -315,14 +316,6 @@ function App() {
                 </ClubAuthGuard>
               } />
               
-              <Route path="/club/chats" element={
-                <ClubAuthGuard>
-                  <ClubLayout>
-                    <ClubChats />
-                  </ClubLayout>
-                </ClubAuthGuard>
-              } />
-              
               <Route path="/club/bots" element={
                 <ClubAuthGuard>
                   <ClubLayout>
@@ -331,6 +324,19 @@ function App() {
                 </ClubAuthGuard>
               } />
               
+              <Route path="/club/chats" element={
+                <ClubAuthGuard>
+                  <ClubLayout>
+                    <ClubChats />
+                  </ClubLayout>
+                </ClubAuthGuard>
+              } />
+              
+              <Route path="/club/chat/:chatId" element={
+                <ClubAuthGuard>
+                  <ClubChat />
+                </ClubAuthGuard>
+              } />
               
               <Route path="/club/settings" element={
                 <ClubAuthGuard>

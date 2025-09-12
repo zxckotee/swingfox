@@ -112,9 +112,26 @@ const ClubChats = () => {
   };
 
   const handleViewChat = (chat) => {
-    // Переходим к чату с участником
-    const chatUrl = `/chat?club_id=${chat.club_id}&event_id=${chat.event_id}&user_id=${chat.user_id}`;
-    navigate(chatUrl);
+    console.log('Opening chat:', chat);
+    
+    if (!chat.id) {
+      toast.error('Ошибка: ID чата не найден');
+      return;
+    }
+    
+    // Переходим к чату клуба с участником
+    navigate(`/club/chat/${chat.id}`, {
+      state: {
+        chatData: {
+          id: chat.id,
+          event_id: chat.event_id,
+          user_id: chat.user_id,
+          user: chat.user,
+          event_title: chat.event_title,
+          club_id: chat.club_id
+        }
+      }
+    });
   };
 
   const getEventTitle = (eventId) => {
@@ -128,9 +145,13 @@ const ClubChats = () => {
       'pending': 'Ожидает подтверждения',
       'cancelled': 'Отменен',
       'attended': 'Присутствовал',
-      'no_show': 'Не явился'
+      'no_show': 'Не явился',
+      'unknown': 'Не зарегистрирован',
+      'invited': 'Приглашен',
+      'maybe': 'Возможно придет',
+      'declined': 'Отклонил'
     };
-    return statusMap[status] || status;
+    return statusMap[status] || 'Статус неизвестен';
   };
 
   const getStatusClass = (status) => {
@@ -139,7 +160,11 @@ const ClubChats = () => {
       'pending': 'status-pending',
       'cancelled': 'status-cancelled',
       'attended': 'status-attended',
-      'no_show': 'status-no-show'
+      'no_show': 'status-no-show',
+      'unknown': 'status-unknown',
+      'invited': 'status-invited',
+      'maybe': 'status-maybe',
+      'declined': 'status-declined'
     };
     return classMap[status] || 'status-unknown';
   };
@@ -235,6 +260,10 @@ const ClubChats = () => {
               <option value="cancelled">Отменен</option>
               <option value="attended">Присутствовал</option>
               <option value="no_show">Не явился</option>
+              <option value="unknown">Не зарегистрирован</option>
+              <option value="invited">Приглашен</option>
+              <option value="maybe">Возможно придет</option>
+              <option value="declined">Отклонил</option>
             </select>
           </div>
         </div>
@@ -255,8 +284,8 @@ const ClubChats = () => {
           </div>
         ) : (
           <div className="chats-grid">
-            {filteredChats.map(chat => (
-              <div key={chat.id} className="chat-card">
+            {filteredChats.map((chat, index) => (
+              <div key={`${chat.id}-${chat.event_id}-${chat.user_id}-${index}`} className="chat-card">
                 <div className="chat-header">
                   <div className="chat-user-info">
                     <div className="user-avatar">
@@ -269,8 +298,8 @@ const ClubChats = () => {
                       />
                     </div>
                     <div className="user-details">
-                      <h3>@{chat.user?.login}</h3>
-                      <p className="user-email">{chat.user?.email}</p>
+                      <h3>@{chat.user?.login || chat.user_id || 'Неизвестный пользователь'}</h3>
+                      <p className="user-email">{chat.user?.email || 'Email не указан'}</p>
                     </div>
                   </div>
                   <div className="chat-status">
@@ -289,11 +318,11 @@ const ClubChats = () => {
                     <div className="event-date">
                       <ClockIcon className="icon" />
                       <span>
-                        {new Date(chat.event_date).toLocaleDateString('ru-RU', {
+                        {chat.event_date ? new Date(chat.event_date).toLocaleDateString('ru-RU', {
                           day: 'numeric',
                           month: 'long',
                           year: 'numeric'
-                        })}
+                        }) : 'Дата не указана'}
                       </span>
                     </div>
                   </div>
@@ -307,7 +336,7 @@ const ClubChats = () => {
                         }
                       </p>
                       <span className="message-time">
-                        {new Date(chat.last_message_at).toLocaleString('ru-RU')}
+                        {chat.last_message_at ? new Date(chat.last_message_at).toLocaleString('ru-RU') : 'Время неизвестно'}
                       </span>
                     </div>
                   )}

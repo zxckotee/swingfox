@@ -467,20 +467,33 @@ export const clubApi = {
     return apiCall('/chats');
   },
 
-  getClubChatMessages: async (chatId) => {
-    return apiCall(`/chats/${chatId}/messages`);
+  getChatMessages: async (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return apiCall(`/chats/messages${queryString ? `?${queryString}` : ''}`);
   },
 
-  sendClubChatMessage: async (chatId, message, eventId = null) => {
-    return apiCall(`/chats/${chatId}/messages`, {
+  sendChatMessage: async (messageData) => {
+    return apiCall(`/chats/messages`, {
       method: 'POST',
-      body: JSON.stringify({ message, event_id: eventId })
+      body: JSON.stringify(messageData)
     });
   },
 
-  markClubChatAsRead: async (chatId) => {
+  markChatAsRead: async (chatId) => {
     return apiCall(`/chats/${chatId}/read`, {
       method: 'POST'
+    });
+  },
+
+  // Bot integration for chats
+  getBotConfig: async () => {
+    return apiCall(`/chats/bots/config`);
+  },
+
+  sendToBot: async (messageData) => {
+    return apiCall(`/chats/bots/process`, {
+      method: 'POST',
+      body: JSON.stringify(messageData)
     });
   }
 };

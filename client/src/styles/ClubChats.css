@@ -289,6 +289,27 @@
   color: #4a5568;
 }
 
+.status-unknown {
+  background: #f7fafc;
+  color: #718096;
+  border: 1px solid #e2e8f0;
+}
+
+.status-invited {
+  background: #e6fffa;
+  color: #234e52;
+}
+
+.status-maybe {
+  background: #fef5e7;
+  color: #744210;
+}
+
+.status-declined {
+  background: #fed7d7;
+  color: #742a2a;
+}
+
 /* Chat Content */
 .chat-content {
   padding: 15px;

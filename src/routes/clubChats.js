@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateClub } = require('../middleware/clubAuth');
-const APILogger = require('../utils/logger');
+const { APILogger } = require('../utils/logger');
+const { sequelize } = require('../models');
+const { Op } = require('sequelize');
 
 // GET /api/club/chats - Получение чатов клуба с участниками мероприятий
 router.get('/', authenticateClub, async (req, res) => {
@@ -22,41 +24,69 @@ router.get('/', authenticateClub, async (req, res) => {
       });
     }
 
-    // Получаем все чаты клуба с участниками мероприятий
-    const chats = await Chat.findAll({
+    // Получаем уникальные комбинации пользователь + мероприятие
+    const uniqueChats = await Chat.findAll({
       where: {
         club_id: clubId,
         chat_type: 'event'
       },
-      order: [['created_at', 'DESC']]
+      attributes: [
+        'event_id',
+        'by_user',
+        [sequelize.fn('MAX', sequelize.col('created_at')), 'last_message_time'],
+        [sequelize.fn('MAX', sequelize.col('id')), 'last_chat_id']
+      ],
+      group: ['event_id', 'by_user'],
+      order: [[sequelize.fn('MAX', sequelize.col('created_at')), 'DESC']]
     });
 
-    console.log(`Found ${chats.length} chats for club ${clubId}`);
+    console.log(`Found ${uniqueChats.length} unique chats for club ${clubId}`);
 
     // Получаем информацию о мероприятиях и статусах участия
-    const chatsWithDetails = await Promise.all(chats.map(async (chat) => {
-      const event = await ClubEvents.findByPk(chat.event_id);
-      const participation = await EventParticipants.findOne({
+    const chatsWithDetails = await Promise.all(uniqueChats.map(async (chatGroup) => {
+      const event = await ClubEvents.findByPk(chatGroup.event_id);
+      
+      // Получаем последнее сообщение для этой комбинации пользователь + мероприятие
+      const lastMessage = await Chat.findOne({
         where: {
-          event_id: chat.event_id,
-          user_id: chat.by_user
-        }
+          event_id: chatGroup.event_id,
+          by_user: chatGroup.by_user,
+          club_id: clubId,
+          chat_type: 'event'
+        },
+        order: [['created_at', 'DESC']]
       });
       
+      // Сначала получаем пользователя по логину
       const user = await User.findOne({
-        where: { login: chat.by_user }
+        where: { login: chatGroup.by_user }
       });
+      
+      // Затем ищем участие в мероприятии по user_id (числовой ID)
+      let participation = null;
+      if (user) {
+        participation = await EventParticipants.findOne({
+          where: {
+            event_id: chatGroup.event_id,
+            user_id: user.id
+          }
+        });
+      }
 
       return {
-        id: chat.id,
-        event_id: chat.event_id,
-        user_id: chat.by_user,
-        user_login: chat.by_user,
-        user_avatar: user?.ava || null,
+        id: chatGroup.last_chat_id || `temp_${chatGroup.event_id}_${chatGroup.by_user}`,
+        event_id: chatGroup.event_id,
+        user_id: chatGroup.by_user,
+        user: {
+          login: chatGroup.by_user,
+          ava: user?.ava || null,
+          email: user?.email || null
+        },
         event_title: event?.title || 'Мероприятие удалено',
+        event_date: event?.event_date || event?.created_at,
         participation_status: participation?.status || 'unknown',
-        last_message: chat.message,
-        last_message_time: chat.created_at,
+        last_message: lastMessage?.message || '',
+        last_message_at: lastMessage?.created_at || chatGroup.last_message_time,
         unread_count: 0 // TODO: реализовать подсчет непрочитанных сообщений
       };
     }));
@@ -80,19 +110,35 @@ router.get('/', authenticateClub, async (req, res) => {
   }
 });
 
-// GET /api/club/chats/:chatId/messages - Получение сообщений чата
-router.get('/:chatId/messages', authenticateClub, async (req, res) => {
+// GET /api/club/chats/messages - Получение сообщений между клубом и пользователем
+router.get('/messages', authenticateClub, async (req, res) => {
   const logger = new APILogger('CLUB_CHAT_MESSAGES');
   
   try {
-    logger.logRequest(req, 'GET /club/chats/:chatId/messages');
+    logger.logRequest(req, 'GET /club/chats/messages');
     
     const { Chat, User } = require('../models');
-    const { chatId } = req.params;
+    const { event_id, user_id } = req.query;
     
-    // Получаем сообщения чата
+    // Валидация параметров
+    if (!event_id || !user_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Не указаны event_id или user_id'
+      });
+    }
+    
+    // Получаем все сообщения между клубом и пользователем по мероприятию
     const messages = await Chat.findAll({
-      where: { id: chatId },
+      where: { 
+        event_id: parseInt(event_id),
+        club_id: req.club.id,
+        chat_type: 'event',
+        [Op.or]: [
+          { by_user: user_id },
+          { to_user: user_id }
+        ]
+      },
       order: [['created_at', 'ASC']]
     });
 
@@ -102,7 +148,8 @@ router.get('/:chatId/messages', authenticateClub, async (req, res) => {
     });
 
     logger.logSuccess(req, 200, {
-      chat_id: chatId,
+      event_id: event_id,
+      user_id: user_id,
       messages_count: messages.length
     });
     
@@ -126,16 +173,15 @@ router.get('/:chatId/messages', authenticateClub, async (req, res) => {
   }
 });
 
-// POST /api/club/chats/:chatId/messages - Отправка сообщения в чат
-router.post('/:chatId/messages', authenticateClub, async (req, res) => {
+// POST /api/club/chats/messages - Отправка сообщения от клуба пользователю
+router.post('/messages', authenticateClub, async (req, res) => {
   const logger = new APILogger('CLUB_CHAT_SEND');
   
   try {
-    logger.logRequest(req, 'POST /club/chats/:chatId/messages');
+    logger.logRequest(req, 'POST /club/chats/messages');
     
     const { Chat } = require('../models');
-    const { chatId } = req.params;
-    const { message } = req.body;
+    const { message, to_user, event_id } = req.body;
     
     if (!message || message.trim() === '') {
       return res.status(400).json({
@@ -144,19 +190,28 @@ router.post('/:chatId/messages', authenticateClub, async (req, res) => {
       });
     }
 
-    // Создаем новое сообщение от клуба
+    if (!to_user || !event_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Не указаны получатель или мероприятие'
+      });
+    }
+
+    // Создаем новое сообщение от клуба пользователю
     const newMessage = await Chat.create({
       by_user: `club_${req.club.id}`,
-      to_user: req.body.to_user || 'system',
+      to_user: to_user,
       message: message.trim(),
+      date: new Date(),
       club_id: req.club.id,
       chat_type: 'event',
-      event_id: req.body.event_id || null
+      event_id: parseInt(event_id)
     });
 
     logger.logSuccess(req, 201, {
-      chat_id: chatId,
-      message_id: newMessage.id
+      message_id: newMessage.id,
+      to_user: to_user,
+      event_id: event_id
     });
     
     res.status(201).json({
@@ -188,6 +243,14 @@ router.post('/:chatId/read', authenticateClub, async (req, res) => {
     const { Chat } = require('../models');
     const { chatId } = req.params;
     
+    // Валидация chatId (может быть временным ID типа temp_eventId_userId)
+    if (!chatId || chatId === 'undefined') {
+      return res.status(400).json({
+        success: false,
+        message: 'Неверный ID чата'
+      });
+    }
+    
     // TODO: реализовать логику отметки как прочитанного
     // Пока просто возвращаем успех
     
@@ -204,6 +267,140 @@ router.post('/:chatId/read', authenticateClub, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Ошибка при отметке чата как прочитанного',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/club/chats/bots/config - Получение конфигурации бота клуба
+router.get('/bots/config', authenticateClub, async (req, res) => {
+  const logger = new APILogger('CLUB_BOT_CONFIG');
+  
+  try {
+    logger.logRequest(req, 'GET /club/chats/bots/config');
+    
+    const { ClubBots } = require('../models');
+    
+    // Получаем конфигурацию бота клуба (общий для всех мероприятий)
+    const botConfig = await ClubBots.findOne({
+      where: {
+        club_id: req.club.id,
+        is_active: true
+      }
+    });
+
+    if (!botConfig) {
+      return res.json({
+        success: true,
+        auto_reply_enabled: false,
+        bot_name: 'Бот не настроен',
+        welcome_message: 'Добро пожаловать!',
+        auto_reply_rules: []
+      });
+    }
+
+    // Извлекаем настройки из JSON поля
+    const settings = botConfig.settings || {};
+    
+    logger.logSuccess(req, 200, {
+      club_id: req.club.id,
+      bot_enabled: botConfig.is_active
+    });
+    
+    res.json({
+      success: true,
+      auto_reply_enabled: settings.auto_reply_enabled || false,
+      bot_name: botConfig.name || 'Клубный бот',
+      welcome_message: settings.welcome_message || 'Добро пожаловать!',
+      auto_reply_rules: settings.auto_reply_rules || []
+    });
+  } catch (error) {
+    logger.logError(req, error);
+    res.status(500).json({
+      success: false,
+      message: 'Ошибка при получении конфигурации бота',
+      error: error.message
+    });
+  }
+});
+
+// POST /api/club/chats/bots/process - Обработка сообщения ботом
+router.post('/bots/process', authenticateClub, async (req, res) => {
+  const logger = new APILogger('CLUB_BOT_PROCESS');
+  
+  try {
+    logger.logRequest(req, 'POST /club/chats/bots/process');
+    
+    const { ClubBots, Chat } = require('../models');
+    const { user_message, user_id, event_id } = req.body;
+    
+    // Получаем конфигурацию бота клуба
+    const botConfig = await ClubBots.findOne({
+      where: {
+        club_id: req.club.id,
+        is_active: true
+      }
+    });
+
+    if (!botConfig) {
+      return res.json({
+        success: false,
+        message: 'Бот не настроен или отключен'
+      });
+    }
+
+    // Извлекаем настройки из JSON поля
+    const settings = botConfig.settings || {};
+    
+    if (!settings.auto_reply_enabled) {
+      return res.json({
+        success: false,
+        message: 'Автоответчик отключен'
+      });
+    }
+
+    // Простая логика автоответчика
+    let botResponse = '';
+    
+    if (user_message.toLowerCase().includes('привет') || user_message.toLowerCase().includes('здравствуйте')) {
+      botResponse = settings.welcome_message || 'Привет! Рад видеть вас на нашем мероприятии!';
+    } else if (user_message.toLowerCase().includes('время') || user_message.toLowerCase().includes('когда')) {
+      botResponse = 'Время проведения мероприятия указано в описании. Если у вас есть вопросы, обратитесь к организаторам.';
+    } else if (user_message.toLowerCase().includes('место') || user_message.toLowerCase().includes('где')) {
+      botResponse = 'Место проведения мероприятия указано в описании. Если у вас есть вопросы, обратитесь к организаторам.';
+    } else if (user_message.toLowerCase().includes('спасибо')) {
+      botResponse = 'Пожалуйста! Если у вас есть еще вопросы, не стесняйтесь спрашивать.';
+    } else {
+      botResponse = 'Спасибо за ваше сообщение! Организаторы мероприятия ответят вам в ближайшее время.';
+    }
+
+    // Сохраняем ответ бота в чат
+    const botMessage = await Chat.create({
+      by_user: 'bot',
+      to_user: user_id,
+      message: botResponse,
+      date: new Date(),
+      club_id: req.club.id,
+      chat_type: 'event',
+      event_id: event_id
+    });
+
+    logger.logSuccess(req, 200, {
+      event_id: event_id,
+      user_id: user_id,
+      bot_response: botResponse
+    });
+    
+    res.json({
+      success: true,
+      message: botResponse,
+      message_id: botMessage.id
+    });
+  } catch (error) {
+    logger.logError(req, error);
+    res.status(500).json({
+      success: false,
+      message: 'Ошибка при обработке сообщения ботом',
       error: error.message
     });
   }
