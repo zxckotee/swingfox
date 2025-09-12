@@ -944,6 +944,11 @@ export const clubsAPI = {
     return response.data;
   },
 
+  getClubEvents: async (clubId) => {
+    const response = await apiClient.get(`/clubs/${clubId}/events`);
+    return response.data;
+  },
+
   getClubApplications: async (clubId) => {
     const response = await apiClient.get(`/clubs/${clubId}/applications`);
     return response.data;

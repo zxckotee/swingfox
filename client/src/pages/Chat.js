@@ -1333,9 +1333,16 @@ const Chat = () => {
               <div className="user-info">
                 <div 
                   className="name clickable"
-                  onClick={(e) => handleUsernameClick(selectedChat, e)}
+                  onClick={(e) => {
+                    if (isClubChat && clubInfo?.id) {
+                      e.stopPropagation();
+                      navigate(`/club-profile/${clubInfo.id}`);
+                    } else {
+                      handleUsernameClick(selectedChat, e);
+                    }
+                  }}
                 >
-                  {isClubChat ? `🏛️ Клуб ${clubInfo?.id}` : `@${selectedChat}`}
+                  {isClubChat ? `🏛️ ${clubInfo?.name || `Клуб ${clubInfo?.id}`}` : `@${selectedChat}`}
                 </div>
                 <div className="status">
                   {isClubChat ? (

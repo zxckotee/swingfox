@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -462,6 +463,14 @@ const EventClub = styled.div`
   color: rgba(255, 255, 255, 0.9);
   font-weight: 500;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    color: white;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    transform: translateY(-1px);
+  }
 `;
 
 const EventDate = styled.div`
@@ -631,6 +640,7 @@ const EventsGrid = styled(Grid)`
 `;
 
 const Clubs = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('clubs');
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedClub, setSelectedClub] = useState(null);
@@ -934,7 +944,16 @@ const Clubs = () => {
                     <EventHeaderResponsive $avatarUrl={event.avatar ? `/uploads/${event.avatar}` : null}>
                       <EventHeaderContent>
                         <EventTitle>{event.title}</EventTitle>
-                        <EventClub>{event.club?.name || 'Клуб'}</EventClub>
+                        <EventClub 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (event.club?.id) {
+                              navigate(`/club-profile/${event.club.id}`);
+                            }
+                          }}
+                        >
+                          {event.club?.name || 'Клуб'}
+                        </EventClub>
                         <EventDate>{new Date(event.date).toLocaleDateString('ru-RU', { 
                           day: 'numeric', 
                           month: 'long',

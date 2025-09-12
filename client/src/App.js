@@ -14,6 +14,7 @@ import Register from './pages/Register';
 import Home from './pages/Home';
 import Catalog from './pages/Catalog';
 import Profile from './pages/Profile';
+import ClubProfile from './pages/ClubProfile';
 import Chat from './pages/Chat';
 import Ads from './pages/Ads';
 import Admin from './pages/Admin';
@@ -356,6 +357,13 @@ function App() {
                 <AuthGuard>
                   <Navigation />
                   <Profile />
+                </AuthGuard>
+              } />
+              
+              <Route path="/club-profile/:clubId" element={
+                <AuthGuard>
+                  <Navigation />
+                  <ClubProfile />
                 </AuthGuard>
               } />
               

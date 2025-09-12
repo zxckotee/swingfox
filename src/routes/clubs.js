@@ -245,47 +245,52 @@ router.get('/:id', async (req, res) => {
     });
 
     const responseData = {
-      id: club.id,
-      name: club.name,
-      description: club.description,
-      type: club.type,
-      location: club.location,
-      city: club.city,
-      country: club.country,
-      address: club.address,
-      website: club.website,
-      email: club.email,
-      geo: club.geo,
-      current_members: club.current_members,
-      max_members: club.max_members,
-      rules: club.rules,
-      tags: club.tags ? club.tags.split(',').map(tag => tag.trim()) : [],
-      avatar: club.avatar,
-      cover_image: club.cover_image,
-      is_verified: club.is_verified,
-      membership_fee: club.membership_fee,
-      age_restriction: club.age_restriction,
-      contact_info: club.contact_info,
-      social_links: club.social_links,
-      owner: club.owner,
-      owner_info: club.OwnerUser ? {
-        login: club.OwnerUser.login,
-        avatar: club.OwnerUser.ava,
-        date: club.OwnerUser.date,
-        status: club.OwnerUser.status
-      } : null,
-      created_at: club.created_at,
-      date_created: club.date_created,
-      recent_events: recentEvents.map(event => ({
-        id: event.id,
-        title: event.title,
-        event_date: event.event_date,
-        location: event.location,
-        current_participants: event.current_participants,
-        max_participants: event.max_participants
-      })),
-      is_owner: club.owner === userId,
-      can_join: club.canJoin()
+      success: true,
+      club: {
+        id: club.id,
+        name: club.name,
+        description: club.description,
+        type: club.type,
+        location: club.location,
+        city: club.city,
+        country: club.country,
+        address: club.address,
+        website: club.website,
+        email: club.email,
+        geo: club.geo,
+        current_members: club.current_members,
+        max_members: club.max_members,
+        member_count: club.member_count || 0,
+        rules: club.rules,
+        tags: club.tags ? club.tags.split(',').map(tag => tag.trim()) : [],
+        avatar: club.avatar,
+        cover_image: club.cover_image,
+        is_verified: club.is_verified,
+        membership_fee: club.membership_fee,
+        age_restriction: club.age_restriction,
+        contact_info: club.contact_info,
+        social_links: club.social_links,
+        links: club.links,
+        owner: club.owner,
+        owner_info: club.OwnerUser ? {
+          login: club.OwnerUser.login,
+          avatar: club.OwnerUser.ava,
+          date: club.OwnerUser.date,
+          status: club.OwnerUser.status
+        } : null,
+        created_at: club.created_at,
+        date_created: club.date_created,
+        recent_events: recentEvents.map(event => ({
+          id: event.id,
+          title: event.title,
+          event_date: event.event_date,
+          location: event.location,
+          current_participants: event.current_participants,
+          max_participants: event.max_participants
+        })),
+        is_owner: club.owner === userId,
+        can_join: club.canJoin ? club.canJoin() : false
+      }
     };
 
     logger.logSuccess(req, 200, {
@@ -396,6 +401,87 @@ router.get('/my/ownership', authenticateToken, async (req, res) => {
     res.status(500).json({ 
       error: 'server_error',
       message: 'Ошибка при проверке владения клубом'
+    });
+  }
+});
+
+// GET /api/clubs/:id/events - Получение мероприятий клуба (публичный)
+router.get('/:id/events', async (req, res) => {
+  const logger = new APILogger('CLUBS');
+  
+  try {
+    logger.logRequest(req, 'GET /clubs/:id/events');
+    
+    const { id } = req.params;
+    const { limit = 20, offset = 0 } = req.query;
+
+    logger.logBusinessLogic(1, 'Получение мероприятий клуба', {
+      club_id: id,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    }, req);
+
+    // Проверяем существование клуба
+    const club = await Clubs.findByPk(id);
+    if (!club) {
+      return res.status(404).json({
+        error: 'club_not_found',
+        message: 'Клуб не найден'
+      });
+    }
+
+    // Получаем мероприятия клуба
+    const { ClubEvents } = require('../models');
+    const events = await ClubEvents.findAll({
+      where: {
+        club_id: id,
+        date: {
+          [require('sequelize').Op.gte]: new Date()
+        }
+      },
+      order: [['date', 'ASC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    const responseData = {
+      success: true,
+      events: events.map(event => ({
+        id: event.id,
+        title: event.title,
+        description: event.description,
+        date: event.date,
+        time: event.time,
+        location: event.location,
+        price: event.price,
+        max_participants: event.max_participants,
+        current_participants: event.current_participants,
+        event_type: event.event_type,
+        is_premium: event.is_premium,
+        avatar: event.avatar,
+        images: event.images
+      })),
+      club: {
+        id: club.id,
+        name: club.name,
+        type: club.type,
+        location: club.location,
+        avatar: club.avatar,
+        member_count: club.member_count || 0
+      }
+    };
+
+    logger.logSuccess(req, 200, {
+      club_id: id,
+      events_count: events.length
+    });
+    
+    res.json(responseData);
+  } catch (error) {
+    logger.logError(req, error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при получении мероприятий клуба'
     });
   }
 });
