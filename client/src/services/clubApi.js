@@ -460,6 +460,28 @@ export const clubApi = {
     }
     
     return await response.json();
+  },
+
+  // Chat methods
+  getClubChats: async () => {
+    return apiCall('/chats');
+  },
+
+  getClubChatMessages: async (chatId) => {
+    return apiCall(`/chats/${chatId}/messages`);
+  },
+
+  sendClubChatMessage: async (chatId, message, eventId = null) => {
+    return apiCall(`/chats/${chatId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ message, event_id: eventId })
+    });
+  },
+
+  markClubChatAsRead: async (chatId) => {
+    return apiCall(`/chats/${chatId}/read`, {
+      method: 'POST'
+    });
   }
 };
 

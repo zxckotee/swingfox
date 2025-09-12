@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Clubs, Events, User, Notifications } = require('../models');
+const { Clubs, Events, User, Notifications, ClubBots } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { generateId } = require('../utils/helpers');
 const { APILogger } = require('../utils/logger');
@@ -157,6 +157,21 @@ router.post('/', authenticateToken, async (req, res) => {
       links: links ? links.trim() : null,
       date_created: new Date().toISOString().split('T')[0]
     });
+
+    // Создаем ботов по умолчанию для нового клуба
+    try {
+      await ClubBots.createDefaultBots(club.id);
+      logger.logBusinessLogic(2, 'Создание ботов по умолчанию', {
+        club_id: club.id,
+        bots_created: 3
+      }, req);
+    } catch (botError) {
+      logger.logBusinessLogic(2, 'Ошибка создания ботов по умолчанию', {
+        club_id: club.id,
+        error: botError.message
+      }, req);
+      // Не прерываем создание клуба из-за ошибки ботов
+    }
 
     logger.logResult('Создание клуба', true, {
       club_id: club.id,

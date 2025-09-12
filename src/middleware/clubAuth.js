@@ -6,11 +6,20 @@ const authenticateClub = async (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
+    console.log('Club auth check:', {
+      url: req.url,
+      hasAuthHeader: !!authHeader,
+      hasToken: !!token
+    });
+
     if (!token) {
+      console.log('No token provided');
       return res.status(401).json({ error: 'Токен не предоставлен' });
     }
 
     const decoded = jwt.verify(token, process.env.CLUB_JWT_SECRET || 'club_secret_key_2024');
+    console.log('Token decoded:', { clubId: decoded.clubId });
+    
     const club = await Clubs.findOne({
       where: { 
         id: decoded.clubId,
@@ -19,8 +28,11 @@ const authenticateClub = async (req, res, next) => {
     });
 
     if (!club) {
+      console.log('Club not found or inactive:', decoded.clubId);
       return res.status(403).json({ error: 'Клуб не найден или неактивен' });
     }
+
+    console.log('Club authenticated:', { id: club.id, name: club.name });
 
     req.club = {
       id: club.id,

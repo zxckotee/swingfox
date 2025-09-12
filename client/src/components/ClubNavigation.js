@@ -70,6 +70,14 @@ const RobotIcon = () => (
   </svg>
 );
 
+const ChatBubbleLeftRightIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    <path d="M13 8H7"/>
+    <path d="M17 12H7"/>
+  </svg>
+);
+
 const Bars3Icon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <line x1="3" y1="6" x2="21" y2="6"/>
@@ -108,6 +116,12 @@ const ClubNavigation = () => {
       href: '/club/participants',
       icon: UsersIcon,
       description: 'Управление участниками мероприятий'
+    },
+    {
+      name: 'Чаты',
+      href: '/club/chats',
+      icon: ChatBubbleLeftRightIcon,
+      description: 'Чаты с участниками мероприятий'
     },
     {
       name: 'Аналитика',
