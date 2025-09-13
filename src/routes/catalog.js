@@ -368,18 +368,55 @@ router.get('/', authenticateToken, async (req, res) => {
       const isCouple = profile.status === 'Семейная пара(М+Ж)' || profile.status === 'Несемейная пара(М+Ж)';
       let partnerData = null;
       
-      if (isCouple && profile.info) {
-        try {
-          const infoData = JSON.parse(profile.info);
-          if (infoData.manDate && infoData.womanDate) {
-            partnerData = {
-              manDate: infoData.manDate,
-              womanDate: infoData.womanDate
-            };
+      if (isCouple) {
+        // Создаем временный объект пользователя для вызова getPartnerData
+        const tempUser = {
+          date: profile.date,
+          height: profile.height,
+          weight: profile.weight,
+          smoking: profile.smoking,
+          alko: profile.alko,
+          isCouple: () => true,
+          getPartnerData: function() {
+            if (!this.isCouple()) return null;
+            
+            const data = {};
+            if (this.date && (this.date.includes('_') || this.date.includes('&&'))) {
+              const separator = this.date.includes('_') ? '_' : '&&';
+              const [manDate, womanDate] = this.date.split(separator);
+              data.manDate = manDate;
+              data.womanDate = womanDate;
+            }
+            if (this.height && (this.height.includes('_') || this.height.includes('&&'))) {
+              const separator = this.height.includes('_') ? '_' : '&&';
+              const [manHeight, womanHeight] = this.height.split(separator);
+              data.manHeight = manHeight;
+              data.womanHeight = womanHeight;
+            }
+            if (this.weight && (this.weight.includes('_') || this.weight.includes('&&'))) {
+              const separator = this.weight.includes('_') ? '_' : '&&';
+              const [manWeight, womanWeight] = this.weight.split(separator);
+              data.manWeight = manWeight;
+              data.womanWeight = womanWeight;
+            }
+            if (this.smoking && (this.smoking.includes('_') || this.smoking.includes('&&'))) {
+              const separator = this.smoking.includes('_') ? '_' : '&&';
+              const [manSmoking, womanSmoking] = this.smoking.split(separator);
+              data.manSmoking = manSmoking;
+              data.womanSmoking = womanSmoking;
+            }
+            if (this.alko && (this.alko.includes('_') || this.alko.includes('&&'))) {
+              const separator = this.alko.includes('_') ? '_' : '&&';
+              const [manAlko, womanAlko] = this.alko.split(separator);
+              data.manAlko = manAlko;
+              data.womanAlko = womanAlko;
+            }
+            
+            return data;
           }
-        } catch (e) {
-          // Игнорируем ошибки парсинга
-        }
+        };
+        
+        partnerData = tempUser.getPartnerData();
       }
 
       // Формируем объект совместимости на основе SQL расчетов
@@ -892,18 +929,55 @@ router.get('/recommendations', authenticateToken, async (req, res) => {
       const isCouple = profile.status === 'Семейная пара(М+Ж)' || profile.status === 'Несемейная пара(М+Ж)';
       let partnerData = null;
       
-      if (isCouple && profile.info) {
-        try {
-          const infoData = JSON.parse(profile.info);
-          if (infoData.manDate && infoData.womanDate) {
-            partnerData = {
-              manDate: infoData.manDate,
-              womanDate: infoData.womanDate
-            };
+      if (isCouple) {
+        // Создаем временный объект пользователя для вызова getPartnerData
+        const tempUser = {
+          date: profile.date,
+          height: profile.height,
+          weight: profile.weight,
+          smoking: profile.smoking,
+          alko: profile.alko,
+          isCouple: () => true,
+          getPartnerData: function() {
+            if (!this.isCouple()) return null;
+            
+            const data = {};
+            if (this.date && (this.date.includes('_') || this.date.includes('&&'))) {
+              const separator = this.date.includes('_') ? '_' : '&&';
+              const [manDate, womanDate] = this.date.split(separator);
+              data.manDate = manDate;
+              data.womanDate = womanDate;
+            }
+            if (this.height && (this.height.includes('_') || this.height.includes('&&'))) {
+              const separator = this.height.includes('_') ? '_' : '&&';
+              const [manHeight, womanHeight] = this.height.split(separator);
+              data.manHeight = manHeight;
+              data.womanHeight = womanHeight;
+            }
+            if (this.weight && (this.weight.includes('_') || this.weight.includes('&&'))) {
+              const separator = this.weight.includes('_') ? '_' : '&&';
+              const [manWeight, womanWeight] = this.weight.split(separator);
+              data.manWeight = manWeight;
+              data.womanWeight = womanWeight;
+            }
+            if (this.smoking && (this.smoking.includes('_') || this.smoking.includes('&&'))) {
+              const separator = this.smoking.includes('_') ? '_' : '&&';
+              const [manSmoking, womanSmoking] = this.smoking.split(separator);
+              data.manSmoking = manSmoking;
+              data.womanSmoking = womanSmoking;
+            }
+            if (this.alko && (this.alko.includes('_') || this.alko.includes('&&'))) {
+              const separator = this.alko.includes('_') ? '_' : '&&';
+              const [manAlko, womanAlko] = this.alko.split(separator);
+              data.manAlko = manAlko;
+              data.womanAlko = womanAlko;
+            }
+            
+            return data;
           }
-        } catch (e) {
-          // Игнорируем ошибки парсинга
-        }
+        };
+        
+        partnerData = tempUser.getPartnerData();
       }
 
       // Формируем объект совместимости

@@ -14,6 +14,96 @@ import {
   Card
 } from '../components/UI';
 
+// Функция для преобразования возрастного диапазона в понятное описание
+const getAgeDescription = (ageRange) => {
+  if (!ageRange) return '';
+  
+  // Если это диапазон вида "22-40"
+  if (ageRange.includes('-')) {
+    const [minAge, maxAge] = ageRange.split('-').map(age => parseInt(age.trim()));
+    const diff = maxAge - minAge;
+    
+    if (diff <= 2) {
+      return 'ровесники';
+    } else if (diff <= 5) {
+      return 'сверстники';
+    } else if (diff <= 10) {
+      return 'какая разница';
+    } else if (diff <= 15) {
+      return 'не важен возраст';
+    } else {
+      return 'возраст не важен';
+    }
+  }
+  
+  // Если это конкретный возраст
+  if (ageRange.includes('+')) {
+    const minAge = parseInt(ageRange.replace('+', ''));
+    if (minAge <= 25) {
+      return 'молодые';
+    } else if (minAge <= 35) {
+      return 'зрелые';
+    } else {
+      return 'опытные';
+    }
+  }
+  
+  // Если это просто число
+  const age = parseInt(ageRange);
+  if (!isNaN(age)) {
+    if (age <= 25) {
+      return 'молодые';
+    } else if (age <= 35) {
+      return 'зрелые';
+    } else {
+      return 'опытные';
+    }
+  }
+  
+  // Если не удалось распарсить, возвращаем как есть
+  return ageRange;
+};
+
+// Функция для расчета возраста из даты рождения
+const calculateAge = (birthDate) => {
+  if (!birthDate) return null;
+  
+  try {
+    const birth = new Date(birthDate);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    
+    return age;
+  } catch (error) {
+    console.error('Ошибка при расчете возраста:', error);
+    return null;
+  }
+};
+
+// Функция для правильного склонения слова "год"
+const getAgeText = (age) => {
+  if (!age) return '';
+  
+  const lastDigit = age % 10;
+  const lastTwoDigits = age % 100;
+  
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+    return `${age} лет`;
+  } else if (lastDigit === 1) {
+    return `${age} год`;
+  } else if (lastDigit >= 2 && lastDigit <= 4) {
+    return `${age} года`;
+  } else {
+    return `${age} лет`;
+  }
+};
+
+
 const CatalogContainer = styled(PageContainer)`
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   min-height: 100vh;
@@ -511,32 +601,93 @@ const Catalog = () => {
                     </ProfileAvatar>
                     
                     <ProfileInfo>
-                                    <div className="status">{user.status}</div>
-              <div className="age">{user.age}</div>
-              {user.compatibility && (
-                <div className="compatibility" style={{ 
-                  background: `linear-gradient(90deg, #4CAF50 ${user.compatibility.percentage}%, #e0e0e0 ${user.compatibility.percentage}%)`,
-                  color: 'white',
-                  padding: '4px 8px',
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  fontWeight: 'bold',
-                  textAlign: 'center',
-                  marginTop: '5px'
-                }}>
-                  Совместимость: {user.compatibility.percentage}%
-                </div>
-              )}
+                      <div className="status">{user.status}</div>
+                      <div className="age">
+                        {user.isCouple ? (
+                          user.partnerData ? (
+                            // Для пар показываем возраст каждого партнера
+                            <>
+                              {user.partnerData.manDate && calculateAge(user.partnerData.manDate) && (
+                                <span>{getAgeText(calculateAge(user.partnerData.manDate))} (Мужчина)</span>
+                              )}
+                              {user.partnerData.manDate && user.partnerData.womanDate && calculateAge(user.partnerData.manDate) && calculateAge(user.partnerData.womanDate) && (
+                                <span> / </span>
+                              )}
+                              {user.partnerData.womanDate && calculateAge(user.partnerData.womanDate) && (
+                                <span>{getAgeText(calculateAge(user.partnerData.womanDate))} (Женщина)</span>
+                              )}
+                            </>
+                          ) : (
+                            // Fallback для пар без partnerData
+                            user.age ? getAgeText(parseInt(user.age)) : ''
+                          )
+                        ) : (
+                          // Для одиночных профилей показываем просто возраст
+                          user.date && calculateAge(user.date) ? getAgeText(calculateAge(user.date)) : (user.age ? getAgeText(parseInt(user.age)) : '')
+                        )}
+                      </div>
+                      {user.compatibility && (
+                        <div className="compatibility" style={{ 
+                          background: `linear-gradient(90deg, #4CAF50 ${user.compatibility.percentage}%, #e0e0e0 ${user.compatibility.percentage}%)`,
+                          color: 'white',
+                          padding: '4px 8px',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          textAlign: 'center',
+                          marginTop: '5px'
+                        }}>
+                          Совместимость: {user.compatibility.percentage}%
+                        </div>
+                      )}
                       
                       <div className="location">
                         {user.city}, {user.distance}км
                       </div>
                       
-                      {/* Дополнительная информация */}
-                      <div className="additional-info" style={{ fontSize: '11px', marginTop: '5px', color: '#666' }}>
-                        {user.height && <span>📏 {user.height}см </span>}
-                        {user.smoking && <span>🚬 {user.smoking.length > 20 ? user.smoking.substring(0, 20) + '...' : user.smoking} </span>}
-                      </div>
+                      {/* Дополнительная информация - убираем поля роста, веса, курения и алкоголя для пар */}
+                      {user.isCouple ? null : (user.height || user.weight || user.smoking || user.alko) && (
+                        <div className="additional-info" style={{ fontSize: '11px', marginTop: '5px', color: '#666' }}>
+                          {user.height && <span>📏 {user.height}см </span>}
+                          {user.weight && <span>⚖️ {user.weight}кг </span>}
+                          {user.smoking && <span>🚬 {user.smoking.length > 20 ? user.smoking.substring(0, 20) + '...' : user.smoking} </span>}
+                          {user.alko && <span>🍷 {user.alko.length > 20 ? user.alko.substring(0, 20) + '...' : user.alko} </span>}
+                        </div>
+                      )}
+                      
+                      {/* Данные пары */}
+                      {user.isCouple && user.partnerData && (
+                        <div className="partner-data" style={{ 
+                          fontSize: '11px', 
+                          marginTop: '5px', 
+                          padding: '8px', 
+                          background: 'rgba(102, 126, 234, 0.1)', 
+                          borderRadius: '8px',
+                          border: '1px solid rgba(102, 126, 234, 0.2)',
+                          color: '#4c51bf'
+                        }}>
+                          <div style={{ fontWeight: 'bold', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            👫 Данные пары
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            {user.partnerData.manDate && user.partnerData.womanDate && calculateAge(user.partnerData.manDate) && calculateAge(user.partnerData.womanDate) && (
+                              <div>🎂 Возраст: {getAgeText(calculateAge(user.partnerData.manDate))} (Мужчина) / {getAgeText(calculateAge(user.partnerData.womanDate))} (Женщина)</div>
+                            )}
+                            {user.partnerData.manHeight && user.partnerData.womanHeight && (
+                              <div>📏 Рост: {user.partnerData.manHeight}см / {user.partnerData.womanHeight}см</div>
+                            )}
+                            {user.partnerData.manWeight && user.partnerData.womanWeight && (
+                              <div>⚖️ Вес: {user.partnerData.manWeight}кг / {user.partnerData.womanWeight}кг</div>
+                            )}
+                            {user.partnerData.manSmoking && user.partnerData.womanSmoking && (
+                              <div>🚬 Курение: {user.partnerData.manSmoking} / {user.partnerData.womanSmoking}</div>
+                            )}
+                            {user.partnerData.manAlko && user.partnerData.womanAlko && (
+                              <div>🍷 Алкоголь: {user.partnerData.manAlko} / {user.partnerData.womanAlko}</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                       
                       {/* Показываем кого ищет пользователь */}
                       {user.searchStatus && (
@@ -559,7 +710,7 @@ const Catalog = () => {
                           </div>
                           {user.searchAge && (
                             <div style={{ fontSize: '10px', marginTop: '3px', opacity: 0.8 }}>
-                              Возраст: {user.searchAge}
+                              Возраст: {getAgeDescription(user.searchAge)}
                             </div>
                           )}
                           <div style={{ fontSize: '10px', marginTop: '3px', opacity: 0.7, fontStyle: 'italic' }}>

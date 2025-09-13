@@ -100,12 +100,12 @@ const User = sequelize.define('User', {
   smoking: {
     type: DataTypes.TEXT,
     allowNull: true,
-    comment: 'Формат: "Не курю" или "Не курю&&Не курю" для пар (муж_женщина)'
+    comment: 'Формат: "Не курю" или "Не курю_Не курю" для пар (муж_женщина)'
   },
   alko: {
     type: DataTypes.TEXT,
     allowNull: true,
-    comment: 'Формат: "Не употребляю" или "Не употребляю&&Не употребляю" для пар (муж_женщина)'
+    comment: 'Формат: "Не употребляю" или "Не употребляю_Не употребляю" для пар (муж_женщина)'
   },
   date: {
     type: DataTypes.TEXT,
@@ -220,31 +220,32 @@ User.prototype.getPartnerData = function() {
   if (!this.isCouple()) return null;
   
   const data = {};
-  if (this.date && this.date.includes('_')) {
-    const [manDate, womanDate] = this.date.split('_');
-    data.manDate = manDate;
-    data.womanDate = womanDate;
-  }
-  if (this.height && this.height.includes('_')) {
-    const [manHeight, womanHeight] = this.height.split('_');
-    data.manHeight = manHeight;
-    data.womanHeight = womanHeight;
-  }
-  if (this.weight && this.weight.includes('_')) {
-    const [manWeight, womanWeight] = this.weight.split('_');
-    data.manWeight = manWeight;
-    data.womanWeight = womanWeight;
-  }
-  if (this.smoking && this.smoking.includes('_')) {
-    const [manSmoking, womanSmoking] = this.smoking.split('_');
-    data.manSmoking = manSmoking;
-    data.womanSmoking = womanSmoking;
-  }
-  if (this.alko && this.alko.includes('_')) {
-    const [manAlko, womanAlko] = this.alko.split('_');
-    data.manAlko = manAlko;
-    data.womanAlko = womanAlko;
-  }
+  
+  // Функция для парсинга полей с поддержкой обоих разделителей
+  const parseCoupleField = (field, fieldName) => {
+    if (!field) return;
+    
+    let separator = '_';
+    if (field.includes('&&')) {
+      separator = '&&';
+    } else if (field.includes('_')) {
+      separator = '_';
+    } else {
+      return; // Нет разделителя - не пара
+    }
+    
+    const [manValue, womanValue] = field.split(separator);
+    if (manValue && womanValue) {
+      data[`man${fieldName}`] = manValue.trim();
+      data[`woman${fieldName}`] = womanValue.trim();
+    }
+  };
+  
+  parseCoupleField(this.date, 'Date');
+  parseCoupleField(this.height, 'Height');
+  parseCoupleField(this.weight, 'Weight');
+  parseCoupleField(this.smoking, 'Smoking');
+  parseCoupleField(this.alko, 'Alko');
   
   return data;
 };

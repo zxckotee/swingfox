@@ -283,6 +283,9 @@ router.put('/profile', authenticateToken, async (req, res) => {
       alko_is_array: Array.isArray(alko)
     }, req);
     
+    // Определяем, является ли пользователь парой
+    const isCouple = status === 'Семейная пара(М+Ж)' || status === 'Несемейная пара(М+Ж)';
+    
     const updateData = {
       country,
       city,
@@ -295,8 +298,9 @@ router.put('/profile', authenticateToken, async (req, res) => {
       date,
       height,
       weight,
-      smoking: Array.isArray(smoking) ? smoking.join('&&') : smoking,
-      alko: Array.isArray(alko) ? alko.join('&&') : alko,
+      // Для пар используем разделитель '_', для одиночных профилей - как есть
+      smoking: Array.isArray(smoking) ? (isCouple ? smoking.join('_') : smoking.join('&&')) : smoking,
+      alko: Array.isArray(alko) ? (isCouple ? alko.join('_') : alko.join('&&')) : alko,
       updated_at: new Date()
     };
     

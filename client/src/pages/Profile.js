@@ -12,6 +12,95 @@ import ProfileRating from '../components/ProfileRating';
 import PhotoComments from '../components/PhotoComments';
 import ProfileComments from '../components/ProfileComments';
 import Reactions from '../components/Reactions';
+
+// Функция для преобразования возрастного диапазона в понятное описание
+const getAgeDescription = (ageRange) => {
+  if (!ageRange) return '';
+  
+  // Если это диапазон вида "22-40"
+  if (ageRange.includes('-')) {
+    const [minAge, maxAge] = ageRange.split('-').map(age => parseInt(age.trim()));
+    const diff = maxAge - minAge;
+    
+    if (diff <= 2) {
+      return 'ровесники';
+    } else if (diff <= 5) {
+      return 'сверстники';
+    } else if (diff <= 10) {
+      return 'какая разница';
+    } else if (diff <= 15) {
+      return 'не важен возраст';
+    } else {
+      return 'возраст не важен';
+    }
+  }
+  
+  // Если это конкретный возраст
+  if (ageRange.includes('+')) {
+    const minAge = parseInt(ageRange.replace('+', ''));
+    if (minAge <= 25) {
+      return 'молодые';
+    } else if (minAge <= 35) {
+      return 'зрелые';
+    } else {
+      return 'опытные';
+    }
+  }
+  
+  // Если это просто число
+  const age = parseInt(ageRange);
+  if (!isNaN(age)) {
+    if (age <= 25) {
+      return 'молодые';
+    } else if (age <= 35) {
+      return 'зрелые';
+    } else {
+      return 'опытные';
+    }
+  }
+  
+  // Если не удалось распарсить, возвращаем как есть
+  return ageRange;
+};
+
+// Функция для расчета возраста из даты рождения
+const calculateAge = (birthDate) => {
+  if (!birthDate) return null;
+  
+  try {
+    const birth = new Date(birthDate);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    
+    return age;
+  } catch (error) {
+    console.error('Ошибка при расчете возраста:', error);
+    return null;
+  }
+};
+
+// Функция для правильного склонения слова "год"
+const getAgeText = (age) => {
+  if (!age) return '';
+  
+  const lastDigit = age % 10;
+  const lastTwoDigits = age % 100;
+  
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+    return `${age} лет`;
+  } else if (lastDigit === 1) {
+    return `${age} год`;
+  } else if (lastDigit >= 2 && lastDigit <= 4) {
+    return `${age} года`;
+  } else {
+    return `${age} лет`;
+  }
+};
 // Убираем импорт getStatusDisplayName, так как теперь статусы уже русские
 import {
   PageContainer,
@@ -1300,6 +1389,15 @@ const Profile = () => {
                     />
 
                     <FormGroup>
+                      <Label>Дата рождения</Label>
+                      <Input
+                        {...register('date')}
+                        type="date"
+                        placeholder="Выберите дату рождения"
+                      />
+                    </FormGroup>
+
+                    <FormGroup>
                       <Label>О себе</Label>
                       <TextArea
                         {...register('info')}
@@ -1413,7 +1511,12 @@ const Profile = () => {
                         <div>
                           <h4 style={{ margin: '0 0 10px 0', color: '#dc3522', fontSize: '16px' }}>👨 Мужчина</h4>
                           {profile.partnerData.manDate && (
-                            <InfoItem><strong>Дата рождения:</strong> {new Date(profile.partnerData.manDate).toLocaleDateString('ru-RU')}</InfoItem>
+                            <InfoItem>
+                              <strong>Дата рождения:</strong> {new Date(profile.partnerData.manDate).toLocaleDateString('ru-RU')}
+                              {calculateAge(profile.partnerData.manDate) && (
+                                <span style={{ color: '#dc3522', fontWeight: '600' }}> ({getAgeText(calculateAge(profile.partnerData.manDate))})</span>
+                              )}
+                            </InfoItem>
                           )}
                           {profile.partnerData.manHeight && (
                             <InfoItem><strong>Рост:</strong> {profile.partnerData.manHeight} см</InfoItem>
@@ -1431,7 +1534,12 @@ const Profile = () => {
                         <div>
                           <h4 style={{ margin: '0 0 10px 0', color: '#dc3522', fontSize: '16px' }}>👩 Женщина</h4>
                           {profile.partnerData.womanDate && (
-                            <InfoItem><strong>Дата рождения:</strong> {new Date(profile.partnerData.womanDate).toLocaleDateString('ru-RU')}</InfoItem>
+                            <InfoItem>
+                              <strong>Дата рождения:</strong> {new Date(profile.partnerData.womanDate).toLocaleDateString('ru-RU')}
+                              {calculateAge(profile.partnerData.womanDate) && (
+                                <span style={{ color: '#dc3522', fontWeight: '600' }}> ({getAgeText(calculateAge(profile.partnerData.womanDate))})</span>
+                              )}
+                            </InfoItem>
                           )}
                           {profile.partnerData.womanHeight && (
                             <InfoItem><strong>Рост:</strong> {profile.partnerData.womanHeight} см</InfoItem>
@@ -1450,10 +1558,18 @@ const Profile = () => {
                     </InfoSection>
                   )}
 
-                  {/* Дополнительная информация */}
-                  {(profile.height || profile.weight || profile.smoking || profile.alko) && (
+                  {/* Дополнительная информация - убираем поля роста, веса, курения и алкоголя для пар */}
+                  {profile.isCouple ? null : (profile.date || profile.height || profile.weight || profile.smoking || profile.alko) && (
                     <InfoSection>
                       <h3>Дополнительная информация</h3>
+                      {profile.date && (
+                        <InfoItem>
+                          <strong>Дата рождения:</strong> {new Date(profile.date).toLocaleDateString('ru-RU')}
+                          {calculateAge(profile.date) && (
+                            <span style={{ color: '#dc3522', fontWeight: '600' }}> ({getAgeText(calculateAge(profile.date))})</span>
+                          )}
+                        </InfoItem>
+                      )}
                       {profile.height && <InfoItem><strong>Рост:</strong> {profile.height} см</InfoItem>}
                       {profile.weight && <InfoItem><strong>Вес:</strong> {profile.weight} кг</InfoItem>}
                       {profile.smoking && <InfoItem><strong>Отношение к курению:</strong> {profile.smoking}</InfoItem>}
@@ -1477,7 +1593,7 @@ const Profile = () => {
                           </div>
                         </InfoItem>
                       )}
-                      {profile.searchAge && <InfoItem><strong>Возраст:</strong> {profile.searchAge}</InfoItem>}
+                      {profile.searchAge && <InfoItem><strong>Возраст:</strong> {getAgeDescription(profile.searchAge)}</InfoItem>}
                       {profile.location && (
                         <InfoItem>
                           <strong>Где предпочитает знакомиться:</strong>
