@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import toast from 'react-hot-toast';
-import { chatAPI, apiUtils } from '../services/api';
+import { chatAPI, clubsAPI, apiUtils } from '../services/api';
 import {
   PageContainer,
   Avatar,
@@ -816,6 +816,7 @@ const Chat = () => {
   const [isClubChat, setIsClubChat] = useState(false);
   const [clubInfo, setClubInfo] = useState(null);
   const [eventInfo, setEventInfo] = useState(null);
+  const [clubsData, setClubsData] = useState({}); // Кэш для хранения информации о клубах
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const queryClient = useQueryClient();
@@ -915,6 +916,38 @@ const Chat = () => {
     });
   }, [chatId, chats?.conversations, selectedChat, chatsLoading, userInfo]);
 
+  // Загружаем информацию о клубах для клубных чатов
+  useEffect(() => {
+    const loadClubsData = async () => {
+      if (!chats?.conversations) return;
+      
+      const clubChats = chats.conversations.filter(chat => chat.companion.startsWith('club_'));
+      const clubIds = clubChats.map(chat => chat.companion.replace('club_', ''));
+      
+      // Загружаем только те клубы, которых еще нет в кэше
+      const newClubIds = clubIds.filter(id => !clubsData[id]);
+      
+      if (newClubIds.length > 0) {
+        try {
+          const clubPromises = newClubIds.map(id => clubsAPI.getClub(id));
+          const clubResults = await Promise.allSettled(clubPromises);
+          
+          const newClubsData = {};
+          clubResults.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+              newClubsData[newClubIds[index]] = result.value;
+            }
+          });
+          
+          setClubsData(prev => ({ ...prev, ...newClubsData }));
+        } catch (error) {
+          console.error('Error loading clubs data:', error);
+        }
+      }
+    };
+    
+    loadClubsData();
+  }, [chats?.conversations]);
 
   // Получение сообщений текущего чата
   const { data: messagesData, error: messagesError, isLoading: messagesLoading } = useQuery(
@@ -1019,11 +1052,7 @@ const Chat = () => {
   // Мутации
   const sendMessageMutation = useMutation(
     (messageData) => {
-      if (isClubChat && clubInfo?.id) {
-        return chatAPI.createClubEventChat(clubInfo.id, eventInfo?.id, messageData.message);
-      } else {
-        return chatAPI.sendMessage(messageData);
-      }
+      return chatAPI.sendMessage(messageData);
     },
     {
       onSuccess: (data) => {
@@ -1145,19 +1174,21 @@ const Chat = () => {
         return;
       }
 
-      if (isClubChat && clubInfo?.id) {
-        // Для клубных чатов используем специальный API
-        sendMessageMutation.mutate({ message: messageText.trim() });
-      } else {
-        // Для обычных чатов используем FormData
-        const formData = new FormData();
-        formData.append('to_user', selectedChat);
-        formData.append('message', messageText.trim());
-        if (isAdConversation) {
-          formData.append('source', 'ad');
-        }
-        sendMessageMutation.mutate(formData);
+      // Используем FormData для всех типов чатов
+      const formData = new FormData();
+      formData.append('to_user', selectedChat);
+      formData.append('message', messageText.trim());
+      
+      if (isAdConversation) {
+        formData.append('source', 'ad');
       }
+      
+      // Для клубных чатов добавляем event_id
+      if (isClubChat && clubInfo?.id && eventInfo?.id) {
+        formData.append('event_id', eventInfo.id);
+      }
+      
+      sendMessageMutation.mutate(formData);
     }
   };
 
@@ -1180,12 +1211,31 @@ const Chat = () => {
       const formData = new FormData();
       formData.append('images', file);
       formData.append('to_user', selectedChat);
+      
       if (isAdConversation) {
         formData.append('source', 'ad');
       }
+      
+      // Для клубных чатов добавляем event_id
+      if (isClubChat && clubInfo?.id && eventInfo?.id) {
+        formData.append('event_id', eventInfo.id);
+      }
+      
       sendFileMutation.mutate(formData);
     }
   };
+
+  // Мемоизированная функция для получения отображаемого имени чата
+  const getChatDisplayName = useMemo(() => {
+    return (companion) => {
+      if (companion.startsWith('club_')) {
+        const clubId = companion.replace('club_', '');
+        const clubData = clubsData[clubId];
+        return clubData?.club?.name || `Клуб ${clubId}`;
+      }
+      return `@${companion}`;
+    };
+  }, [clubsData]);
 
   const formatTime = (timestamp) => {
     const date = new Date(timestamp);
@@ -1237,12 +1287,18 @@ const Chat = () => {
                   onClick={() => handleChatSelect(forceVirtualChat.companion)}
                 >
                   <Avatar
-                    $src={forceVirtualChat.companion_info?.ava ? `/uploads/${forceVirtualChat.companion_info.ava}` : ''}
+                    $src={forceVirtualChat.companion.startsWith('club_') 
+                      ? (clubsData[forceVirtualChat.companion.replace('club_', '')]?.club?.avatar ? `/uploads/${clubsData[forceVirtualChat.companion.replace('club_', '')].club.avatar}` : '')
+                      : (forceVirtualChat.companion_info?.ava ? `/uploads/${forceVirtualChat.companion_info.ava}` : '')
+                    }
                     $size="50px"
                     $fontSize="20px"
                     $online={forceVirtualChat.companion_info?.online}
                   >
-                    {!forceVirtualChat.companion_info?.ava && forceVirtualChat.companion.charAt(0).toUpperCase()}
+                    {forceVirtualChat.companion.startsWith('club_') 
+                      ? (clubsData[forceVirtualChat.companion.replace('club_', '')]?.club?.name ? clubsData[forceVirtualChat.companion.replace('club_', '')].club.name.charAt(0).toUpperCase() : 'К')
+                      : (!forceVirtualChat.companion_info?.ava && forceVirtualChat.companion.charAt(0).toUpperCase())
+                    }
                   </Avatar>
                   
                   <div className="chat-info">
@@ -1250,7 +1306,7 @@ const Chat = () => {
                       className="name clickable"
                       onClick={(e) => handleUsernameClick(forceVirtualChat.companion, e)}
                     >
-                      @{forceVirtualChat.companion}
+                      {getChatDisplayName(forceVirtualChat.companion)}
                     </div>
                     <div className="last-message">
                       <span className="new-match-indicator">
@@ -1272,12 +1328,18 @@ const Chat = () => {
                   onClick={() => handleChatSelect(chat.companion)}
                 >
                   <Avatar
-                    $src={chat.companion_info?.ava ? `/uploads/${chat.companion_info.ava}` : ''}
+                    $src={chat.companion.startsWith('club_') 
+                      ? (clubsData[chat.companion.replace('club_', '')]?.club?.avatar ? `/uploads/${clubsData[chat.companion.replace('club_', '')].club.avatar}` : '')
+                      : (chat.companion_info?.ava ? `/uploads/${chat.companion_info.ava}` : '')
+                    }
                     $size="50px"
                     $fontSize="20px"
                     $online={chat.companion_info?.online}
                   >
-                    {!chat.companion_info?.ava && chat.companion.charAt(0).toUpperCase()}
+                    {chat.companion.startsWith('club_') 
+                      ? (clubsData[chat.companion.replace('club_', '')]?.club?.name ? clubsData[chat.companion.replace('club_', '')].club.name.charAt(0).toUpperCase() : 'К')
+                      : (!chat.companion_info?.ava && chat.companion.charAt(0).toUpperCase())
+                    }
                   </Avatar>
                   
                   <div className="chat-info">
@@ -1285,7 +1347,7 @@ const Chat = () => {
                       className="name clickable"
                       onClick={(e) => handleUsernameClick(chat.companion, e)}
                     >
-                      @{chat.companion}
+                      {getChatDisplayName(chat.companion)}
                     </div>
                     <div className="last-message">
                       {chat.last_message ? (

@@ -341,24 +341,86 @@ router.post('/send', authenticateToken, upload.array('images', 5), async (req, r
       });
     }
 
+    // Проверяем, является ли это чатом с клубом
+    const isClubChat = to_user.startsWith('club_');
+    let eventId = null;
+    
+    if (isClubChat) {
+      // Для чата с клубом проверяем, есть ли уже существующий чат
+      const existingChat = await Chat.findOne({
+        where: {
+          [Op.or]: [
+            { by_user: fromUser, to_user: to_user },
+            { by_user: to_user, to_user: fromUser }
+          ],
+          is_club_chat: true
+        },
+        order: [['date', 'DESC']]
+      });
+      
+      if (existingChat) {
+        // Если чат уже существует, используем event_id из существующего чата
+        eventId = existingChat.event_id;
+      } else {
+        // Если это первый чат с клубом, event_id обязателен
+        const { event_id } = req.body;
+        if (!event_id) {
+          return res.status(400).json({
+            error: 'missing_event_id',
+            message: 'Для первого сообщения клубу необходимо указать event_id'
+          });
+        }
+        eventId = event_id;
+      }
+    }
+
     // Проверяем существование получателя
-    const recipient = await User.findOne({ where: { login: to_user } });
-    if (!recipient) {
-      // Удаляем загруженные файлы
-      if (req.files) {
-        for (const file of req.files) {
-          try {
-            await fs.unlink(file.path);
-          } catch (err) {
-            console.error('Error deleting file:', err);
+    let recipient = null;
+    
+    if (isClubChat) {
+      // Для клубных чатов проверяем существование клуба
+      const { Clubs } = require('../models');
+      const clubId = to_user.replace('club_', '');
+      const club = await Clubs.findByPk(clubId);
+      if (!club) {
+        // Удаляем загруженные файлы
+        if (req.files) {
+          for (const file of req.files) {
+            try {
+              await fs.unlink(file.path);
+            } catch (err) {
+              console.error('Error deleting file:', err);
+            }
           }
         }
+        
+        return res.status(404).json({
+          error: 'recipient_not_found',
+          message: 'Клуб не найден'
+        });
       }
-      
-      return res.status(404).json({
-        error: 'recipient_not_found',
-        message: 'Получатель не найден'
-      });
+      // Создаем фиктивный объект получателя для клуба
+      recipient = { login: to_user, privacy_settings: { privacy: { allow_messages: true } } };
+    } else {
+      // Для обычных пользователей ищем в таблице User
+      recipient = await User.findOne({ where: { login: to_user } });
+      if (!recipient) {
+        // Удаляем загруженные файлы
+        if (req.files) {
+          for (const file of req.files) {
+            try {
+              await fs.unlink(file.path);
+            } catch (err) {
+              console.error('Error deleting file:', err);
+            }
+          }
+        }
+        
+        return res.status(404).json({
+          error: 'recipient_not_found',
+          message: 'Получатель не найден'
+        });
+      }
     }
 
     // Проверяем настройки приватности получателя
@@ -384,8 +446,8 @@ router.post('/send', authenticateToken, upload.array('images', 5), async (req, r
     let sendAllowed = true;
     let matchWarning = null;
     
-    // Для общения по объявлениям не проверяем матч
-    if (ENABLE_MATCH_CHECKING && source !== 'ad') {
+    // Для общения по объявлениям и клубных чатов не проверяем матч
+    if (ENABLE_MATCH_CHECKING && source !== 'ad' && !isClubChat) {
       try {
         const permission = await MatchChecker.canSendMessage(fromUser, to_user);
         
@@ -458,7 +520,13 @@ router.post('/send', authenticateToken, upload.array('images', 5), async (req, r
       message: message || '',
       images: imagesList.length > 0 ? imagesList.join('&&') : null,
       date: new Date(),
-      is_read: false
+      is_read: false,
+      ...(isClubChat && {
+        is_club_chat: true,
+        club_id: to_user.replace('club_', ''),
+        chat_type: 'event',
+        event_id: eventId
+      })
     });
 
     // Создаем уведомление о новом сообщении
