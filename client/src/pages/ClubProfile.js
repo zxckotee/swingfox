@@ -514,14 +514,6 @@ const EventParticipants = styled.div`
   font-weight: 500;
 `;
 
-const EventPrice = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #d69e2e;
-  font-size: 14px;
-  font-weight: 600;
-`;
 
 const EventType = styled.div`
   display: inline-block;
@@ -1115,13 +1107,6 @@ const ClubProfile = () => {
                     {event.max_participants && ` / ${event.max_participants}`}
                   </EventParticipants>
                   
-                  {/* Цена */}
-                  {event.price && (
-                    <EventPrice>
-                      <CrownIcon />
-                      {event.price} ₽
-                    </EventPrice>
-                  )}
                   
                   {/* Тип мероприятия */}
                   {event.event_type && (
@@ -1213,15 +1198,6 @@ const ClubProfile = () => {
                     </div>
                   </EventInfoItem>
                   
-                  {selectedEvent.price && (
-                    <EventInfoItem>
-                      <CrownIcon />
-                      <div>
-                        <EventInfoLabel>Стоимость</EventInfoLabel>
-                        <EventInfoValue>{selectedEvent.price} ₽</EventInfoValue>
-                      </div>
-                    </EventInfoItem>
-                  )}
                   
                   {selectedEvent.event_type && (
                     <EventInfoItem>

@@ -257,12 +257,6 @@ const EventDetailsModal = ({ isOpen, onClose, eventId }) => {
                       </MetaItem>
                     )}
                     
-                    {event.price > 0 && (
-                      <MetaItem>
-                        <span className="icon">💰</span>
-                        <span>{event.price} ₽</span>
-                      </MetaItem>
-                    )}
                     
                     {event.max_participants && (
                       <MetaItem>

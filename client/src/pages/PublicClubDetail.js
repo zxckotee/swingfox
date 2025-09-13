@@ -274,9 +274,6 @@ const PublicClubDetail = () => {
                         <p className="event-description">{event.description}</p>
                       )}
                       <div className="event-details">
-                        <span className="event-price">
-                          {event.price ? `${event.price} ₽` : 'Бесплатно'}
-                        </span>
                         <span className="event-participants">
                           {event.max_participants ? `До ${event.max_participants} участников` : 'Без ограничений'}
                         </span>

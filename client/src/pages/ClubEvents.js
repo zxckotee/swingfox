@@ -357,12 +357,6 @@ const ClubEvents = () => {
                     </div>
                   </div>
                   
-                  {event.price > 0 && (
-                    <div className="event-price">
-                      <span className="price-label">Стоимость:</span>
-                      <span className="price-value">{event.price} ₽</span>
-                    </div>
-                  )}
                   
                   {event.is_premium && (
                     <div className="premium-badge">

@@ -81,12 +81,6 @@ const EventApplication = ({ event, onClose, onSuccess }) => {
                 <span>{event.location}</span>
               </div>
             )}
-            {event.price && (
-              <div className="detail-item">
-                <span className="detail-icon">💰</span>
-                <span>{event.price} ₽</span>
-              </div>
-            )}
           </div>
         </div>
 

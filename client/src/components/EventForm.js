@@ -12,7 +12,6 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
     date: '',
     time: '',
     location: '',
-    price: '',
     max_participants: '',
     category: 'party',
     age_restriction: '18+',
@@ -35,7 +34,6 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
         date: eventDate.toISOString().split('T')[0],
         time: eventDate.toTimeString().slice(0, 5),
         location: event.location || '',
-        price: event.price || '',
         max_participants: event.max_participants || '',
         category: event.category || 'party',
         age_restriction: event.age_restriction || '18+',
@@ -86,9 +84,6 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
       newErrors.time = 'Время события обязательно';
     }
 
-    if (formData.price && isNaN(parseFloat(formData.price))) {
-      newErrors.price = 'Цена должна быть числом';
-    }
 
     if (formData.max_participants && (isNaN(parseInt(formData.max_participants)) || parseInt(formData.max_participants) < 1)) {
       newErrors.max_participants = 'Количество участников должно быть положительным числом';
@@ -191,7 +186,7 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
         ...formData,
         club_id: clubId,
         date: new Date(`${formData.date}T${formData.time}`).toISOString(),
-        price: formData.price ? parseFloat(formData.price) : 0,
+        price: 0, // Все мероприятия бесплатные
         max_participants: formData.max_participants ? parseInt(formData.max_participants) : null,
         duration_hours: formData.duration_hours ? parseInt(formData.duration_hours) : 2,
         // Добавляем текущие изображения при обновлении
@@ -409,22 +404,6 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
           </div>
 
           <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="price">Цена (₽)</label>
-              <input
-                type="number"
-                id="price"
-                name="price"
-                value={formData.price}
-                onChange={handleChange}
-                className={errors.price ? 'error' : ''}
-                placeholder="0"
-                min="0"
-                step="0.01"
-              />
-              {errors.price && <span className="field-error">{errors.price}</span>}
-            </div>
-
             <div className="form-group">
               <label htmlFor="max_participants">Макс. участников</label>
               <input

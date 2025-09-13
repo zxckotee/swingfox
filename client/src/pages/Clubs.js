@@ -1017,12 +1017,6 @@ const Clubs = () => {
                           <EventDetailTextResponsive>{event.current_participants || 0}/{event.max_participants || '∞'}</EventDetailTextResponsive>
                         </EventDetailItem>
                         
-                        {event.price && (
-                          <EventDetailItem>
-                            <EventDetailIcon>💰</EventDetailIcon>
-                            <EventDetailTextResponsive>{event.price}₽</EventDetailTextResponsive>
-                          </EventDetailItem>
-                        )}
                       </EventDetailsResponsive>
                       
                       <EventAction>
@@ -1255,12 +1249,6 @@ const Clubs = () => {
                       </span>
                     </div>
                     
-                    {selectedEventDetails.price && (
-                      <div>
-                        <strong>💰 Стоимость:</strong><br />
-                        <span style={{ color: '#4a5568' }}>{selectedEventDetails.price}₽</span>
-                      </div>
-                    )}
                     
                     {selectedEventDetails.event_type && (
                       <div>
@@ -1470,12 +1458,6 @@ const Clubs = () => {
                       </span>
                     </div>
                     
-                    {selectedEvent.price && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '16px' }}>💰</span>
-                        <span style={{ color: '#4a5568' }}>{selectedEvent.price}₽</span>
-                      </div>
-                    )}
                   </div>
                 </div>
 
