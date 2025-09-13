@@ -739,7 +739,13 @@ const Notifications = () => {
   // Функция для перехода в профиль пользователя
   const handleViewProfile = (username) => {
     if (username) {
-      navigate(`/profile/${username}`);
+      // Проверяем, является ли username клубом (начинается с @club_)
+      if (username.startsWith('@club_')) {
+        const clubId = username.replace('@club_', '');
+        navigate(`/club-profile/${clubId}`);
+      } else {
+        navigate(`/profile/${username}`);
+      }
     }
   };
 

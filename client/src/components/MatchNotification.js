@@ -188,7 +188,13 @@ const MatchNotification = ({
   };
 
   const handleViewProfile = () => {
-    navigate(`/profile/${matchUser}`);
+    // Проверяем, является ли matchUser клубом (начинается с @club_)
+    if (matchUser && matchUser.startsWith('@club_')) {
+      const clubId = matchUser.replace('@club_', '');
+      navigate(`/club-profile/${clubId}`);
+    } else {
+      navigate(`/profile/${matchUser}`);
+    }
   };
 
   const formatTime = (dateString) => {

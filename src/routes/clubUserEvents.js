@@ -263,6 +263,28 @@ router.post('/events/:eventId/join', authenticateToken, async (req, res) => {
 
     console.log(`Successfully joined event ${eventId} for user ${userId}`);
 
+    // Триггер приветственного бота при регистрации на мероприятие
+    try {
+      const axios = require('axios');
+      const clubApiUrl = process.env.CLUB_API_URL || 'http://localhost:3001';
+      
+      await axios.post(`${clubApiUrl}/api/club/chats/bots/trigger`, {
+        trigger_type: 'registration',
+        user_id: userId,
+        event_id: eventId
+      }, {
+        headers: {
+          'Authorization': `Bearer ${req.headers.authorization?.replace('Bearer ', '')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log(`Welcome bot triggered for user ${userId} on event ${eventId}`);
+    } catch (botError) {
+      console.error('Bot trigger failed:', botError.message);
+      // Не прерываем выполнение, если бот не сработал
+    }
+
     res.json({
       message: 'Успешно присоединились к мероприятию',
       participation: participation.toJSON()

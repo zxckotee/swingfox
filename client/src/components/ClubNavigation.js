@@ -131,9 +131,9 @@ const ClubNavigation = () => {
     },
     {
       name: 'Боты',
-      href: '/club/bots',
+      href: '/club/bot-settings',
       icon: RobotIcon,
-      description: 'Автоматизация и боты'
+      description: 'Настройка автоматических ботов'
     },
     {
       name: 'Настройки',

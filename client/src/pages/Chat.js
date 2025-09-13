@@ -390,7 +390,7 @@ const Message = styled.div`
   
   .message-time {
     font-size: 12px;
-    opacity: 0.7;
+    color: ${props => props.$isOwn ? 'rgba(255, 255, 255, 0.8)' : '#a0aec0'};
     text-align: right;
     margin-top: 5px;
   }
@@ -1119,7 +1119,16 @@ const Chat = () => {
 
   const handleUsernameClick = (username, event) => {
     event.stopPropagation(); // Предотвращаем открытие чата
-    navigate(`/profile/${username}`);
+    
+    // Проверяем, является ли username клубом (начинается с @club_)
+    if (username && username.startsWith('@club_')) {
+      // Извлекаем ID клуба из username (убираем @club_)
+      const clubId = username.replace('@club_', '');
+      navigate(`/club-profile/${clubId}`);
+    } else {
+      // Обычный пользователь
+      navigate(`/profile/${username}`);
+    }
   };
 
   const handleSendMessage = () => {
@@ -1223,7 +1232,7 @@ const Chat = () => {
               {/* Принудительно показываем виртуальный чат, если он есть */}
               {forceVirtualChat && !filteredChats.find(chat => chat.companion === forceVirtualChat.companion) && (
                 <ChatItem
-                  key={forceVirtualChat.companion}
+                  key={`virtual-${forceVirtualChat.companion}`}
                   className={selectedChat === forceVirtualChat.companion ? 'active' : ''}
                   onClick={() => handleChatSelect(forceVirtualChat.companion)}
                 >
@@ -1256,9 +1265,9 @@ const Chat = () => {
               )}
               
                             {/* Показываем остальные чаты */}
-              {filteredChats.map(chat => (
+              {filteredChats.map((chat, index) => (
                 <ChatItem
-                  key={chat.companion}
+                  key={`chat-${chat.companion}-${index}`}
                   className={selectedChat === chat.companion ? 'active' : ''}
                   onClick={() => handleChatSelect(chat.companion)}
                 >
@@ -1396,7 +1405,7 @@ const Chat = () => {
                     (new Date(message.date) - new Date(prevMessage.date)) > 300000;
 
                   return (
-                    <MessageGroup key={message.id} $isOwn={isOwn}>
+                    <MessageGroup key={`${message.id}-${index}`} $isOwn={isOwn}>
                       <Message $isOwn={isOwn}>
                         {message.message && (
                           <div className="message-text">{message.message}</div>
@@ -1405,7 +1414,7 @@ const Chat = () => {
                           <div className="message-file">
                             {message.images.map((image, idx) => (
                               <img
-                                key={idx}
+                                key={`${message.id}-image-${idx}`}
                                 src={`/uploads/${image}`}
                                 alt="Вложение"
                                 style={{ margin: '2px', maxWidth: '250px' }}

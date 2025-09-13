@@ -317,7 +317,7 @@ router.post('/:chatId/read', authenticateClub, async (req, res) => {
   }
 });
 
-// GET /api/club/chats/bots/config - Получение конфигурации бота клуба
+// GET /api/club/chats/bots/config - Получение конфигурации ботов клуба
 router.get('/bots/config', authenticateClub, async (req, res) => {
   const logger = new APILogger('CLUB_BOT_CONFIG');
   
@@ -326,126 +326,205 @@ router.get('/bots/config', authenticateClub, async (req, res) => {
     
     const { ClubBots } = require('../models');
     
-    // Получаем конфигурацию бота клуба (общий для всех мероприятий)
-    const botConfig = await ClubBots.findOne({
+    // Получаем все боты клуба
+    const bots = await ClubBots.findAll({
       where: {
         club_id: req.club.id,
         is_active: true
       }
     });
 
-    if (!botConfig) {
+    // Если ботов нет, создаем дефолтных
+    if (bots.length === 0) {
+      await ClubBots.createDefaultBots(req.club.id);
+      const newBots = await ClubBots.findAll({
+        where: {
+          club_id: req.club.id,
+          is_active: true
+        }
+      });
       return res.json({
         success: true,
-        auto_reply_enabled: false,
-        bot_name: 'Бот не настроен',
-        welcome_message: 'Добро пожаловать!',
-        auto_reply_rules: []
+        bots: newBots.map(bot => ({
+          id: bot.id,
+          name: bot.name,
+          description: bot.description,
+          enabled: bot.settings?.enabled || false,
+          settings: bot.settings || {}
+        }))
       });
     }
-
-    // Извлекаем настройки из JSON поля
-    const settings = botConfig.settings || {};
     
     logger.logSuccess(req, 200, {
       club_id: req.club.id,
-      bot_enabled: botConfig.is_active
+      bots_count: bots.length
     });
     
     res.json({
       success: true,
-      auto_reply_enabled: settings.auto_reply_enabled || false,
-      bot_name: botConfig.name || 'Клубный бот',
-      welcome_message: settings.welcome_message || 'Добро пожаловать!',
-      auto_reply_rules: settings.auto_reply_rules || []
+      bots: bots.map(bot => ({
+        id: bot.id,
+        name: bot.name,
+        description: bot.description,
+        enabled: bot.settings?.enabled || false,
+        settings: bot.settings || {}
+      }))
     });
   } catch (error) {
     logger.logError(req, error);
     res.status(500).json({
       success: false,
-      message: 'Ошибка при получении конфигурации бота',
+      message: 'Ошибка при получении конфигурации ботов',
       error: error.message
     });
   }
 });
 
-// POST /api/club/chats/bots/process - Обработка сообщения ботом
-router.post('/bots/process', authenticateClub, async (req, res) => {
-  const logger = new APILogger('CLUB_BOT_PROCESS');
+// PUT /api/club/chats/bots/config - Обновление конфигурации ботов
+router.put('/bots/config', authenticateClub, async (req, res) => {
+  const logger = new APILogger('CLUB_BOT_UPDATE');
   
   try {
-    logger.logRequest(req, 'POST /club/chats/bots/process');
+    logger.logRequest(req, 'PUT /club/chats/bots/config');
     
-    const { ClubBots, Chat } = require('../models');
-    const { user_message, user_id, event_id } = req.body;
+    const { ClubBots } = require('../models');
+    const { bots } = req.body;
     
-    // Получаем конфигурацию бота клуба
-    const botConfig = await ClubBots.findOne({
+    if (!Array.isArray(bots)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Неверный формат данных ботов'
+      });
+    }
+
+    // Обновляем настройки каждого бота
+    for (const botData of bots) {
+      await ClubBots.update(
+        { 
+          settings: botData.settings,
+          name: botData.name,
+          description: botData.description
+        },
+        {
+          where: {
+            id: botData.id,
+            club_id: req.club.id
+          }
+        }
+      );
+    }
+    
+    logger.logSuccess(req, 200, {
+      club_id: req.club.id,
+      updated_bots: bots.length
+    });
+    
+    res.json({
+      success: true,
+      message: 'Настройки ботов обновлены'
+    });
+  } catch (error) {
+    logger.logError(req, error);
+    res.status(500).json({
+      success: false,
+      message: 'Ошибка при обновлении настроек ботов',
+      error: error.message
+    });
+  }
+});
+
+// POST /api/club/chats/bots/trigger - Триггер ботов по событиям
+router.post('/bots/trigger', authenticateClub, async (req, res) => {
+  const logger = new APILogger('CLUB_BOT_TRIGGER');
+  
+  try {
+    logger.logRequest(req, 'POST /club/chats/bots/trigger');
+    
+    const { ClubBots, Chat, ClubEvents } = require('../models');
+    const { trigger_type, user_id, event_id, user_message } = req.body;
+    
+    // Получаем активных ботов для данного типа триггера
+    const bots = await ClubBots.findAll({
       where: {
         club_id: req.club.id,
         is_active: true
       }
     });
 
-    if (!botConfig) {
-      return res.json({
-        success: false,
-        message: 'Бот не настроен или отключен'
-      });
-    }
-
-    // Извлекаем настройки из JSON поля
-    const settings = botConfig.settings || {};
+    const triggeredBots = [];
     
-    if (!settings.auto_reply_enabled) {
-      return res.json({
-        success: false,
-        message: 'Автоответчик отключен'
-      });
+    for (const bot of bots) {
+      const settings = bot.settings || {};
+      
+      // Проверяем, включен ли бот и подходит ли тип триггера
+      if (settings.enabled && settings.trigger_type === trigger_type) {
+        let botResponse = '';
+        
+        if (trigger_type === 'registration') {
+          // Приветственный бот при регистрации
+          botResponse = settings.welcome_message || 'Добро пожаловать на мероприятие!';
+        } else if (trigger_type === 'first_message') {
+          // Рекомендательный бот при первом сообщении
+          const upcomingEvents = await ClubEvents.findAll({
+            where: {
+              club_id: req.club.id,
+              date: {
+                [Op.gte]: new Date()
+              }
+            },
+            order: [['date', 'ASC']],
+            limit: 3
+          });
+          
+          if (upcomingEvents.length > 0) {
+            const eventList = upcomingEvents.map(event => 
+              `• ${event.title} - ${new Date(event.date).toLocaleDateString('ru-RU')}`
+            ).join('\n');
+            
+            botResponse = `${settings.recommendation_message || 'Кстати, у нас есть другие интересные мероприятия!'}\n\n${eventList}`;
+          } else {
+            botResponse = settings.recommendation_message || 'Спасибо за ваше сообщение!';
+          }
+        }
+        
+        if (botResponse) {
+          // Сохраняем ответ бота в чат
+          const botMessage = await Chat.create({
+            by_user: 'bot',
+            to_user: user_id,
+            message: botResponse,
+            date: new Date(),
+            club_id: req.club.id,
+            chat_type: 'event',
+            event_id: event_id
+          });
+          
+          triggeredBots.push({
+            bot_id: bot.id,
+            bot_name: bot.name,
+            message: botResponse,
+            message_id: botMessage.id
+          });
+        }
+      }
     }
-
-    // Простая логика автоответчика
-    let botResponse = '';
-    
-    if (user_message.toLowerCase().includes('привет') || user_message.toLowerCase().includes('здравствуйте')) {
-      botResponse = settings.welcome_message || 'Привет! Рад видеть вас на нашем мероприятии!';
-    } else if (user_message.toLowerCase().includes('время') || user_message.toLowerCase().includes('когда')) {
-      botResponse = 'Время проведения мероприятия указано в описании. Если у вас есть вопросы, обратитесь к организаторам.';
-    } else if (user_message.toLowerCase().includes('место') || user_message.toLowerCase().includes('где')) {
-      botResponse = 'Место проведения мероприятия указано в описании. Если у вас есть вопросы, обратитесь к организаторам.';
-    } else if (user_message.toLowerCase().includes('спасибо')) {
-      botResponse = 'Пожалуйста! Если у вас есть еще вопросы, не стесняйтесь спрашивать.';
-    } else {
-      botResponse = 'Спасибо за ваше сообщение! Организаторы мероприятия ответят вам в ближайшее время.';
-    }
-
-    // Сохраняем ответ бота в чат
-    const botMessage = await Chat.create({
-      by_user: 'bot',
-      to_user: user_id,
-      message: botResponse,
-      date: new Date(),
-      club_id: req.club.id,
-      chat_type: 'event',
-      event_id: event_id
-    });
 
     logger.logSuccess(req, 200, {
-      event_id: event_id,
-      user_id: user_id,
-      bot_response: botResponse
+      trigger_type,
+      event_id,
+      user_id,
+      triggered_bots: triggeredBots.length
     });
     
     res.json({
       success: true,
-      message: botResponse,
-      message_id: botMessage.id
+      triggered_bots: triggeredBots
     });
   } catch (error) {
     logger.logError(req, error);
     res.status(500).json({
       success: false,
-      message: 'Ошибка при обработке сообщения ботом',
+      message: 'Ошибка при срабатывании ботов',
       error: error.message
     });
   }

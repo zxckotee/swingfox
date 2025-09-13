@@ -125,10 +125,10 @@ const ClubChat = () => {
         setMessages(prev => [...prev, newMsg]);
         setNewMessage('');
         
-        // Если бот настроен, отправляем сообщение боту
-        if (botConfig && botConfig.auto_reply_enabled) {
+        // Триггер рекомендательного бота при первом сообщении
+        if (messages.length === 0) { // Если это первое сообщение в чате
           setTimeout(() => {
-            handleBotResponse(newMessage.trim());
+            handleBotTrigger('first_message');
           }, 1000);
         }
       }
@@ -140,29 +140,31 @@ const ClubChat = () => {
     }
   };
 
-  const handleBotResponse = async (userMessage) => {
+  const handleBotTrigger = async (triggerType) => {
     try {
-      // Отправляем сообщение боту для обработки
-      const botResponse = await clubApi.sendToBot({
-        user_message: userMessage,
+      // Триггерим ботов по типу события
+      const response = await clubApi.triggerBots({
+        trigger_type: triggerType,
         user_id: chatData.user_id,
         event_id: chatData.event_id
       });
 
-      if (botResponse.success && botResponse.message) {
-        // Добавляем ответ бота в чат
-        const botMsg = {
-          id: botResponse.message_id || `bot_${Date.now()}`,
-          message: botResponse.message,
-          by_user: 'bot',
-          to_user: chatData.user_id,
-          created_at: new Date().toISOString()
-        };
-        
-        setMessages(prev => [...prev, botMsg]);
+      if (response.success && response.triggered_bots) {
+        // Добавляем ответы всех сработавших ботов в чат
+        response.triggered_bots.forEach(bot => {
+          const botMsg = {
+            id: bot.message_id || `bot_${Date.now()}_${bot.bot_id}`,
+            message: bot.message,
+            by_user: 'bot',
+            to_user: chatData.user_id,
+            created_at: new Date().toISOString()
+          };
+          
+          setMessages(prev => [...prev, botMsg]);
+        });
       }
     } catch (error) {
-      console.error('Ошибка обработки ботом:', error);
+      console.error('Ошибка триггера ботов:', error);
     }
   };
 

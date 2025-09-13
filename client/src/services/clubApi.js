@@ -490,10 +490,17 @@ export const clubApi = {
     return apiCall(`/chats/bots/config`);
   },
 
-  sendToBot: async (messageData) => {
-    return apiCall(`/chats/bots/process`, {
+  updateBotConfig: async (botsData) => {
+    return apiCall(`/chats/bots/config`, {
+      method: 'PUT',
+      body: JSON.stringify({ bots: botsData })
+    });
+  },
+
+  triggerBots: async (triggerData) => {
+    return apiCall(`/chats/bots/trigger`, {
       method: 'POST',
-      body: JSON.stringify(messageData)
+      body: JSON.stringify(triggerData)
     });
   }
 };

@@ -285,15 +285,31 @@ export const NotificationProvider = ({ children }) => {
             markNotificationAsRead(popup.id);
             if (navigate && typeof navigate === 'function') {
               try {
-                navigate(`/profile/${username}`);
+                // Проверяем, является ли username клубом (начинается с @club_)
+                if (username && username.startsWith('@club_')) {
+                  const clubId = username.replace('@club_', '');
+                  navigate(`/club-profile/${clubId}`);
+                } else {
+                  navigate(`/profile/${username}`);
+                }
               } catch (error) {
                 console.error('Navigation error:', error);
                 // Fallback: could redirect to a different page or show an error
-                window.location.href = `/profile/${username}`;
+                if (username && username.startsWith('@club_')) {
+                  const clubId = username.replace('@club_', '');
+                  window.location.href = `/club-profile/${clubId}`;
+                } else {
+                  window.location.href = `/profile/${username}`;
+                }
               }
             } else {
               // Fallback if navigate is not available
-              window.location.href = `/profile/${username}`;
+              if (username && username.startsWith('@club_')) {
+                const clubId = username.replace('@club_', '');
+                window.location.href = `/club-profile/${clubId}`;
+              } else {
+                window.location.href = `/profile/${username}`;
+              }
             }
           }}
           autoCloseDelay={8000}

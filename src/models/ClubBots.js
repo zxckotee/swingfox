@@ -76,29 +76,21 @@ module.exports = (sequelize) => {
   ClubBots.createDefaultBots = async function(clubId) {
     const defaultBots = [
       {
-        name: 'Авто-приглашения',
-        description: 'Автоматически приглашает подходящих пользователей на мероприятия',
+        name: 'Приветственный бот',
+        description: 'Приветствует пользователей при регистрации на мероприятие',
         settings: {
-          autoInvite: true,
-          maxInvitesPerEvent: 50,
-          userPreferences: ['age', 'location', 'interests']
+          enabled: true,
+          welcome_message: 'Добро пожаловать на мероприятие! Если у вас есть вопросы, обращайтесь к организаторам.',
+          trigger_type: 'registration'
         }
       },
       {
-        name: 'Напоминания',
-        description: 'Отправляет напоминания о предстоящих мероприятиях',
+        name: 'Рекомендательный бот',
+        description: 'Предлагает ближайшие мероприятия при первом сообщении',
         settings: {
-          reminderHours: [24, 2],
-          reminderTypes: ['push', 'email']
-        }
-      },
-      {
-        name: 'Аналитика',
-        description: 'Собирает и анализирует данные о мероприятиях и участниках',
-        settings: {
-          trackMetrics: true,
-          generateReports: true,
-          reportFrequency: 'weekly'
+          enabled: true,
+          recommendation_message: 'Кстати, у нас есть другие интересные мероприятия! Посмотрите:',
+          trigger_type: 'first_message'
         }
       }
     ];

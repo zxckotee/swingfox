@@ -18,7 +18,6 @@ import {
   ModalHeader,
   CloseIcon,
   HeartIcon,
-  MessageIcon,
   SendIcon,
   CrownIcon,
   StarIcon
@@ -407,18 +406,6 @@ const StatLabel = styled.div`
   letter-spacing: 0.5px;
 `;
 
-const ActionButtons = styled.div`
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-  z-index: 2;
-  position: relative;
-  
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: center;
-  }
-`;
 
 const ClubContent = styled.div`
   padding: 30px 40px;
@@ -494,7 +481,7 @@ const EventLocation = styled.div`
   margin-bottom: 15px;
 `;
 
-const EventDescription = styled.p`
+const EventDescriptionText = styled.p`
   color: #4a5568;
   font-size: 14px;
   line-height: 1.5;
@@ -508,6 +495,253 @@ const EventDescription = styled.p`
 const EventActions = styled.div`
   display: flex;
   gap: 10px;
+`;
+
+// Новые стили для улучшенных карточек мероприятий
+
+const EventContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const EventParticipants = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #4a5568;
+  font-size: 14px;
+  font-weight: 500;
+`;
+
+const EventPrice = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #d69e2e;
+  font-size: 14px;
+  font-weight: 600;
+`;
+
+const EventType = styled.div`
+  display: inline-block;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  align-self: flex-start;
+`;
+
+// Стили для заголовка мероприятия с изображением (как в разделе "Клубы")
+const EventHeader = styled.div`
+  height: 180px;
+  background: ${props => props.$avatarUrl ? `url(${props.$avatarUrl})` : 'linear-gradient(135deg, #dc3522 0%, #ff6b58 100%)'};
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+  padding: 20px;
+  color: white;
+  border-radius: 20px 20px 0 0;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.1) 100%);
+    border-radius: 20px 20px 0 0;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    background: white;
+    border-radius: 20px 20px 0 0;
+  }
+  
+  > * {
+    position: relative;
+    z-index: 1;
+  }
+`;
+
+const EventHeaderContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  justify-content: flex-end;
+`;
+
+const EventClub = styled.div`
+  font-size: 14px;
+  opacity: 0.9;
+  font-weight: 500;
+`;
+
+// Стили для улучшенного модального окна мероприятия
+const EventModalContent = styled(ModalContent)`
+  max-width: 800px;
+  width: 90vw;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+`;
+
+const EventModalImage = styled.div`
+  width: 100%;
+  height: 300px;
+  overflow: hidden;
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const EventModalHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: white;
+`;
+
+const EventModalTitle = styled.h2`
+  font-size: 24px;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0;
+  flex: 1;
+`;
+
+const EventModalBody = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  background: #f8f9fa;
+`;
+
+const EventInfoGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+`;
+
+const EventInfoItem = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  
+  svg {
+    color: #667eea;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+`;
+
+const EventInfoLabel = styled.div`
+  font-size: 12px;
+  color: #718096;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+`;
+
+const EventInfoValue = styled.div`
+  font-size: 16px;
+  color: #2d3748;
+  font-weight: 600;
+  line-height: 1.4;
+`;
+
+const EventDescription = styled.div`
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+`;
+
+const EventDescriptionTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 12px 0;
+`;
+
+const EventModalDescriptionText = styled.p`
+  font-size: 16px;
+  color: #4a5568;
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-line;
+`;
+
+const EventImages = styled.div`
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+`;
+
+const EventImagesTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 16px 0;
+`;
+
+const EventImagesGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+`;
+
+const EventImageItem = styled.div`
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  
+  &:hover {
+    transform: scale(1.05);
+  }
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const EventModalFooter = styled.div`
+  display: flex;
+  gap: 12px;
+  padding: 20px;
+  background: white;
+  border-top: 1px solid #e2e8f0;
+  justify-content: flex-end;
 `;
 
 const EmptyState = styled.div`
@@ -566,9 +800,6 @@ const ClubProfile = () => {
     }
   );
 
-  const handleMessageClub = () => {
-    navigate(`/chat/club_${clubId}`);
-  };
 
   const handleEventClick = (event) => {
     setSelectedEvent(event);
@@ -578,6 +809,26 @@ const ClubProfile = () => {
   const handleCloseEventModal = () => {
     setShowEventModal(false);
     setSelectedEvent(null);
+  };
+
+  // Мутация для записи на мероприятие
+  const joinEventMutation = useMutation(
+    (eventId) => clubsAPI.joinEvent(eventId),
+    {
+      onSuccess: () => {
+        toast.success('Вы успешно записались на мероприятие!');
+        queryClient.invalidateQueries(['club-events', clubId]);
+        handleCloseEventModal();
+      },
+      onError: (error) => {
+        console.error('Ошибка при записи на мероприятие:', error);
+        toast.error(apiUtils.handleError(error));
+      }
+    }
+  );
+
+  const handleJoinEvent = (eventId) => {
+    joinEventMutation.mutate(eventId);
   };
 
   if (isLoadingClub) {
@@ -663,16 +914,6 @@ const ClubProfile = () => {
           </InfoItem>
         </ClubInfo>
         
-        <ActionButtons>
-          <Button
-            $variant="secondary"
-            onClick={handleMessageClub}
-            style={{ background: 'rgba(255, 255, 255, 0.2)', color: 'white', border: '1px solid rgba(255, 255, 255, 0.3)' }}
-          >
-            <MessageIcon />
-            Написать клубу
-          </Button>
-        </ActionButtons>
       </ClubHeader>
 
       <ClubContent>
@@ -846,27 +1087,57 @@ const ClubProfile = () => {
                 key={event.id}
                 onClick={() => handleEventClick(event)}
               >
-                <EventTitle>{event.title}</EventTitle>
-                <EventDate>
-                  <CalendarIcon />
-                  {new Date(event.date).toLocaleDateString('ru-RU', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </EventDate>
-                <EventLocation>
-                  <LocationIcon />
-                  {event.location}
-                </EventLocation>
-                <EventDescription>{event.description}</EventDescription>
-                <EventActions>
-                  <Button $size="small" $variant="primary">
-                    Подробнее
-                  </Button>
-                </EventActions>
+                {/* Заголовок с изображением как в разделе "Клубы" */}
+                <EventHeader $avatarUrl={event.avatar ? `/uploads/${event.avatar}` : null}>
+                  <EventHeaderContent>
+                    <EventTitle>{event.title}</EventTitle>
+                    <EventClub>Клуб</EventClub>
+                    <EventDate>
+                      {new Date(event.date).toLocaleDateString('ru-RU', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric'
+                      })}
+                    </EventDate>
+                  </EventHeaderContent>
+                </EventHeader>
+                
+                <EventContent>
+                  <EventLocation>
+                    <LocationIcon />
+                    {event.location}
+                  </EventLocation>
+                  
+                  {/* Участники */}
+                  <EventParticipants>
+                    <UsersIcon />
+                    {event.current_participants || 0}
+                    {event.max_participants && ` / ${event.max_participants}`}
+                  </EventParticipants>
+                  
+                  {/* Цена */}
+                  {event.price && (
+                    <EventPrice>
+                      <CrownIcon />
+                      {event.price} ₽
+                    </EventPrice>
+                  )}
+                  
+                  {/* Тип мероприятия */}
+                  {event.event_type && (
+                    <EventType>
+                      {event.event_type}
+                    </EventType>
+                  )}
+                  
+                  <EventDescriptionText>{event.description}</EventDescriptionText>
+                  
+                  <EventActions>
+                    <Button $size="small" $variant="primary">
+                      Подробнее
+                    </Button>
+                  </EventActions>
+                </EventContent>
               </EventCard>
             ))}
           </EventsGrid>
@@ -883,48 +1154,128 @@ const ClubProfile = () => {
       <AnimatePresence>
         {showEventModal && selectedEvent && (
           <Modal onClick={handleCloseEventModal}>
-            <ModalContent onClick={(e) => e.stopPropagation()}>
-              <ModalHeader>
-                <h2>{selectedEvent.title}</h2>
+            <EventModalContent onClick={(e) => e.stopPropagation()}>
+              {/* Изображение мероприятия */}
+              {selectedEvent.avatar && (
+                <EventModalImage>
+                  <img 
+                    src={`/uploads/${selectedEvent.avatar}`} 
+                    alt={selectedEvent.title}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                </EventModalImage>
+              )}
+              
+              <EventModalHeader>
+                <EventModalTitle>{selectedEvent.title}</EventModalTitle>
                 <IconButton onClick={handleCloseEventModal}>
                   <CloseIcon />
                 </IconButton>
-              </ModalHeader>
+              </EventModalHeader>
               
-              <div style={{ padding: '20px' }}>
-                <EventDate style={{ marginBottom: '15px' }}>
-                  <CalendarIcon />
-                  {new Date(selectedEvent.date).toLocaleDateString('ru-RU', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </EventDate>
+              <EventModalBody>
+                {/* Информация о мероприятии */}
+                <EventInfoGrid>
+                  <EventInfoItem>
+                    <CalendarIcon />
+                    <div>
+                      <EventInfoLabel>Дата и время</EventInfoLabel>
+                      <EventInfoValue>
+                        {new Date(selectedEvent.date).toLocaleDateString('ru-RU', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </EventInfoValue>
+                    </div>
+                  </EventInfoItem>
+                  
+                  <EventInfoItem>
+                    <LocationIcon />
+                    <div>
+                      <EventInfoLabel>Место проведения</EventInfoLabel>
+                      <EventInfoValue>{selectedEvent.location}</EventInfoValue>
+                    </div>
+                  </EventInfoItem>
+                  
+                  <EventInfoItem>
+                    <UsersIcon />
+                    <div>
+                      <EventInfoLabel>Участники</EventInfoLabel>
+                      <EventInfoValue>
+                        {selectedEvent.current_participants || 0}
+                        {selectedEvent.max_participants && ` / ${selectedEvent.max_participants}`}
+                      </EventInfoValue>
+                    </div>
+                  </EventInfoItem>
+                  
+                  {selectedEvent.price && (
+                    <EventInfoItem>
+                      <CrownIcon />
+                      <div>
+                        <EventInfoLabel>Стоимость</EventInfoLabel>
+                        <EventInfoValue>{selectedEvent.price} ₽</EventInfoValue>
+                      </div>
+                    </EventInfoItem>
+                  )}
+                  
+                  {selectedEvent.event_type && (
+                    <EventInfoItem>
+                      <StarIcon />
+                      <div>
+                        <EventInfoLabel>Тип мероприятия</EventInfoLabel>
+                        <EventInfoValue>{selectedEvent.event_type}</EventInfoValue>
+                      </div>
+                    </EventInfoItem>
+                  )}
+                </EventInfoGrid>
                 
-                <EventLocation style={{ marginBottom: '15px' }}>
-                  <LocationIcon />
-                  {selectedEvent.location}
-                </EventLocation>
+                {/* Описание */}
+                <EventDescription>
+                  <EventDescriptionTitle>Описание</EventDescriptionTitle>
+                  <EventModalDescriptionText>{selectedEvent.description}</EventModalDescriptionText>
+                </EventDescription>
                 
-                <p style={{ color: '#4a5568', lineHeight: '1.6', margin: '0 0 20px 0' }}>
-                  {selectedEvent.description}
-                </p>
-                
-                <EventActions>
-                  <Button $variant="primary" onClick={() => {
-                    handleCloseEventModal();
-                    // Здесь можно добавить логику для записи на мероприятие
-                  }}>
-                    Записаться на мероприятие
-                  </Button>
-                  <Button $variant="secondary" onClick={handleCloseEventModal}>
-                    Закрыть
-                  </Button>
-                </EventActions>
-              </div>
-            </ModalContent>
+                {/* Дополнительные изображения */}
+                {selectedEvent.images && selectedEvent.images.length > 0 && (
+                  <EventImages>
+                    <EventImagesTitle>Фотографии мероприятия</EventImagesTitle>
+                    <EventImagesGrid>
+                      {selectedEvent.images.map((image, index) => (
+                        <EventImageItem key={index}>
+                          <img 
+                            src={`/uploads/${image}`} 
+                            alt={`${selectedEvent.title} - фото ${index + 1}`}
+                            onClick={() => {
+                              setSelectedImage(`/uploads/${image}`);
+                              setShowImageModal(true);
+                            }}
+                          />
+                        </EventImageItem>
+                      ))}
+                    </EventImagesGrid>
+                  </EventImages>
+                )}
+              </EventModalBody>
+              
+              <EventModalFooter>
+                <Button 
+                  $variant="primary" 
+                  onClick={() => handleJoinEvent(selectedEvent.id)}
+                  disabled={joinEventMutation.isLoading}
+                  $size="large"
+                >
+                  {joinEventMutation.isLoading ? 'Записываемся...' : 'Записаться на мероприятие'}
+                </Button>
+                <Button $variant="secondary" onClick={handleCloseEventModal}>
+                  Закрыть
+                </Button>
+              </EventModalFooter>
+            </EventModalContent>
           </Modal>
         )}
       </AnimatePresence>

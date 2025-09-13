@@ -619,18 +619,35 @@ const Profile = () => {
   
   // Определяем, чей это профиль
   const isOwnProfile = !login || (currentUser && currentUser.login === login);
-  const targetLogin = isOwnProfile ? currentUser?.login : login;
+  
+  // Обрабатываем логин - убираем @ если есть
+  const cleanLogin = login ? login.replace(/^@/, '') : login;
+  const targetLogin = isOwnProfile ? currentUser?.login : cleanLogin;
+  
+  // Проверяем, является ли это клубом
+  const isClubProfile = cleanLogin && cleanLogin.startsWith('club_');
+  const clubId = isClubProfile ? cleanLogin.replace('club_', '') : null;
 
   // Отладочная информация
   useEffect(() => {
     console.log('Profile component debug:', {
       login,
+      cleanLogin,
+      isClubProfile,
+      clubId,
       currentUser: apiUtils.getCurrentUser() ? { login: apiUtils.getCurrentUser().login, hasLogin: !!apiUtils.getCurrentUser().login } : null,
       isOwnProfile,
       targetLogin,
       hasTargetLogin: !!targetLogin
     });
-  }, [login, currentUser, isOwnProfile, targetLogin]);
+  }, [login, cleanLogin, isClubProfile, clubId, currentUser, isOwnProfile, targetLogin]);
+
+  // Редирект на страницу клуба, если это клуб
+  useEffect(() => {
+    if (isClubProfile && clubId) {
+      navigate(`/club-profile/${clubId}`, { replace: true });
+    }
+  }, [isClubProfile, clubId, navigate]);
   
   // Состояния
   // const [activeTab, setActiveTab] = useState('profile');
@@ -647,7 +664,7 @@ const Profile = () => {
     ['receivedGifts', targetLogin],
     () => giftsAPI.getReceivedGifts(20, 0, targetLogin),
     {
-      enabled: !!targetLogin,
+      enabled: !!targetLogin && !isClubProfile,
       onError: (error) => {
         console.error('Ошибка при получении подарков:', error);
       }
@@ -691,7 +708,13 @@ const Profile = () => {
   // Функция для перехода в профиль отправителя подарка
   const handleGiftSenderClick = (senderLogin) => {
     if (senderLogin && senderLogin !== currentUser?.login) {
-      navigate(`/profile/${senderLogin}`);
+      // Проверяем, является ли senderLogin клубом (начинается с @club_)
+      if (senderLogin.startsWith('@club_')) {
+        const clubId = senderLogin.replace('@club_', '');
+        navigate(`/club-profile/${clubId}`);
+      } else {
+        navigate(`/profile/${senderLogin}`);
+      }
     }
   };
 
@@ -726,7 +749,7 @@ const Profile = () => {
     ['profile', targetLogin],
     () => usersAPI.getProfile(targetLogin),
     {
-      enabled: !!targetLogin,
+      enabled: !!targetLogin && !isClubProfile,
       onError: (error) => {
         console.error('Profile API error:', {
           targetLogin,
