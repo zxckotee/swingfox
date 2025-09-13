@@ -267,6 +267,18 @@ const GeneralSettings = ({ club, onSave, saving }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    // Валидация URL (опциональная)
+    if (formData.website && formData.website.trim() !== '') {
+      try {
+        new URL(formData.website);
+      } catch (error) {
+        // Если URL невалидный, но поле не пустое, показываем предупреждение
+        // но все равно сохраняем форму
+        console.warn('Невалидный URL:', formData.website);
+      }
+    }
+    
     onSave(formData);
   };
 
@@ -319,7 +331,7 @@ const GeneralSettings = ({ club, onSave, saving }) => {
         <div className="form-group">
           <label htmlFor="website">Веб-сайт</label>
           <input
-            type="url"
+            type="text"
             id="website"
             name="website"
             value={formData.website}

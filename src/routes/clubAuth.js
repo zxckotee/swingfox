@@ -134,6 +134,10 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Неверный логин или пароль' });
     }
 
+    // Обновляем время последнего входа
+    club.last_login = new Date();
+    await club.save();
+
     // Генерация токена
     const token = generateClubToken(club);
 
@@ -179,11 +183,41 @@ router.get('/profile', authenticateClub, async (req, res) => {
 // Обновление профиля клуба
 router.put('/profile', authenticateClub, async (req, res) => {
   try {
-    const { name, description, location, contact_info, website, type } = req.body;
+    const { 
+      name, 
+      description, 
+      location, 
+      contact_info, 
+      website, 
+      type,
+      country,
+      city,
+      address,
+      email,
+      is_public,
+      show_members,
+      email_notifications,
+      event_reminders,
+      member_activity
+    } = req.body;
     const club = await Clubs.findByPk(req.club.id);
 
     if (!club) {
       return res.status(404).json({ error: 'Клуб не найден' });
+    }
+
+    // Проверка уникальности email, если он изменяется
+    if (email !== undefined && email !== club.email) {
+      const existingClub = await Clubs.findOne({
+        where: {
+          email: email,
+          id: { [sequelize.Sequelize.Op.ne]: club.id }
+        }
+      });
+      
+      if (existingClub) {
+        return res.status(400).json({ error: 'Клуб с таким email уже существует' });
+      }
     }
 
     // Обновление полей
@@ -193,6 +227,15 @@ router.put('/profile', authenticateClub, async (req, res) => {
     if (contact_info !== undefined) club.contact_info = contact_info;
     if (website !== undefined) club.website = website;
     if (type) club.type = type;
+    if (country !== undefined) club.country = country;
+    if (city !== undefined) club.city = city;
+    if (address !== undefined) club.address = address;
+    if (email !== undefined) club.email = email;
+    if (is_public !== undefined) club.is_public = is_public;
+    if (show_members !== undefined) club.show_members = show_members;
+    if (email_notifications !== undefined) club.email_notifications = email_notifications;
+    if (event_reminders !== undefined) club.event_reminders = event_reminders;
+    if (member_activity !== undefined) club.member_activity = member_activity;
 
     await club.save();
 
