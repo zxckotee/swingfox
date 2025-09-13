@@ -149,7 +149,8 @@ router.put('/events/:eventId', authenticateClub, checkEventOwnership, async (req
       event_type,
       is_premium,
       auto_invite_enabled,
-      duration_hours
+      duration_hours,
+      images // Добавляем поддержку изображений
     } = req.body;
 
     const event = req.event;
@@ -174,6 +175,11 @@ router.put('/events/:eventId', authenticateClub, checkEventOwnership, async (req
     if (is_premium !== undefined) event.is_premium = is_premium;
     if (auto_invite_enabled !== undefined) event.auto_invite_enabled = auto_invite_enabled;
     if (duration_hours !== undefined) event.duration_hours = duration_hours ? parseInt(duration_hours) : 2;
+    
+    // Обновление изображений, если они переданы
+    if (images !== undefined) {
+      event.images = Array.isArray(images) ? images : [];
+    }
 
     await event.save();
 

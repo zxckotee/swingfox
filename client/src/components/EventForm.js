@@ -155,7 +155,10 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
       const response = await clubApi.uploadEventImages(eventId, formData);
       
       if (response.success) {
-        setEventImages(prev => [...prev, ...response.files.map(f => f.filename)]);
+        const newImages = response.files.map(f => f.filename);
+        setEventImages(prev => [...prev, ...newImages]);
+        console.log('Images uploaded successfully:', newImages);
+        console.log('Updated eventImages:', [...eventImages, ...newImages]);
       }
       
       return response;
@@ -190,7 +193,9 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
         date: new Date(`${formData.date}T${formData.time}`).toISOString(),
         price: formData.price ? parseFloat(formData.price) : 0,
         max_participants: formData.max_participants ? parseInt(formData.max_participants) : null,
-        duration_hours: formData.duration_hours ? parseInt(formData.duration_hours) : 2
+        duration_hours: formData.duration_hours ? parseInt(formData.duration_hours) : 2,
+        // Добавляем текущие изображения при обновлении
+        images: event ? eventImages : undefined
       };
 
       if (event) {
