@@ -31,13 +31,11 @@ import ClubRegister from './pages/ClubRegister';
 import ClubDashboard from './pages/ClubDashboard';
 import ClubEvents from './pages/ClubEvents';
 import ClubAnalytics from './pages/ClubAnalytics';
-import ClubBots from './pages/ClubBots';
 import ClubSettings from './pages/ClubSettings';
 import ClubParticipants from './pages/ClubParticipants';
 import ClubLayout from './components/ClubLayout';
 import ClubChats from './pages/ClubChats';
 import ClubChat from './pages/ClubChat';
-import ClubBotSettings from './pages/ClubBotSettings';
 
 // Публичные страницы клубов
 import PublicClubs from './pages/PublicClubs';
@@ -317,13 +315,6 @@ function App() {
                 </ClubAuthGuard>
               } />
               
-              <Route path="/club/bots" element={
-                <ClubAuthGuard>
-                  <ClubLayout>
-                    <ClubBots />
-                  </ClubLayout>
-                </ClubAuthGuard>
-              } />
               
               <Route path="/club/chats" element={
                 <ClubAuthGuard>
@@ -339,13 +330,6 @@ function App() {
                 </ClubAuthGuard>
               } />
               
-              <Route path="/club/bot-settings" element={
-                <ClubAuthGuard>
-                  <ClubLayout>
-                    <ClubBotSettings />
-                  </ClubLayout>
-                </ClubAuthGuard>
-              } />
               
               <Route path="/club/settings" element={
                 <ClubAuthGuard>

@@ -5,7 +5,7 @@ const sharp = require('sharp');
 const path = require('path');
 const fs = require('fs').promises;
 const { sequelize } = require('../config/database');
-const { Clubs, ClubBots } = require('../models');
+const { Clubs } = require('../models');
 const { generateClubToken, authenticateClub } = require('../middleware/clubAuth');
 const { generateId } = require('../utils/helpers');
 const router = express.Router();
@@ -88,8 +88,6 @@ router.post('/register', async (req, res) => {
       email_verified: true // Считаем email подтвержденным после ввода кода
     });
 
-    // Создание дефолтных ботов для клуба
-    await ClubBots.createDefaultBots(club.id);
 
     // Генерация токена
     const token = generateClubToken(club);
@@ -165,16 +163,7 @@ router.post('/logout', authenticateClub, async (req, res) => {
 // Получение профиля клуба
 router.get('/profile', authenticateClub, async (req, res) => {
   try {
-    const club = await Clubs.findByPk(req.club.id, {
-      include: [
-        {
-          model: ClubBots,
-          as: 'bots',
-          where: { is_active: true },
-          required: false
-        }
-      ]
-    });
+    const club = await Clubs.findByPk(req.club.id);
 
     if (!club) {
       return res.status(404).json({ error: 'Клуб не найден' });

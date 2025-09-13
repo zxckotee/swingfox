@@ -14,7 +14,6 @@ const Notifications = require('./Notifications');
 const Clubs = require('./Clubs');
 const ClubEvents = require('./ClubEvents');
 const EventParticipants = require('./EventParticipants');
-const ClubBots = require('./ClubBots');
 const Subscriptions = require('./Subscriptions');
 const SubscriptionPlans = require('./SubscriptionPlans');
 const SubscriptionPayments = require('./SubscriptionPayments');
@@ -158,7 +157,6 @@ const NotificationsModel = Notifications(sequelize);
 const ClubsModel = Clubs(sequelize);
 const ClubEventsModel = ClubEvents(sequelize);
 const EventParticipantsModel = EventParticipants(sequelize);
-const ClubBotsModel = ClubBots(sequelize);
 const SubscriptionsModel = Subscriptions(sequelize);
 const SubscriptionPlansModel = SubscriptionPlans(sequelize);
 const SubscriptionPaymentsModel = SubscriptionPayments(sequelize);
@@ -177,7 +175,6 @@ if (NotificationsModel.associate) NotificationsModel.associate({ User });
 if (ClubsModel.associate) ClubsModel.associate({ 
   User, 
   ClubEvents: ClubEventsModel,
-  ClubBots: ClubBotsModel,
   Ads,
   Chat
 });
@@ -190,7 +187,6 @@ if (EventParticipantsModel.associate) EventParticipantsModel.associate({
   User, 
   ClubEvents: ClubEventsModel 
 });
-if (ClubBotsModel.associate) ClubBotsModel.associate({ Clubs: ClubsModel });
 if (Events.associate) Events.associate({ User, Clubs: ClubsModel });
 if (SubscriptionsModel.associate) SubscriptionsModel.associate({ User, SubscriptionPlans: SubscriptionPlansModel });
 if (SubscriptionPlansModel.associate) SubscriptionPlansModel.associate({ User });
@@ -218,7 +214,6 @@ module.exports = {
   Clubs: ClubsModel,
   ClubEvents: ClubEventsModel,
   EventParticipants: EventParticipantsModel,
-  ClubBots: ClubBotsModel,
   Subscriptions: SubscriptionsModel,
   SubscriptionPlans: SubscriptionPlansModel,
   SubscriptionPayments: SubscriptionPaymentsModel,

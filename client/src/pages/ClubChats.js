@@ -189,15 +189,13 @@ const ClubChats = () => {
     <div className="club-chats">
       {/* Header */}
       <div className="chats-header">
-        <div className="chats-header-content">
-          <div className="header-content">
-            <h1>Чаты с участниками</h1>
-            <p>Управление чатами с участниками ваших мероприятий</p>
-          </div>
-          <Link to="/club/dashboard" className="btn btn-secondary">
-            ← Назад к дашборду
-          </Link>
+        <div className="header-content">
+          <h1>Чаты с участниками</h1>
+          <p>Управление чатами с участниками ваших мероприятий</p>
         </div>
+        <Link to="/club/dashboard" className="btn btn-secondary">
+          ← Назад к дашборду
+        </Link>
       </div>
 
       {/* Stats */}

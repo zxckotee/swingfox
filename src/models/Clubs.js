@@ -255,10 +255,6 @@ module.exports = (sequelize) => {
       as: 'events'
     });
 
-    Clubs.hasMany(models.ClubBots, {
-      foreignKey: 'club_id',
-      as: 'bots'
-    });
 
 
     Clubs.hasMany(models.Ads, {

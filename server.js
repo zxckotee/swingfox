@@ -63,7 +63,6 @@ const clubAuthRoutes = require('./src/routes/clubAuth');
 const clubEventsRoutes = require('./src/routes/clubEvents');
 const clubAnalyticsRoutes = require('./src/routes/clubAnalytics');
 const clubUserEventsRoutes = require('./src/routes/clubUserEvents');
-const clubBotsRoutes = require('./src/routes/clubBots');
 const clubChatsRoutes = require('./src/routes/clubChats');
 
 // Импорт cron-задач для подписок
@@ -97,7 +96,6 @@ app.use('/api/club/auth', clubAuthRoutes);
 app.use('/api/club/events', clubEventsRoutes);
 app.use('/api/club/analytics', clubAnalyticsRoutes);
 app.use('/api/club/user-events', clubUserEventsRoutes);
-app.use('/api/club/bots', clubBotsRoutes);
 app.use('/api/club/chats', clubChatsRoutes);
 
 // Проверка статуса API

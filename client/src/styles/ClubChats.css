@@ -39,6 +39,10 @@
   border: 1px solid #e2e8f0;
   position: relative;
   overflow: hidden;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 1;
 }
 
 .chats-header::before {
@@ -52,13 +56,6 @@
   border-radius: 16px 16px 0 0;
 }
 
-.chats-header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: relative;
-  z-index: 1;
-}
 
 .header-content h1 {
   margin: 0 0 12px 0;
@@ -80,23 +77,6 @@
   opacity: 0.9;
 }
 
-.chats-header .btn {
-  background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  text-decoration: none;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.chats-header .btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
-}
 
 /* Stats */
 .chats-stats {
@@ -488,13 +468,14 @@
 }
 
 .btn-secondary {
-  background: #e2e8f0;
+  background: #f7fafc;
   color: #4a5568;
+  border: 2px solid #e2e8f0;
 }
 
 .btn-secondary:hover {
-  background: #cbd5e0;
-  transform: translateY(-1px);
+  background: #edf2f7;
+  transform: translateY(-2px);
 }
 
 .btn .icon {
