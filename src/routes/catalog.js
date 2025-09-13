@@ -29,7 +29,7 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 
     // Строим базовые условия фильтрации для SQL запроса
-    let whereClause = 'u.login != :userId AND u.status != \'BANNED\'';
+    let whereClause = 'u.login != :userId AND u.status != \'BANNED\' AND u.viptype IN (\'VIP\', \'PREMIUM\')';
     let replacements = { userId };
 
     // Фильтр по семейному статусу (только те, кого я ищу)
@@ -314,7 +314,7 @@ router.get('/', authenticateToken, async (req, res) => {
         *,
         RANDOM() as random_sort
       FROM candidate_profiles
-      ORDER BY total_compatibility_score DESC, random_sort
+      ORDER BY vip_priority DESC, total_compatibility_score DESC, random_sort
       LIMIT :limit OFFSET :offset
     `, {
       replacements: {
@@ -829,7 +829,7 @@ router.get('/recommendations', authenticateToken, async (req, res) => {
         *,
         RANDOM() as random_sort
       FROM candidate_profiles
-      ORDER BY total_compatibility_score DESC, random_sort
+      ORDER BY vip_priority DESC, total_compatibility_score DESC, random_sort
       LIMIT :count
     `, {
       replacements: {

@@ -100,7 +100,7 @@ const getRecommendedProfilesBatch = async (userId, count = 5) => {
       where: {
         login: { [Op.ne]: userId },
         status: { [Op.ne]: 'BANNED' },
-        viptype: { [Op.ne]: 'FREE' }
+        viptype: { [Op.in]: ['VIP', 'PREMIUM'] }
       },
       attributes: [
         'id', 'login', 'ava', 'status', 'city', 'country', 'date', 'info', 
@@ -138,8 +138,18 @@ const getRecommendedProfilesBatch = async (userId, count = 5) => {
       });
     }
 
-    // Сортируем по совместимости
+    // Сортируем по совместимости с приоритетом VIP пользователей
     profilesWithCompatibility.sort((a, b) => {
+      // Сначала по VIP статусу (PREMIUM > VIP > FREE)
+      const vipPriority = { 'PREMIUM': 3, 'VIP': 2, 'FREE': 1 };
+      const aVipPriority = vipPriority[a.viptype] || 0;
+      const bVipPriority = vipPriority[b.viptype] || 0;
+      
+      if (aVipPriority !== bVipPriority) {
+        return bVipPriority - aVipPriority;
+      }
+      
+      // Затем по совместимости
       return b.compatibility.totalScore - a.compatibility.totalScore;
     });
 

@@ -254,20 +254,42 @@ router.post('/create', authenticateToken, upload.single('image'), async (req, re
       });
     }
 
-    // Проверяем лимиты для бесплатных пользователей
-    if (user.viptype === 'FREE') {
-      const existingAds = await Ads.findAll({ 
-        where: { 
-          author: userLogin,
-          status: ['pending', 'approved']
-        } 
+    // Проверяем лимиты объявлений в зависимости от VIP статуса
+    const existingAds = await Ads.findAll({ 
+      where: { 
+        author: userLogin,
+        status: ['pending', 'approved']
+      } 
+    });
+
+    let adLimit = 0;
+    let limitMessage = '';
+
+    switch (user.viptype) {
+      case 'FREE':
+        adLimit = 1;
+        limitMessage = 'Бесплатные пользователи могут создать только одно объявление. Для снятия ограничений нужен VIP или PREMIUM статус';
+        break;
+      case 'VIP':
+        adLimit = 3;
+        limitMessage = 'VIP пользователи могут создать до 3 объявлений';
+        break;
+      case 'PREMIUM':
+        adLimit = 7;
+        limitMessage = 'PREMIUM пользователи могут создать до 7 объявлений';
+        break;
+      default:
+        adLimit = 1;
+        limitMessage = 'Неизвестный статус пользователя';
+    }
+
+    if (existingAds.length >= adLimit) {
+      return res.status(403).json({ 
+        error: 'ad_limit_reached',
+        message: limitMessage,
+        current_count: existingAds.length,
+        limit: adLimit
       });
-      if (existingAds.length >= 1) {
-        return res.status(403).json({ 
-          error: 'ad_limit_reached',
-          message: 'Бесплатные пользователи могут создать только одно объявление. Для снятия ограничений нужен VIP или PREMIUM статус' 
-        });
-      }
     }
 
     // Проверка прав на создание мероприятий

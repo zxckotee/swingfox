@@ -101,14 +101,14 @@ router.get('/types', authenticateToken, async (req, res) => {
       user_id: userId
     }, req);
 
-    // Получаем типы подарков
-    const giftTypes = Gifts.getGiftTypes();
-
     // Получаем баланс пользователя
     const user = await User.findOne({ 
       where: { login: userId },
       attributes: ['balance', 'viptype']
     });
+
+    // Получаем типы подарков с учетом VIP статуса
+    const giftTypes = Gifts.getGiftTypes(user.viptype);
 
     const responseData = {
       gift_types: giftTypes,
@@ -263,7 +263,7 @@ router.post('/send', authenticateToken, async (req, res) => {
 
     // Получаем данные отправителя
     const currentUser = await User.findOne({ where: { login: fromUser } });
-    const giftTypes = Gifts.getGiftTypes();
+    const giftTypes = Gifts.getGiftTypes(currentUser.viptype);
     const gift = giftTypes.find(g => g.id === gift_type);
     
     if (!gift) {

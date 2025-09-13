@@ -361,29 +361,29 @@ const PLAN_CONFIGS = {
   VIP: {
     icon: '👑',
     color: '#ffd700',
-    price: 299,
+    price: 350,
     features: [
-      'Безлимитные лайки',
-      'Просмотр всех профилей',
-      'Суперлайки (5 в день)',
-      'Приоритет в поиске',
-      'Скрытие рекламы',
-      'Расширенные фильтры'
+      'Попадает в свайп и каталог',
+      '3 объявления (вместо 1)',
+      'Расширенная статистика профилей',
+      'История посещений (30 дней)',
+      'Видит, кто лайкнул фотографии',
+      'Приоритет в поиске'
     ]
   },
   PREMIUM: {
     icon: '💎',
     color: '#9b59b6',
-    price: 599,
+    price: 500,
     featured: true,
     features: [
       'Все возможности VIP',
-      'Безлимитные суперлайки',
-      'Просмотр лайков',
-      'Невидимый режим',
-      'Приоритетная поддержка',
-      'Эксклюзивные события',
-      'Расширенная статистика'
+      '7 объявлений (вместо 1)',
+      '20% скидка на все подарки',
+      'Анонимные посещения VIP',
+      'История посещений (90 дней)',
+      'Топ-10 посетителей профиля',
+      'Расширенная аналитика'
     ]
   }
 };
@@ -531,12 +531,12 @@ const Subscriptions = () => {
     <SubscriptionsContainer>
       <ContentCard $maxWidth="1200px">
         <FlexContainer $justify="center" $align="center" $wrap>
-          <SectionTitle style={{ color: 'white', textAlign: 'center', marginBottom: '10px' }}>
-            <CrownIcon />
+          <SectionTitle style={{ color: '#2d3748', textAlign: 'center', marginBottom: '10px', textShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+            
             VIP & PREMIUM подписки
           </SectionTitle>
         </FlexContainer>
-        <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.9)', marginBottom: '30px' }}>
+        <p style={{ textAlign: 'center', color: '#4a5568', marginBottom: '30px', textShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
           Получите максимум от SwingFox с премиум возможностями
         </p>
 
@@ -566,6 +566,24 @@ const Subscriptions = () => {
         {/* Планы подписки */}
         {activeTab === 'plans' && (
           <div>
+            {/* Информационная секция */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.9) 100%)',
+              borderRadius: '15px',
+              padding: '25px',
+              marginBottom: '30px',
+              border: '1px solid rgba(255,255,255,0.3)',
+              textAlign: 'center',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)'
+            }}>
+              <h3 style={{ color: '#2d3748', margin: '0 0 15px 0', fontSize: '20px', fontWeight: '700' }}>
+                🎯 Реальные преимущества для вашего успеха
+              </h3>
+              <p style={{ color: '#4a5568', margin: '0', fontSize: '16px', lineHeight: '1.5' }}>
+                VIP и PREMIUM пользователи получают больше возможностей для знакомств и общения
+              </p>
+            </div>
+
             <Grid $columns="repeat(auto-fit, minmax(300px, 1fr))" $gap="30px">
               {Object.entries(PLAN_CONFIGS).map(([planType, config]) => (
                 <PlanCard
@@ -618,6 +636,79 @@ const Subscriptions = () => {
                 </PlanCard>
               ))}
             </Grid>
+
+            {/* Сравнение планов */}
+            <div style={{
+              background: 'white',
+              borderRadius: '20px',
+              padding: '30px',
+              marginTop: '40px',
+              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.1)'
+            }}>
+              <h3 style={{ 
+                textAlign: 'center', 
+                margin: '0 0 30px 0', 
+                fontSize: '24px', 
+                color: '#2d3748',
+                fontWeight: '700'
+              }}>
+                📊 Сравнение возможностей
+              </h3>
+              
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ 
+                  width: '100%', 
+                  borderCollapse: 'collapse',
+                  fontSize: '14px'
+                }}>
+                  <thead>
+                    <tr style={{ background: '#f7fafc' }}>
+                      <th style={{ padding: '15px', textAlign: 'left', fontWeight: '600', color: '#2d3748' }}>
+                        Возможность
+                      </th>
+                      <th style={{ padding: '15px', textAlign: 'center', fontWeight: '600', color: '#2d3748' }}>
+                        FREE
+                      </th>
+                      <th style={{ padding: '15px', textAlign: 'center', fontWeight: '600', color: '#ffd700' }}>
+                        VIP
+                      </th>
+                      <th style={{ padding: '15px', textAlign: 'center', fontWeight: '600', color: '#9b59b6' }}>
+                        PREMIUM
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { feature: 'Видимость в свайпе и каталоге', free: '❌', vip: '✅', premium: '✅' },
+                      { feature: 'Количество объявлений', free: '1', vip: '3', premium: '7' },
+                      { feature: 'Скидка на подарки', free: '0%', vip: '0%', premium: '20%' },
+                      { feature: 'Анонимные посещения', free: '❌', vip: '❌', premium: '✅' },
+                      { feature: 'Расширенная статистика', free: '❌', vip: '✅', premium: '✅' },
+                      { feature: 'История посещений', free: '❌', vip: '30 дней', premium: '90 дней' },
+                      { feature: 'Топ посетителей', free: '❌', vip: '❌', premium: '✅' }
+                    ].map((row, index) => (
+                      <tr key={index} style={{ 
+                        borderBottom: '1px solid #e2e8f0',
+                        '&:hover': { background: '#f7fafc' }
+                      }}>
+                        <td style={{ padding: '12px 15px', fontWeight: '500', color: '#4a5568' }}>
+                          {row.feature}
+                        </td>
+                        <td style={{ padding: '12px 15px', textAlign: 'center', color: '#718096' }}>
+                          {row.free}
+                        </td>
+                        <td style={{ padding: '12px 15px', textAlign: 'center', color: '#ffd700', fontWeight: '600' }}>
+                          {row.vip}
+                        </td>
+                        <td style={{ padding: '12px 15px', textAlign: 'center', color: '#9b59b6', fontWeight: '600' }}>
+                          {row.premium}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 
@@ -640,9 +731,40 @@ const Subscriptions = () => {
                     Активна до: {subscriptionStatus.expires_at ? apiUtils.formatDate(subscriptionStatus.expires_at) : 'Не определено'}
                     <br />
                     Автопродление: Включено (по умолчанию)
+                    <br />
+                    <br />
+                    <strong>Ваши привилегии:</strong>
+                    <br />
+                    {subscriptionStatus.plan === 'vip' ? (
+                      <>
+                        ✅ Видимы в свайпе и каталоге<br />
+                        ✅ Можете создать 3 объявления<br />
+                        ✅ Расширенная статистика профилей<br />
+                        ✅ История посещений (30 дней)
+                      </>
+                    ) : subscriptionStatus.plan === 'premium' ? (
+                      <>
+                        ✅ Видимы в свайпе и каталоге<br />
+                        ✅ Можете создать 7 объявлений<br />
+                        ✅ 20% скидка на подарки<br />
+                        ✅ Анонимные посещения VIP<br />
+                        ✅ История посещений (90 дней)<br />
+                        ✅ Топ-10 посетителей профиля
+                      </>
+                    ) : null}
                   </>
                 ) : (
-                  'У вас базовый план. Оформите премиум подписку для получения дополнительных возможностей!'
+                  <>
+                    У вас базовый план. Оформите премиум подписку для получения дополнительных возможностей!
+                    <br />
+                    <br />
+                    <strong>Ограничения FREE плана:</strong>
+                    <br />
+                    ❌ Не видимы в свайпе и каталоге<br />
+                    ❌ Только 1 объявление<br />
+                    ❌ Нет расширенной статистики<br />
+                    ❌ Нет скидок на подарки
+                  </>
                 )}
               </div>
               
@@ -764,12 +886,21 @@ const Subscriptions = () => {
                   fontSize: '14px',
                   color: '#4a5568'
                 }}>
-                  <strong>Условия:</strong>
+                  <strong>Что вы получите:</strong>
                   <ul style={{ margin: '10px 0 0 20px', paddingLeft: 0 }}>
-                    <li>Подписка активируется сразу после оплаты</li>
-                    <li>Автопродление можно отключить в любое время</li>
-                    <li>Возврат средств в течение 7 дней</li>
+                    {PLAN_CONFIGS[selectedPlan].features.map((feature, index) => (
+                      <li key={index} style={{ marginBottom: '5px' }}>{feature}</li>
+                    ))}
                   </ul>
+                  
+                  <div style={{ marginTop: '15px', padding: '10px', background: '#e6fffa', borderRadius: '8px', border: '1px solid #4fd1c7' }}>
+                    <strong style={{ color: '#2d3748' }}>Условия:</strong>
+                    <ul style={{ margin: '5px 0 0 20px', paddingLeft: 0, fontSize: '13px' }}>
+                      <li>Подписка активируется сразу после оплаты</li>
+                      <li>Автопродление можно отключить в любое время</li>
+                      <li>Возврат средств в течение 7 дней</li>
+                    </ul>
+                  </div>
                 </div>
 
                 <FlexContainer $gap="10px" $justify="flex-end">

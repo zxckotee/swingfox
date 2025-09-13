@@ -92,8 +92,8 @@ module.exports = (sequelize) => {
   };
 
   // Статические методы
-  Gifts.getGiftTypes = () => {
-    return [
+  Gifts.getGiftTypes = (userVipType = 'FREE') => {
+    const baseGifts = [
       { id: '1', name: 'Роза', cost: 50, icon: '🌹' },
       { id: '2', name: 'Букет цветов', cost: 100, icon: '💐' },
       { id: '3', name: 'Шампанское', cost: 150, icon: '🍾' },
@@ -103,6 +103,22 @@ module.exports = (sequelize) => {
       { id: '7', name: 'Украшение', cost: 750, icon: '💎' },
       { id: '10', name: 'Эксклюзивный подарок', cost: 2000, icon: '🏆' }
     ];
+
+    // Применяем скидку для PREMIUM пользователей
+    if (userVipType === 'PREMIUM') {
+      return baseGifts.map(gift => ({
+        ...gift,
+        originalCost: gift.cost,
+        cost: Math.round(gift.cost * 0.8), // 20% скидка
+        discount: 20
+      }));
+    }
+
+    return baseGifts.map(gift => ({
+      ...gift,
+      originalCost: gift.cost,
+      discount: 0
+    }));
   };
 
   Gifts.getUserGifts = async (login, limit = 10) => {

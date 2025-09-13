@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { User, Likes, Gifts, Rating, PhotoLike, ProfileVisit } = require('../models');
+const { User, Likes, Gifts, Rating, PhotoLike, ProfileVisit, PhotoComments, ProfileComments, Reactions } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { generateId, calculateDistance, parseGeo, formatAge, formatOnlineTime } = require('../utils/helpers');
 const { APILogger } = require('../utils/logger');
@@ -252,32 +252,62 @@ router.get('/:login/photo-likes', authenticateToken, async (req, res) => {
     logger.logRequest(req, 'GET /:login/photo-likes');
     
     const { login } = req.params;
+    const currentUser = req.user.login;
+
+    // Проверяем права доступа - только VIP и PREMIUM могут видеть, кто лайкнул их фото
+    const user = await User.findOne({ where: { login: currentUser } });
+    if (!user) {
+      return res.status(404).json({ error: 'user_not_found', message: 'Пользователь не найден' });
+    }
+
+    if (user.viptype === 'FREE') {
+      return res.status(403).json({ 
+        error: 'insufficient_privileges',
+        message: 'Доступ к информации о лайках только для VIP и PREMIUM пользователей' 
+      });
+    }
+
+    // Проверяем, что пользователь запрашивает информацию о своих фото
+    if (login !== currentUser) {
+      return res.status(403).json({ 
+        error: 'access_denied',
+        message: 'Можно просматривать только свои лайки' 
+      });
+    }
 
     logger.logProcess('Получение лайков фото пользователя', { target_user: login }, req);
 
+    // Получаем всех, кто лайкнул фотографии пользователя
     const photoLikes = await PhotoLike.findAll({
       where: { to_user: login },
-      attributes: ['photo_index'],
-      group: ['photo_index'],
-      raw: true
+      include: [{
+        model: User,
+        as: 'FromUser',
+        attributes: ['login', 'ava', 'viptype']
+      }],
+      order: [['created_at', 'DESC']]
     });
 
-    // Подсчет лайков для каждого фото
-    const likeCounts = {};
-    for (const like of photoLikes) {
-      const count = await PhotoLike.count({
-        where: {
-          to_user: login,
-          photo_index: like.photo_index
-        }
+    // Группируем лайки по фото
+    const likesByPhoto = {};
+    photoLikes.forEach(like => {
+      const photoIndex = like.photo_index;
+      if (!likesByPhoto[photoIndex]) {
+        likesByPhoto[photoIndex] = [];
+      }
+      likesByPhoto[photoIndex].push({
+        user: like.FromUser.login,
+        avatar: like.FromUser.ava,
+        vip_type: like.FromUser.viptype,
+        liked_at: like.created_at
       });
-      likeCounts[like.photo_index] = count;
-    }
+    });
 
-    logger.logSuccess(req, 200, { photo_likes: likeCounts });
+    logger.logSuccess(req, 200, { photo_likes: likesByPhoto });
     res.json({
       success: true,
-      photo_likes: likeCounts
+      photo_likes: likesByPhoto,
+      total_likes: photoLikes.length
     });
 
   } catch (error) {
@@ -602,23 +632,28 @@ router.post('/:login/visit', authenticateToken, async (req, res) => {
       visited: login
     }, req);
 
-    // Проверяем настройки приватности посещаемого пользователя
+    // Получаем данные посетителя и посещаемого пользователя
+    const visitorUser = await User.findOne({ where: { login: fromUser } });
     const targetUser = await User.findOne({ where: { login } });
     if (!targetUser) {
       return res.status(404).json({ error: 'user_not_found', message: 'Пользователь не найден' });
     }
 
+    // PREMIUM пользователи могут посещать анонимно
+    const isAnonymousVisit = visitorUser.viptype === 'PREMIUM' && targetUser.viptype === 'VIP';
+    
     // Если у посещаемого пользователя включены анонимные посещения, не регистрируем
-    if (targetUser.privacy_settings?.privacy?.anonymous_visits) {
+    if (targetUser.privacy_settings?.privacy?.anonymous_visits || isAnonymousVisit) {
       logger.logResult('Посещение не зарегистрировано (анонимный режим)', true, {
         visitor: fromUser,
         visited: login,
-        reason: 'anonymous_visits_enabled'
+        reason: isAnonymousVisit ? 'premium_anonymous_visit' : 'anonymous_visits_enabled'
       }, req);
       
       return res.json({
         success: true,
-        message: 'Visit registered anonymously'
+        message: 'Visit registered anonymously',
+        anonymous: true
       });
     }
 
@@ -728,6 +763,129 @@ router.post('/:login/superlike', authenticateToken, async (req, res) => {
     res.status(500).json({
       error: 'server_error',
       message: 'Ошибка при отправке суперлайка'
+    });
+  }
+});
+
+// GET /api/profiles/:login/stats - Получение расширенной статистики профиля
+router.get('/:login/stats', authenticateToken, async (req, res) => {
+  const logger = new APILogger('PROFILES');
+  
+  try {
+    logger.logRequest(req, 'GET /:login/stats');
+    
+    const { login } = req.params;
+    const currentUser = req.user.login;
+    
+    // Получаем данные текущего пользователя
+    const user = await User.findOne({ where: { login: currentUser } });
+    if (!user) {
+      return res.status(404).json({ error: 'user_not_found', message: 'Пользователь не найден' });
+    }
+
+    // Проверяем права доступа к статистике
+    if (user.viptype === 'FREE') {
+      return res.status(403).json({ 
+        error: 'insufficient_privileges',
+        message: 'Доступ к расширенной статистике только для VIP и PREMIUM пользователей' 
+      });
+    }
+
+    logger.logBusinessLogic(1, 'Получение расширенной статистики профиля', {
+      target_user: login,
+      viewer: currentUser,
+      viewer_vip_type: user.viptype
+    }, req);
+
+    // Получаем базовую информацию о профиле
+    const targetUser = await User.findOne({ where: { login } });
+    if (!targetUser) {
+      return res.status(404).json({ error: 'user_not_found', message: 'Пользователь не найден' });
+    }
+
+    // Получаем статистику лайков фотографий
+    const photoLikes = await PhotoLike.count({
+      where: { to_user: login }
+    });
+
+    // Получаем статистику комментариев к фотографиям
+    const photoComments = await PhotoComments.count({
+      where: { to_user: login }
+    });
+
+    // Получаем статистику комментариев к профилю
+    const profileComments = await ProfileComments.count({
+      where: { to_user: login }
+    });
+
+    // Получаем статистику реакций
+    const reactions = await Reactions.count({
+      where: { to_user: login }
+    });
+
+    // Получаем статистику посещений за последние 30 дней
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const recentVisits = await ProfileVisit.count({
+      where: {
+        visited: login,
+        created_at: { [require('sequelize').Op.gte]: thirtyDaysAgo }
+      }
+    });
+
+    // Для PREMIUM пользователей - статистика за 90 дней
+    let extendedVisits = null;
+    if (user.viptype === 'PREMIUM') {
+      const ninetyDaysAgo = new Date();
+      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+      
+      extendedVisits = await ProfileVisit.count({
+        where: {
+          visited: login,
+          created_at: { [require('sequelize').Op.gte]: ninetyDaysAgo }
+        }
+      });
+
+      // Топ-10 посетителей
+      const topVisitors = await ProfileVisit.findAll({
+        where: { visited: login },
+        include: [{
+          model: User,
+          as: 'VisitorUser',
+          attributes: ['login', 'ava', 'viptype']
+        }],
+        order: [['created_at', 'DESC']],
+        limit: 10,
+        group: ['visitor']
+      });
+    }
+
+    const responseData = {
+      success: true,
+      profile_stats: {
+        photo_likes: photoLikes,
+        photo_comments: photoComments,
+        profile_comments: profileComments,
+        reactions: reactions,
+        visits_30_days: recentVisits,
+        visits_90_days: extendedVisits,
+        top_visitors: extendedVisits ? topVisitors : null
+      },
+      viewer_privileges: {
+        vip_type: user.viptype,
+        can_see_extended_stats: true
+      }
+    };
+
+    logger.logSuccess(req, 200, responseData);
+    res.json(responseData);
+
+  } catch (error) {
+    logger.logError(req, error);
+    res.status(500).json({
+      error: 'server_error',
+      message: 'Ошибка при получении статистики профиля'
     });
   }
 });
