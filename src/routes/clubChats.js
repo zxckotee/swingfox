@@ -160,13 +160,20 @@ router.get('/messages', authenticateClub, async (req, res) => {
         club_id: req.club.id,
         chat_type: 'event',
         [Op.or]: [
+          // Основные комбинации: пользователь <-> клуб
           { by_user: userLogin, to_user: clubLogin },
           { by_user: clubLogin, to_user: userLogin },
+          // Бот сообщения
           { by_user: 'bot', to_user: userLogin },
-          // Также ищем сообщения где to_user может быть ID пользователя
+          { by_user: 'bot', to_user: user.id.toString() },
+          // Дополнительные комбинации для совместимости
           { by_user: userLogin, to_user: user.id.toString() },
           { by_user: clubLogin, to_user: user.id.toString() },
-          { by_user: 'bot', to_user: user.id.toString() }
+          // Также ищем сообщения где пользователь может быть в by_user или to_user
+          { by_user: user.id.toString(), to_user: clubLogin },
+          { by_user: user.id.toString(), to_user: userLogin },
+          { by_user: userLogin, to_user: user.id.toString() },
+          { by_user: clubLogin, to_user: user.id.toString() }
         ]
       },
       order: [['created_at', 'ASC']]
@@ -189,7 +196,10 @@ router.get('/messages', authenticateClub, async (req, res) => {
           by_user: msg.by_user,
           to_user: msg.to_user,
           created_at: msg.created_at,
-          user_avatar: user?.ava || null
+          user_avatar: user?.ava || null,
+          is_from_bot: msg.by_user === 'bot',
+          is_from_club: msg.by_user.startsWith('club_'),
+          is_from_user: !msg.by_user.startsWith('club_') && msg.by_user !== 'bot'
         })),
         user: {
           login: user.login,

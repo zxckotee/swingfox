@@ -98,16 +98,6 @@ Chat.getUnreadCount = function(user) {
   });
 };
 
-Chat.getClubChat = function(clubId, limit = 50) {
-  return this.findAll({
-    where: {
-      club_id: clubId,
-      is_club_chat: true
-    },
-    order: [['date', 'DESC']],
-    limit
-  });
-};
 
 Chat.isClubChat = function() {
   return this.chat_type === 'club' || this.is_club_chat === true;
@@ -145,8 +135,16 @@ Chat.getClubChat = function(userLogin, clubId, eventId = null) {
   
   const whereClause = {
     [sequelize.Sequelize.Op.or]: [
+      // Основные комбинации: пользователь <-> клуб
       { by_user: userLogin, to_user: clubLogin },
-      { by_user: clubLogin, to_user: userLogin }
+      { by_user: clubLogin, to_user: userLogin },
+      // Бот сообщения
+      { by_user: 'bot', to_user: userLogin },
+      { by_user: 'bot', to_user: clubLogin },
+      // Дополнительные комбинации для совместимости
+      { by_user: userLogin, to_user: clubId.toString() },
+      { by_user: clubId.toString(), to_user: userLogin },
+      { by_user: 'bot', to_user: clubId.toString() }
     ],
     club_id: clubId,
     is_club_chat: true

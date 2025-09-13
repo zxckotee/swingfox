@@ -953,11 +953,8 @@ const Chat = () => {
   const { data: messagesData, error: messagesError, isLoading: messagesLoading } = useQuery(
     ['messages', selectedChat, isClubChat, clubInfo?.id, eventInfo?.id],
     () => {
-      if (isClubChat && clubInfo?.id) {
-        return chatAPI.getClubChat(clubInfo.id, eventInfo?.id);
-      } else {
-        return chatAPI.getMessages(selectedChat, 100, 0);
-      }
+      // Для клубных чатов используем обычный API endpoint
+      return chatAPI.getMessages(selectedChat, 100, 0);
     },
     {
       enabled: !!selectedChat && !chatsLoading,
@@ -978,6 +975,17 @@ const Chat = () => {
   );
 
   const messages = isClubChat ? (messagesData?.messages || []) : (messagesData?.messages || []);
+  
+  // Логирование для отладки
+  console.log('Chat messages data:', {
+    isClubChat,
+    clubInfo,
+    eventInfo,
+    messagesData,
+    messages: messages.length,
+    selectedChat,
+    messagesArray: messages
+  });
 
   // Получение статуса мэтча для текущего чата (только для обычных чатов, не клубных)
   const { data: matchData } = useQuery(
@@ -1107,6 +1115,25 @@ const Chat = () => {
     }
   }, [chatId, chatsLoading]); // Добавляем chatsLoading в зависимости
 
+  // Обновляем информацию о клубе при изменении selectedChat
+  useEffect(() => {
+    if (selectedChat && selectedChat.startsWith('club_')) {
+      setIsClubChat(true);
+      const clubId = selectedChat.replace('club_', '');
+      setClubInfo({ id: clubId });
+      
+      // Попробуем найти event_id из данных чата
+      const chatData = allChats.find(chat => chat.companion === selectedChat);
+      if (chatData?.event_id) {
+        setEventInfo({ id: chatData.event_id });
+      }
+    } else {
+      setIsClubChat(false);
+      setClubInfo(null);
+      setEventInfo(null);
+    }
+  }, [selectedChat, allChats]);
+
   // Автоматически выбираем виртуальный чат, если перешли через уведомления
   useEffect(() => {
     if ((virtualChat || forceVirtualChat) && !selectedChat && chatId && chatId !== lastSelectedChatRef.current && !chatsLoading) {
@@ -1140,6 +1167,24 @@ const Chat = () => {
     
     lastSelectedChatRef.current = chatUser;
     setSelectedChat(chatUser);
+    
+    // Обновляем информацию о клубе и мероприятии для клубных чатов
+    if (chatUser && chatUser.startsWith('club_')) {
+      setIsClubChat(true);
+      const clubId = chatUser.replace('club_', '');
+      setClubInfo({ id: clubId });
+      
+      // Попробуем найти event_id из данных чата
+      const chatData = allChats.find(chat => chat.companion === chatUser);
+      if (chatData?.event_id) {
+        setEventInfo({ id: chatData.event_id });
+      }
+    } else {
+      setIsClubChat(false);
+      setClubInfo(null);
+      setEventInfo(null);
+    }
+    
     // Обновляем URL только если он отличается
     if (chatUser !== chatId) {
       navigate(`/chat/${chatUser}`);

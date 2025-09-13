@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
 const { Op } = require('sequelize');
+const { sequelize } = require('../config/database');
 const { Chat, User, Notifications, EventParticipants } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { generateId } = require('../utils/helpers');
@@ -63,6 +64,16 @@ router.get('/conversations', authenticateToken, async (req, res) => {
       order: [['date', 'DESC']],
       limit: parseInt(limit) * 10, // Берем больше для фильтрации
     });
+    
+    console.log('Conversations for user:', currentUser, 'found:', conversations.length);
+    console.log('Sample conversations:', conversations.slice(0, 5).map(c => ({
+      id: c.id,
+      by_user: c.by_user,
+      to_user: c.to_user,
+      message: c.message?.substring(0, 30),
+      is_club_chat: c.is_club_chat,
+      club_id: c.club_id
+    })));
 
     // Группируем по собеседникам
     const conversationMap = new Map();
@@ -223,13 +234,29 @@ router.get('/:username', authenticateToken, async (req, res) => {
     const currentUser = req.user.login;
     const { limit = 50, offset = 0 } = req.query;
 
-    // Проверяем существование собеседника
-    const targetUser = await User.findOne({ where: { login: username } });
-    if (!targetUser) {
-      return res.status(404).json({
-        error: 'user_not_found',
-        message: 'Пользователь не найден'
-      });
+    // Проверяем, является ли это чатом с клубом
+    const isClubChatParam = username.startsWith('club_');
+    
+    let targetUser = null;
+    if (isClubChatParam) {
+      // Для клубных чатов создаем фиктивный объект пользователя
+      const clubId = username.replace('club_', '');
+      targetUser = { 
+        login: username, 
+        ava: null, 
+        status: 'Клуб', 
+        online: null, 
+        viptype: 'CLUB' 
+      };
+    } else {
+      // Для обычных пользователей ищем в базе данных
+      targetUser = await User.findOne({ where: { login: username } });
+      if (!targetUser) {
+        return res.status(404).json({
+          error: 'user_not_found',
+          message: 'Пользователь не найден'
+        });
+      }
     }
 
     // Проверяем разрешение на просмотр чата (с fallback'ом)
@@ -256,30 +283,89 @@ router.get('/:username', authenticateToken, async (req, res) => {
       }
     }
 
-    // Получаем сообщения
-    const messages = await Chat.findAll({
-      where: {
-        [Op.or]: [
-          { by_user: currentUser, to_user: username },
-          { by_user: username, to_user: currentUser }
-        ]
-      },
-      order: [['date', 'DESC']],
-      limit: parseInt(limit),
-      offset: parseInt(offset)
-    });
+    // Проверяем, является ли это чатом с клубом
+    const isClubChat = username.startsWith('club_');
+    
+    let messages;
+    if (isClubChat) {
+      // Для чата с клубом получаем ВСЕ сообщения, связанные с этим клубом и пользователем
+      const clubId = username.replace('club_', '');
+      console.log('Getting club chat messages for:', { currentUser, clubId, username });
+      
+      // Сначала получим все сообщения с этим club_id
+      const allClubMessages = await Chat.findAll({
+        where: {
+          club_id: clubId,
+          is_club_chat: true
+        },
+        order: [['date', 'DESC']],
+        limit: 100
+      });
+      
+      console.log('All club messages found:', allClubMessages.length);
+      console.log('Sample messages:', allClubMessages.slice(0, 5).map(m => ({
+        id: m.id,
+        by_user: m.by_user,
+        to_user: m.to_user,
+        message: m.message?.substring(0, 30)
+      })));
+      
+      // Фильтруем сообщения, где участвует текущий пользователь
+      messages = allClubMessages.filter(msg => 
+        msg.by_user === currentUser || 
+        msg.to_user === currentUser ||
+        msg.by_user === username ||
+        msg.to_user === username ||
+        msg.by_user === clubId ||
+        msg.to_user === clubId ||
+        msg.by_user === 'bot'
+      );
+      
+      console.log('Filtered messages for user:', messages.length);
+    } else {
+      // Для обычного чата между пользователями
+      messages = await Chat.findAll({
+        where: {
+          [Op.or]: [
+            { by_user: currentUser, to_user: username },
+            { by_user: username, to_user: currentUser }
+          ]
+        },
+        order: [['date', 'DESC']],
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+    }
 
     // Отмечаем входящие сообщения как прочитанные
-    await Chat.update(
-      { is_read: true },
-      {
-        where: {
-          by_user: username,
-          to_user: currentUser,
-          is_read: false
+    if (isClubChat) {
+      // Для чата с клубом отмечаем сообщения от клуба и бота
+      const clubId = username.replace('club_', '');
+      await Chat.update(
+        { is_read: true },
+        {
+          where: {
+            [Op.or]: [
+              { by_user: username, to_user: currentUser, is_read: false },
+              { by_user: clubId, to_user: currentUser, is_read: false },
+              { by_user: 'bot', to_user: currentUser, is_read: false }
+            ]
+          }
         }
-      }
-    );
+      );
+    } else {
+      // Для обычного чата между пользователями
+      await Chat.update(
+        { is_read: true },
+        {
+          where: {
+            by_user: username,
+            to_user: currentUser,
+            is_read: false
+          }
+        }
+      );
+    }
 
     // Форматируем сообщения
     const formattedMessages = messages.map(msg => ({
@@ -291,7 +377,10 @@ router.get('/:username', authenticateToken, async (req, res) => {
         msg.images.split('&&').filter(Boolean) : [],
       date: msg.date,
       is_read: msg.is_read,
-      is_mine: msg.by_user === currentUser
+      is_mine: msg.by_user === currentUser,
+      is_from_bot: msg.by_user === 'bot',
+      is_from_club: msg.by_user.startsWith('club_'),
+      is_from_user: !msg.by_user.startsWith('club_') && msg.by_user !== 'bot'
     }));
 
     // Получаем информацию о собеседнике
@@ -1418,7 +1507,70 @@ router.get('/club/:clubId', authenticateToken, async (req, res) => {
     const { event_id } = req.query;
     const currentUser = req.user.login;
 
-    const messages = await Chat.getClubChat(currentUser, clubId, event_id);
+    console.log('Getting club chat:', { clubId, event_id, currentUser });
+    
+    // Сначала проверим все сообщения с этим club_id
+    const allClubMessages = await Chat.findAll({
+      where: {
+        club_id: clubId,
+        is_club_chat: true
+      },
+      order: [['date', 'DESC']],
+      limit: 100
+    });
+    console.log('All club messages:', allClubMessages.length, allClubMessages.map(m => ({ 
+      id: m.id, 
+      by_user: m.by_user, 
+      to_user: m.to_user, 
+      message: m.message?.substring(0, 50),
+      event_id: m.event_id,
+      is_club_chat: m.is_club_chat,
+      chat_type: m.chat_type
+    })));
+    
+    // Проверим, есть ли сообщения от клуба к этому пользователю
+    const clubToUserMessages = allClubMessages.filter(m => 
+      m.by_user === `club_${clubId}` && m.to_user === currentUser
+    );
+    console.log('Messages from club to user:', clubToUserMessages.length, clubToUserMessages.map(m => ({
+      id: m.id,
+      by_user: m.by_user,
+      to_user: m.to_user,
+      message: m.message?.substring(0, 50)
+    })));
+    
+    // Получаем все сообщения чата с клубом
+    let messages;
+    if (event_id) {
+      messages = await Chat.getClubChat(currentUser, clubId, event_id);
+    } else {
+      // Упрощенный запрос - получаем все сообщения где пользователь участвует в чате с клубом
+      const clubLogin = `club_${clubId}`;
+      messages = await Chat.findAll({
+        where: {
+          [sequelize.Sequelize.Op.and]: [
+            {
+              [sequelize.Sequelize.Op.or]: [
+                // Пользователь отправлял сообщения клубу
+                { by_user: currentUser, to_user: clubLogin },
+                // Клуб отправлял сообщения пользователю
+                { by_user: clubLogin, to_user: currentUser },
+                // Бот отправлял сообщения пользователю
+                { by_user: 'bot', to_user: currentUser }
+              ]
+            },
+            {
+              club_id: clubId,
+              is_club_chat: true
+            }
+          ]
+        },
+        order: [['date', 'DESC']],
+        limit: 50
+      });
+    }
+    
+    console.log('Found messages:', messages.length, messages.map(m => ({ id: m.id, by_user: m.by_user, to_user: m.to_user, message: m.message?.substring(0, 50) })));
 
     // Форматируем сообщения
     const formattedMessages = messages.map(msg => ({
@@ -1432,7 +1584,10 @@ router.get('/club/:clubId', authenticateToken, async (req, res) => {
       is_read: msg.is_read,
       is_mine: msg.by_user === currentUser,
       club_id: msg.club_id,
-      event_id: msg.event_id
+      event_id: msg.event_id,
+      is_from_bot: msg.by_user === 'bot',
+      is_from_club: msg.by_user.startsWith('club_'),
+      is_from_user: !msg.by_user.startsWith('club_') && msg.by_user !== 'bot'
     }));
 
     res.json({

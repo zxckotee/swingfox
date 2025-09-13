@@ -305,7 +305,14 @@ router.get('/', authenticateToken, async (req, res) => {
             END * 0.10 +
             
             0.5 * 0.15 -- Фиксированный балл для остальных критериев
-          ) AS total_compatibility_score
+          ) AS total_compatibility_score,
+          
+          -- Приоритет VIP статуса (PREMIUM > VIP > FREE)
+          CASE 
+            WHEN u.viptype = 'PREMIUM' THEN 3
+            WHEN u.viptype = 'VIP' THEN 2
+            ELSE 1
+          END AS vip_priority
           
         FROM users u
         WHERE ${whereClause}
@@ -818,7 +825,14 @@ router.get('/recommendations', authenticateToken, async (req, res) => {
             END * 0.10 +
             
             0.5 * 0.15 -- Фиксированный балл для остальных критериев
-          ) AS total_compatibility_score
+          ) AS total_compatibility_score,
+          
+          -- Приоритет VIP статуса (PREMIUM > VIP > FREE)
+          CASE 
+            WHEN u.viptype = 'PREMIUM' THEN 3
+            WHEN u.viptype = 'VIP' THEN 2
+            ELSE 1
+          END AS vip_priority
           
         FROM users u
         WHERE u.login != :userId
