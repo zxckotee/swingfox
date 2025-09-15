@@ -45,7 +45,7 @@ module.exports = {
     compress: true,
     allowedHosts: 'all',
     client: {
-      webSocketURL: isDevelopment ? 'wss://localhost:443/ws' : process.env.REACT_APP_WS_URL || 'wss://88.218.121.216/ws',
+      webSocketURL: process.env.REACT_APP_WS_URL || 'wss://88.218.121.216/ws',
     },
     proxy: {
       '/api': {
