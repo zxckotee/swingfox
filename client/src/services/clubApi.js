@@ -21,27 +21,41 @@ const apiCall = async (endpoint, options = {}) => {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
     
     if (!response.ok) {
-      // Обработка ошибок авторизации
-      if ((response.status === 401 || response.status === 403) && !isClubRedirecting) {
-        isClubRedirecting = true;
-        localStorage.removeItem('clubToken');
-        
-        // Перенаправляем на страницу входа клуба
-        window.location.href = '/club/login';
-        
-        // Сбрасываем флаг через некоторое время
-        setTimeout(() => {
-          isClubRedirecting = false;
-        }, 1000);
-        
-        throw new Error('Недействительный токен');
-      }
-      
       let errorMessage = 'API Error';
       try {
         const error = await response.json();
         errorMessage = error.message || error.error || `HTTP ${response.status}: ${response.statusText}`;
+        
+        // Обработка ошибок авторизации
+        const isInvalidToken = errorMessage.includes('Недействительный токен') || 
+                              errorMessage.includes('Invalid token') ||
+                              errorMessage.includes('Token expired');
+        
+        if ((response.status === 401 || isInvalidToken) && !isClubRedirecting) {
+          isClubRedirecting = true;
+          localStorage.removeItem('clubToken');
+          
+          // Перенаправляем на страницу входа клуба
+          window.location.href = '/club/login';
+          
+          // Сбрасываем флаг через некоторое время
+          setTimeout(() => {
+            isClubRedirecting = false;
+          }, 1000);
+          
+          throw new Error('Недействительный токен');
+        }
       } catch (parseError) {
+        // Если не удалось распарсить JSON, проверяем только статус
+        if (response.status === 401 && !isClubRedirecting) {
+          isClubRedirecting = true;
+          localStorage.removeItem('clubToken');
+          window.location.href = '/club/login';
+          setTimeout(() => {
+            isClubRedirecting = false;
+          }, 1000);
+          throw new Error('Недействительный токен');
+        }
         errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       }
       console.error('API Error Details:', {
@@ -573,7 +587,13 @@ export const clubAuth = {
 
 // Error handling
 export const handleApiError = (error) => {
-  if (error.message === 'Unauthorized' || error.message === 'Недействительный токен') {
+  const errorMessage = error.message || '';
+  const isInvalidToken = errorMessage.includes('Недействительный токен') || 
+                        errorMessage.includes('Invalid token') ||
+                        errorMessage.includes('Token expired') ||
+                        errorMessage === 'Unauthorized';
+  
+  if (isInvalidToken) {
     if (!isClubRedirecting) {
       isClubRedirecting = true;
       localStorage.removeItem('clubToken');

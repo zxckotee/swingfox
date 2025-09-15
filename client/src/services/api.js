@@ -83,9 +83,14 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Только 401 ошибки приводят к логауту (проблемы с токеном)
+    const errorMessage = error.response?.data?.message || '';
+    const isInvalidToken = errorMessage.includes('Недействительный токен') || 
+                          errorMessage.includes('Invalid token') ||
+                          errorMessage.includes('Token expired');
+    
+    // 401 ошибки или ошибки с сообщением о недействительном токене приводят к логауту
     // 403 ошибки - это проблемы с правами доступа, не с токеном
-    if (error.response?.status === 401 && !isRedirecting) {
+    if ((error.response?.status === 401 || isInvalidToken) && !isRedirecting) {
       // Токен истек или недействителен
       isRedirecting = true;
       setToken(null);
