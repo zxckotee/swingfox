@@ -54,6 +54,13 @@ class WebSocketService {
       console.log('✅ WebSocket connected successfully:', this.socket.id);
       this.isConnected = true;
       this.reconnectAttempts = 0;
+      
+      // Вызываем joinUserChat если он был запрошен до подключения
+      if (this.pendingJoinUserChat) {
+        console.log('🔄 Executing pending joinUserChat:', this.pendingJoinUserChat);
+        this.socket.emit('join-user-chat', this.pendingJoinUserChat);
+        this.pendingJoinUserChat = null;
+      }
     });
 
     this.socket.on('disconnect', (reason) => {
@@ -156,15 +163,9 @@ class WebSocketService {
     }
     
     if (!this.isConnected) {
-      console.log('⏳ WebSocket not connected, waiting for connection...');
-      // Ждем подключения
-      this.socket.once('connect', () => {
-        console.log('✅ WebSocket connected, joining user chat room');
-        this.socket.emit('join-user-chat', {
-          fromUser,
-          toUser
-        });
-      });
+      console.log('⏳ WebSocket not connected, saving join request...');
+      // Сохраняем запрос для выполнения после подключения
+      this.pendingJoinUserChat = { fromUser, toUser };
       return;
     }
     
