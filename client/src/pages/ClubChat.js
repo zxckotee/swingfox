@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useQuery, useQueryClient } from 'react-query';
 import { clubApi } from '../services/clubApi';
-import websocketService from '../services/websocket';
 import toast from 'react-hot-toast';
 import '../styles/ClubChat.css';
 
@@ -31,16 +31,35 @@ const ClubChat = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const messagesEndRef = useRef(null);
+  const queryClient = useQueryClient();
   
-  const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
-  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [chatInfo, setChatInfo] = useState(null);
-  const [wsConnected, setWsConnected] = useState(false);
 
   // Получаем данные чата из location state
   const chatData = location.state?.chatData;
+
+  // Автоматическое обновление сообщений с помощью useQuery
+  const { data: messagesData, isLoading: loading, error: messagesError } = useQuery(
+    ['club-chat-messages', chatData?.event_id, chatData?.user_id],
+    () => clubApi.getChatMessages({
+      event_id: chatData.event_id,
+      user_id: chatData.user_id
+    }),
+    {
+      enabled: !!chatData?.event_id && !!chatData?.user_id,
+      refetchInterval: 2000, // Обновляем каждые 2 секунды, как в пользовательском чате
+      refetchOnWindowFocus: false, // Не обновляем при фокусе окна
+      staleTime: 1000, // Данные считаются свежими 1 секунду
+      onError: (error) => {
+        console.error('Ошибка при получении сообщений:', error);
+        toast.error('Ошибка при загрузке сообщений');
+      }
+    }
+  );
+
+  // Извлекаем сообщения из ответа API
+  const messages = Array.isArray(messagesData?.data?.messages) ? messagesData.data.messages : [];
 
   useEffect(() => {
     console.log('ClubChat mounted with chatId:', chatId, 'chatData:', chatData);
@@ -56,15 +75,7 @@ const ClubChat = () => {
       navigate('/club/chats');
       return;
     }
-    
-    loadChatData();
-    setupWebSocket();
-    
-    return () => {
-      // Очистка при размонтировании
-      websocketService.offClubChatMessage(handleWebSocketMessage);
-    };
-  }, [chatId, chatData]);
+  }, [chatId, chatData, navigate]);
 
   useEffect(() => {
     scrollToBottom();
@@ -74,64 +85,7 @@ const ClubChat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const setupWebSocket = () => {
-    if (!chatData) return;
 
-    // Подключаемся к WebSocket
-    websocketService.connect();
-    
-    // Присоединяемся к комнате чата
-    websocketService.joinClubChat(
-      chatData.club_id,
-      chatData.event_id,
-      chatData.user_id
-    );
-
-    // Подписываемся на сообщения
-    websocketService.onClubChatMessage(handleWebSocketMessage);
-
-    // Проверяем статус подключения
-    const status = websocketService.getConnectionStatus();
-    setWsConnected(status.connected);
-  };
-
-  const handleWebSocketMessage = (data) => {
-    console.log('Received WebSocket message:', data);
-    
-    // Добавляем новое сообщение в список
-    const newMsg = {
-      id: data.id || `ws_${Date.now()}`,
-      message: data.message,
-      by_user: data.by_user,
-      to_user: data.to_user,
-      created_at: data.created_at || data.timestamp,
-      is_from_club: data.by_user.startsWith('club_'),
-      is_from_user: !data.by_user.startsWith('club_')
-    };
-    
-    setMessages(prev => [...prev, newMsg]);
-  };
-
-  const loadChatData = async () => {
-    try {
-      setLoading(true);
-      
-      // Загружаем сообщения чата с параметрами
-      const messagesData = await clubApi.getChatMessages({
-        event_id: chatData.event_id,
-        user_id: chatData.user_id
-      });
-      setMessages(Array.isArray(messagesData.data?.messages) ? messagesData.data.messages : []);
-
-
-      setChatInfo(chatData);
-    } catch (error) {
-      console.error('Ошибка загрузки чата:', error);
-      toast.error('Ошибка при загрузке чата');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -150,32 +104,10 @@ const ClubChat = () => {
       const response = await clubApi.sendChatMessage(messageData);
       
       if (response.success) {
-        // Добавляем сообщение в локальное состояние
-        const newMsg = {
-          id: response.data.id,
-          message: newMessage.trim(),
-          by_user: `club_${chatData.club_id}`,
-          to_user: chatData.user_id,
-          created_at: new Date().toISOString(),
-          is_from_club: true,
-          is_from_user: false
-        };
-        
-        setMessages(prev => [...prev, newMsg]);
         setNewMessage('');
         
-        // Отправляем через WebSocket для real-time обновления
-        websocketService.sendClubChatMessage({
-          id: response.data.id,
-          message: newMessage.trim(),
-          by_user: `club_${chatData.club_id}`,
-          to_user: chatData.user_id,
-          created_at: new Date().toISOString(),
-          senderType: 'club',
-          clubId: chatData.club_id,
-          eventId: chatData.event_id,
-          userId: chatData.user_id
-        });
+        // Обновляем кэш запроса, чтобы сообщения автоматически обновились
+        queryClient.invalidateQueries(['club-chat-messages', chatData?.event_id, chatData?.user_id]);
       }
     } catch (error) {
       console.error('Ошибка отправки сообщения:', error);
@@ -236,12 +168,6 @@ const ClubChat = () => {
           </div>
         </div>
 
-        <div className="chat-actions">
-          <div className={`connection-status ${wsConnected ? 'connected' : 'disconnected'}`}>
-            <div className="status-dot"></div>
-            <span>{wsConnected ? 'Подключено' : 'Отключено'}</span>
-          </div>
-        </div>
       </div>
 
       {/* Messages */}

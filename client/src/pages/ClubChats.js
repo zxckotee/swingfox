@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useQuery } from 'react-query';
 import { clubApi, clubAuth } from '../services/clubApi';
 import { chatAPI } from '../services/api';
 import toast from 'react-hot-toast';
@@ -59,11 +60,27 @@ const EyeIcon = () => (
 
 const ClubChats = () => {
   const navigate = useNavigate();
-  const [chats, setChats] = useState([]);
   const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  // Автоматическое обновление списка чатов с помощью useQuery
+  const { data: chatsData, isLoading: chatsLoading, error: chatsError } = useQuery(
+    'club-chats',
+    () => clubApi.getClubChats(),
+    {
+      refetchInterval: 5000, // Обновляем каждые 5 секунд, как в пользовательском чате
+      refetchOnWindowFocus: false, // Не обновляем при фокусе окна
+      staleTime: 3000, // Данные считаются свежими 3 секунды
+      onError: (error) => {
+        console.error('Ошибка при получении списка чатов:', error);
+        toast.error('Не удалось загрузить список чатов');
+      }
+    }
+  );
+
+  // Извлекаем чаты из ответа API
+  const chats = Array.isArray(chatsData?.chats) ? chatsData.chats : (Array.isArray(chatsData) ? chatsData : []);
 
   useEffect(() => {
     // Проверяем аутентификацию клуба
@@ -72,33 +89,9 @@ const ClubChats = () => {
       return;
     }
     
-    loadData();
+    loadEvents();
   }, [navigate]);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      await Promise.all([
-        loadChats(),
-        loadEvents()
-      ]);
-    } catch (error) {
-      console.error('Ошибка загрузки данных:', error);
-      toast.error('Ошибка при загрузке данных');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadChats = async () => {
-    try {
-      const chatsData = await clubApi.getClubChats();
-      setChats(Array.isArray(chatsData.chats) ? chatsData.chats : (Array.isArray(chatsData) ? chatsData : []));
-    } catch (error) {
-      console.error('Ошибка загрузки чатов:', error);
-      setChats([]);
-    }
-  };
 
   const loadEvents = async () => {
     try {
@@ -176,7 +169,7 @@ const ClubChats = () => {
     return matchesSearch && matchesStatus;
   });
 
-  if (loading) {
+  if (chatsLoading) {
     return (
       <div className="club-chats-loading">
         <div className="loading-spinner"></div>
