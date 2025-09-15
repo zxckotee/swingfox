@@ -31,7 +31,9 @@ class WebSocketService {
     
     // Принудительно используем правильный URL для production
     if (window.location.hostname === '88.218.121.216' || window.location.hostname.includes('88.218.121.216')) {
-      wsUrl = 'http://88.218.121.216:3001';
+      // Используем HTTPS если страница загружена по HTTPS
+      const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
+      wsUrl = `${protocol}://88.218.121.216:3001`;
     }
     
     console.log('Connecting to WebSocket:', wsUrl);

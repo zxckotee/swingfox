@@ -353,14 +353,135 @@ const startServer = async () => {
         });
       }
     } else {
-      // Production режим - используем HTTP (HTTPS должен настраиваться через reverse proxy)
-      httpServer.listen(PORT, () => {
-        console.log('🚀 SwingFox сервер запущен на порту', PORT);
-        console.log('📍 URL:', `http://localhost:${PORT}`);
-        console.log('🔧 Режим:', process.env.NODE_ENV || 'development');
-        console.log('📡 API доступно по адресу:', `http://localhost:${PORT}/api`);
-        console.log('🔌 WebSocket доступен по адресу:', `ws://localhost:${PORT}`);
-      });
+      // Production режим - пытаемся запустить HTTPS, fallback на HTTP
+      try {
+        // Проверяем наличие SSL сертификатов для production
+        const sslKeyPath = process.env.SSL_KEY_PATH || './ssl/production.key';
+        const sslCertPath = process.env.SSL_CERT_PATH || './ssl/production.crt';
+        
+        if (fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath)) {
+          const httpsOptions = {
+            key: fs.readFileSync(sslKeyPath),
+            cert: fs.readFileSync(sslCertPath)
+          };
+          
+          const httpsServer = https.createServer(httpsOptions, app);
+          
+          // Настраиваем Socket.IO для HTTPS сервера
+          const httpsIo = new Server(httpsServer, {
+            cors: {
+              origin: process.env.NODE_ENV === 'production' 
+                ? ['https://swingfox.ru', 'https://www.swingfox.ru', 'https://88.218.121.216', 'http://88.218.121.216']
+                : true,
+              credentials: true,
+              methods: ['GET', 'POST']
+            }
+          });
+          
+          // Копируем обработчики WebSocket
+          httpsIo.on('connection', (socket) => {
+            console.log('✅ WebSocket client connected (HTTPS):', socket.id);
+            console.log('Client details:', {
+              id: socket.id,
+              handshake: {
+                address: socket.handshake.address,
+                headers: socket.handshake.headers,
+                origin: socket.handshake.headers.origin
+              }
+            });
+
+            // Присоединение к комнате клубного чата
+            socket.on('join-club-chat', (data) => {
+              const { clubId, eventId, userId } = data;
+              const roomName = `club-chat-${clubId}-${eventId}-${userId}`;
+              socket.join(roomName);
+              console.log(`Client ${socket.id} joined room: ${roomName}`);
+            });
+
+            // Присоединение к комнате обычного чата между пользователями
+            socket.on('join-user-chat', (data) => {
+              const { fromUser, toUser } = data;
+              const roomName = `user-chat-${fromUser}-${toUser}`;
+              socket.join(roomName);
+              console.log(`Client ${socket.id} joined user chat room: ${roomName}`);
+            });
+
+            // Отправка сообщения в клубном чате
+            socket.on('club-chat-message', (data) => {
+              const { clubId, eventId, userId, message, senderType } = data;
+              const roomName = `club-chat-${clubId}-${eventId}-${userId}`;
+              
+              // Отправляем сообщение всем участникам комнаты
+              httpsIo.to(roomName).emit('club-chat-message', {
+                ...data,
+                timestamp: new Date().toISOString()
+              });
+              
+              console.log(`Message sent to room ${roomName}:`, message);
+            });
+
+            // Отправка сообщения в обычном чате между пользователями
+            socket.on('user-chat-message', (data) => {
+              const { fromUser, toUser, message, messageId } = data;
+              const roomName = `user-chat-${fromUser}-${toUser}`;
+              
+              // Отправляем сообщение всем участникам комнаты
+              httpsIo.to(roomName).emit('user-chat-message', {
+                ...data,
+                timestamp: new Date().toISOString()
+              });
+              
+              console.log(`User message sent to room ${roomName}:`, message);
+            });
+
+            // Отключение
+            socket.on('disconnect', (reason) => {
+              console.log('❌ WebSocket client disconnected (HTTPS):', socket.id, 'Reason:', reason);
+            });
+
+            // Обработка ошибок
+            socket.on('error', (error) => {
+              console.error('❌ WebSocket error for client', socket.id, ':', error);
+            });
+          });
+          
+          // Делаем httpsIo доступным для роутов
+          app.set('io', httpsIo);
+          
+          httpsServer.listen(PORT, '0.0.0.0', () => {
+            console.log('🚀 SwingFox HTTPS сервер запущен на порту', PORT);
+            console.log('📍 URL:', `https://88.218.121.216:${PORT}`);
+            console.log('🔧 Режим:', process.env.NODE_ENV || 'production');
+            console.log('📡 API доступно по адресу:', `https://88.218.121.216:${PORT}/api`);
+            console.log('🔌 WebSocket доступен по адресу:', `wss://88.218.121.216:${PORT}`);
+            console.log('🔒 SSL сертификаты загружены успешно');
+          });
+        } else {
+          console.warn('⚠️  SSL сертификаты не найдены для production, запускаем HTTP сервер');
+          console.warn('💡 Для HTTPS создайте SSL сертификаты в папке ssl/');
+          
+          // Fallback на HTTP
+          httpServer.listen(PORT, '0.0.0.0', () => {
+            console.log('🚀 SwingFox HTTP сервер запущен на порту', PORT);
+            console.log('📍 URL:', `http://88.218.121.216:${PORT}`);
+            console.log('🔧 Режим:', process.env.NODE_ENV || 'production');
+            console.log('📡 API доступно по адресу:', `http://88.218.121.216:${PORT}/api`);
+            console.log('🔌 WebSocket доступен по адресу:', `ws://88.218.121.216:${PORT}`);
+          });
+        }
+      } catch (error) {
+        console.error('❌ Ошибка настройки HTTPS в production:', error.message);
+        console.log('🔄 Запускаем HTTP сервер в качестве fallback...');
+        
+        // Fallback на HTTP
+        httpServer.listen(PORT, '0.0.0.0', () => {
+          console.log('🚀 SwingFox HTTP сервер запущен на порту', PORT);
+          console.log('📍 URL:', `http://88.218.121.216:${PORT}`);
+          console.log('🔧 Режим:', process.env.NODE_ENV || 'production');
+          console.log('📡 API доступно по адресу:', `http://88.218.121.216:${PORT}/api`);
+          console.log('🔌 WebSocket доступен по адресу:', `ws://88.218.121.216:${PORT}`);
+        });
+      }
     }
     
   } catch (error) {
