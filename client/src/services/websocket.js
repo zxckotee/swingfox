@@ -192,6 +192,8 @@ class WebSocketService {
       return;
     }
     
+    console.log('📤 Raw data received in sendUserChatMessage:', data);
+    
     // Преобразуем данные в правильный формат для сервера
     const messageData = {
       fromUser: data.from_user,
@@ -200,7 +202,10 @@ class WebSocketService {
       messageId: data.messageId || Date.now().toString()
     };
     
-    console.log('📤 Sending user chat message via WebSocket:', messageData);
+    console.log('📤 Converted message data:', messageData);
+    console.log('📤 WebSocket connected:', this.isConnected);
+    console.log('📤 Socket exists:', !!this.socket);
+    
     this.socket.emit('user-chat-message', messageData);
   }
 

@@ -1071,16 +1071,15 @@ const Chat = () => {
             to_user: selectedChat
           });
         } else if (!isClubChat) {
-          console.log('📤 Sending message via WebSocket:', {
+          const messageData = {
             from_user: currentUser.login,
             to_user: selectedChat,
             message: messageText.trim()
-          });
-          websocketService.sendUserChatMessage({
-            from_user: currentUser.login,
-            to_user: selectedChat,
-            message: messageText.trim()
-          });
+          };
+          console.log('📤 Sending message via WebSocket:', messageData);
+          console.log('📤 Current user:', currentUser);
+          console.log('📤 Selected chat:', selectedChat);
+          websocketService.sendUserChatMessage(messageData);
         }
         
         // Показываем предупреждение если есть
