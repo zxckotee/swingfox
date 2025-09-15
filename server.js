@@ -6,12 +6,25 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
 
 // Подключение к базе данных
 const { sequelize, testConnection } = require('./src/config/database');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Создаем HTTP сервер для Socket.IO
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: process.env.NODE_ENV === 'production' 
+      ? ['https://swingfox.ru', 'https://www.swingfox.ru']
+      : true,
+    credentials: true
+  }
+});
 
 // Настройка безопасности
 app.use(helmet());
@@ -98,6 +111,41 @@ app.use('/api/club/analytics', clubAnalyticsRoutes);
 app.use('/api/club/user-events', clubUserEventsRoutes);
 app.use('/api/club/chats', clubChatsRoutes);
 
+// WebSocket обработчики
+io.on('connection', (socket) => {
+  console.log('WebSocket client connected:', socket.id);
+
+  // Присоединение к комнате клубного чата
+  socket.on('join-club-chat', (data) => {
+    const { clubId, eventId, userId } = data;
+    const roomName = `club-chat-${clubId}-${eventId}-${userId}`;
+    socket.join(roomName);
+    console.log(`Client ${socket.id} joined room: ${roomName}`);
+  });
+
+  // Отправка сообщения в клубном чате
+  socket.on('club-chat-message', (data) => {
+    const { clubId, eventId, userId, message, senderType } = data;
+    const roomName = `club-chat-${clubId}-${eventId}-${userId}`;
+    
+    // Отправляем сообщение всем участникам комнаты
+    io.to(roomName).emit('club-chat-message', {
+      ...data,
+      timestamp: new Date().toISOString()
+    });
+    
+    console.log(`Message sent to room ${roomName}:`, message);
+  });
+
+  // Отключение
+  socket.on('disconnect', () => {
+    console.log('WebSocket client disconnected:', socket.id);
+  });
+});
+
+// Делаем io доступным для роутов
+app.set('io', io);
+
 // Проверка статуса API
 app.get('/api/status', (req, res) => {
   res.json({ 
@@ -174,11 +222,50 @@ const startServer = async () => {
           };
           
           // Запускаем HTTPS сервер
-          https.createServer(httpsOptions, app).listen(PORT, '0.0.0.0', () => {
+          const httpsServer = https.createServer(httpsOptions, app);
+          const httpsIO = new Server(httpsServer, {
+            cors: {
+              origin: process.env.NODE_ENV === 'production' 
+                ? ['https://swingfox.ru', 'https://www.swingfox.ru']
+                : true,
+              credentials: true
+            }
+          });
+          
+          // Копируем WebSocket обработчики для HTTPS
+          httpsIO.on('connection', (socket) => {
+            console.log('WebSocket client connected (HTTPS):', socket.id);
+            
+            socket.on('join-club-chat', (data) => {
+              const { clubId, eventId, userId } = data;
+              const roomName = `club-chat-${clubId}-${eventId}-${userId}`;
+              socket.join(roomName);
+              console.log(`Client ${socket.id} joined room: ${roomName}`);
+            });
+
+            socket.on('club-chat-message', (data) => {
+              const { clubId, eventId, userId, message, senderType } = data;
+              const roomName = `club-chat-${clubId}-${eventId}-${userId}`;
+              
+              httpsIO.to(roomName).emit('club-chat-message', {
+                ...data,
+                timestamp: new Date().toISOString()
+              });
+              
+              console.log(`Message sent to room ${roomName}:`, message);
+            });
+
+            socket.on('disconnect', () => {
+              console.log('WebSocket client disconnected (HTTPS):', socket.id);
+            });
+          });
+          
+          httpsServer.listen(PORT, '0.0.0.0', () => {
             console.log('🚀 SwingFox HTTPS сервер запущен на порту', PORT);
             console.log('📍 URL:', `https://localhost:${PORT}`);
             console.log('🔧 Режим:', process.env.NODE_ENV || 'development');
             console.log('📡 API доступно по адресу:', `https://localhost:${PORT}/api`);
+            console.log('🔌 WebSocket доступен по адресу:', `wss://localhost:${PORT}`);
             console.log('🔒 SSL сертификаты загружены успешно');
           });
         } else {
@@ -198,20 +285,22 @@ const startServer = async () => {
         console.log('🔄 Запускаем HTTP сервер в качестве fallback...');
         
         // Fallback на HTTP
-        app.listen(PORT, '0.0.0.0', () => {
+        httpServer.listen(PORT, '0.0.0.0', () => {
           console.log('🚀 SwingFox HTTP сервер запущен на порту', PORT);
           console.log('📍 URL:', `http://localhost:${PORT}`);
           console.log('🔧 Режим:', process.env.NODE_ENV || 'development');
           console.log('📡 API доступно по адресу:', `http://localhost:${PORT}/api`);
+          console.log('🔌 WebSocket доступен по адресу:', `ws://localhost:${PORT}`);
         });
       }
     } else {
       // Production режим - используем HTTP (HTTPS должен настраиваться через reverse proxy)
-      app.listen(PORT, () => {
+      httpServer.listen(PORT, () => {
         console.log('🚀 SwingFox сервер запущен на порту', PORT);
         console.log('📍 URL:', `http://localhost:${PORT}`);
         console.log('🔧 Режим:', process.env.NODE_ENV || 'development');
         console.log('📡 API доступно по адресу:', `http://localhost:${PORT}/api`);
+        console.log('🔌 WebSocket доступен по адресу:', `ws://localhost:${PORT}`);
       });
     }
     

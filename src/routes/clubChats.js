@@ -163,13 +163,8 @@ router.get('/messages', authenticateClub, async (req, res) => {
           // Основные комбинации: пользователь <-> клуб
           { by_user: userLogin, to_user: clubLogin },
           { by_user: clubLogin, to_user: userLogin },
-          // Дополнительные комбинации для совместимости
-          { by_user: userLogin, to_user: user.id.toString() },
-          { by_user: clubLogin, to_user: user.id.toString() },
-          // Также ищем сообщения где пользователь может быть в by_user или to_user
+          // Дополнительные комбинации для совместимости с ID
           { by_user: user.id.toString(), to_user: clubLogin },
-          { by_user: user.id.toString(), to_user: userLogin },
-          { by_user: userLogin, to_user: user.id.toString() },
           { by_user: clubLogin, to_user: user.id.toString() }
         ]
       },
@@ -258,6 +253,23 @@ router.post('/messages', authenticateClub, async (req, res) => {
       chat_type: 'event',
       event_id: parseInt(event_id)
     });
+
+    // Отправляем сообщение через WebSocket
+    const io = req.app.get('io');
+    if (io) {
+      const roomName = `club-chat-${req.club.id}-${event_id}-${to_user}`;
+      io.to(roomName).emit('club-chat-message', {
+        id: newMessage.id,
+        message: newMessage.message,
+        by_user: newMessage.by_user,
+        to_user: newMessage.to_user,
+        created_at: newMessage.created_at,
+        senderType: 'club',
+        clubId: req.club.id,
+        eventId: parseInt(event_id),
+        userId: parseInt(to_user)
+      });
+    }
 
     logger.logSuccess(req, 201, {
       message_id: newMessage.id,
