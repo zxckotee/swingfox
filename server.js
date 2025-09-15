@@ -191,6 +191,12 @@ io.on('connection', (socket) => {
   // Отключение
   socket.on('disconnect', (reason) => {
     console.log('❌ WebSocket client disconnected:', socket.id, 'Reason:', reason);
+    
+    // Показываем, из каких комнат отключился клиент
+    const rooms = Array.from(socket.rooms);
+    if (rooms.length > 1) { // больше 1, потому что socket.id тоже в rooms
+      console.log('🚪 Client left rooms:', rooms.filter(room => room !== socket.id));
+    }
   });
 
   // Обработка ошибок
@@ -346,8 +352,14 @@ const startServer = async () => {
               console.log(`📊 Room ${roomName} (HTTPS) has ${httpsIO.sockets.adapter.rooms.get(roomName)?.size || 0} clients`);
             });
 
-            socket.on('disconnect', () => {
-              console.log('WebSocket client disconnected (HTTPS):', socket.id);
+            socket.on('disconnect', (reason) => {
+              console.log('❌ WebSocket client disconnected (HTTPS):', socket.id, 'Reason:', reason);
+              
+              // Показываем, из каких комнат отключился клиент
+              const rooms = Array.from(socket.rooms);
+              if (rooms.length > 1) { // больше 1, потому что socket.id тоже в rooms
+                console.log('🚪 Client left rooms:', rooms.filter(room => room !== socket.id));
+              }
             });
           });
           
