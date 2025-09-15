@@ -1247,8 +1247,8 @@ const Chat = () => {
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file && selectedChat) {
-      // Проверяем статус мэтча перед отправкой файла только если это не общение по объявлению
-      if (!isAdConversation && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown') {
+      // Проверяем статус мэтча перед отправкой файла только если это не общение по объявлению и не клубный чат
+      if (!isAdConversation && !isClubChat && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown') {
         toast.error(`${matchStatus.message} ${matchStatus.icon}`);
         return;
       }
