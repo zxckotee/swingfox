@@ -169,10 +169,16 @@ class WebSocketService {
     }
     
     console.log('💬 Joining user chat room:', { fromUser, toUser });
+    console.log('📡 Socket connected:', this.isConnected);
+    console.log('📡 Socket ID:', this.socket?.id);
+    console.log('📡 Emitting join-user-chat event...');
+    
     this.socket.emit('join-user-chat', {
       fromUser,
       toUser
     });
+    
+    console.log('✅ join-user-chat event emitted');
   }
 
   // Отправить сообщение в клубном чате
