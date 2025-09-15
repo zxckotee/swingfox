@@ -17,11 +17,6 @@ const SendIcon = () => (
   </svg>
 );
 
-const BotIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-  </svg>
-);
 
 const UserIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -41,7 +36,6 @@ const ClubChat = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [chatInfo, setChatInfo] = useState(null);
-  const [botConfig, setBotConfig] = useState(null);
 
   // Получаем данные чата из location state
   const chatData = location.state?.chatData;
@@ -83,9 +77,6 @@ const ClubChat = () => {
       });
       setMessages(Array.isArray(messagesData.data?.messages) ? messagesData.data.messages : []);
 
-      // Загружаем конфигурацию бота клуба
-      const botData = await clubApi.getBotConfig();
-      setBotConfig(botData);
 
       setChatInfo(chatData);
     } catch (error) {
@@ -125,12 +116,6 @@ const ClubChat = () => {
         setMessages(prev => [...prev, newMsg]);
         setNewMessage('');
         
-        // Триггер рекомендательного бота при первом сообщении
-        if (messages.length === 0) { // Если это первое сообщение в чате
-          setTimeout(() => {
-            handleBotTrigger('first_message');
-          }, 1000);
-        }
       }
     } catch (error) {
       console.error('Ошибка отправки сообщения:', error);
@@ -140,33 +125,6 @@ const ClubChat = () => {
     }
   };
 
-  const handleBotTrigger = async (triggerType) => {
-    try {
-      // Триггерим ботов по типу события
-      const response = await clubApi.triggerBots({
-        trigger_type: triggerType,
-        user_id: chatData.user_id,
-        event_id: chatData.event_id
-      });
-
-      if (response.success && response.triggered_bots) {
-        // Добавляем ответы всех сработавших ботов в чат
-        response.triggered_bots.forEach(bot => {
-          const botMsg = {
-            id: bot.message_id || `bot_${Date.now()}_${bot.bot_id}`,
-            message: bot.message,
-            by_user: 'bot',
-            to_user: chatData.user_id,
-            created_at: new Date().toISOString()
-          };
-          
-          setMessages(prev => [...prev, botMsg]);
-        });
-      }
-    } catch (error) {
-      console.error('Ошибка триггера ботов:', error);
-    }
-  };
 
   const formatMessageTime = (timestamp) => {
     return new Date(timestamp).toLocaleString('ru-RU', {
@@ -178,7 +136,6 @@ const ClubChat = () => {
   };
 
   const getMessageClass = (message) => {
-    if (message.by_user === 'bot') return 'message-bot';
     if (message.by_user.startsWith('club_')) return 'message-club';
     return 'message-user';
   };
@@ -220,12 +177,6 @@ const ClubChat = () => {
         </div>
 
         <div className="chat-actions">
-          {botConfig && (
-            <div className="bot-status">
-              <BotIcon />
-              <span>{botConfig.auto_reply_enabled ? 'Бот активен' : 'Бот отключен'}</span>
-            </div>
-          )}
         </div>
       </div>
 
@@ -242,9 +193,7 @@ const ClubChat = () => {
             {messages.map((message) => (
               <div key={message.id} className={`message ${getMessageClass(message)}`}>
                 <div className="message-avatar">
-                  {message.is_from_bot ? (
-                    <BotIcon />
-                  ) : message.is_from_club ? (
+                  {message.is_from_club ? (
                     <UserIcon />
                   ) : (
                     <img
@@ -259,8 +208,7 @@ const ClubChat = () => {
                 <div className="message-content">
                   <div className="message-header">
                     <span className="message-sender">
-                      {message.by_user === 'bot' ? 'Бот' : 
-                       message.by_user.startsWith('club_') ? 'Клуб' : 
+                      {message.by_user.startsWith('club_') ? 'Клуб' : 
                        message.by_user}
                     </span>
                     <span className="message-time">
@@ -297,13 +245,6 @@ const ClubChat = () => {
             <SendIcon />
           </button>
         </div>
-        
-        {botConfig && botConfig.auto_reply_enabled && (
-          <div className="bot-indicator">
-            <BotIcon />
-            <span>Автоответчик активен</span>
-          </div>
-        )}
       </form>
     </div>
   );

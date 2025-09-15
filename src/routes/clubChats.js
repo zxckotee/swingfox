@@ -163,9 +163,6 @@ router.get('/messages', authenticateClub, async (req, res) => {
           // Основные комбинации: пользователь <-> клуб
           { by_user: userLogin, to_user: clubLogin },
           { by_user: clubLogin, to_user: userLogin },
-          // Бот сообщения
-          { by_user: 'bot', to_user: userLogin },
-          { by_user: 'bot', to_user: user.id.toString() },
           // Дополнительные комбинации для совместимости
           { by_user: userLogin, to_user: user.id.toString() },
           { by_user: clubLogin, to_user: user.id.toString() },
@@ -197,9 +194,8 @@ router.get('/messages', authenticateClub, async (req, res) => {
           to_user: msg.to_user,
           created_at: msg.created_at,
           user_avatar: user?.ava || null,
-          is_from_bot: msg.by_user === 'bot',
           is_from_club: msg.by_user.startsWith('club_'),
-          is_from_user: !msg.by_user.startsWith('club_') && msg.by_user !== 'bot'
+          is_from_user: !msg.by_user.startsWith('club_')
         })),
         user: {
           login: user.login,

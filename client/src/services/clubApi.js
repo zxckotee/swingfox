@@ -499,24 +499,6 @@ export const clubApi = {
     });
   },
 
-  // Bot integration for chats
-  getBotConfig: async () => {
-    return apiCall(`/chats/bots/config`);
-  },
-
-  updateBotConfig: async (botsData) => {
-    return apiCall(`/chats/bots/config`, {
-      method: 'PUT',
-      body: JSON.stringify({ bots: botsData })
-    });
-  },
-
-  triggerBots: async (triggerData) => {
-    return apiCall(`/chats/bots/trigger`, {
-      method: 'POST',
-      body: JSON.stringify(triggerData)
-    });
-  }
 };
 
 // Auth helper functions
