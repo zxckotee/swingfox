@@ -1180,7 +1180,18 @@ const Chat = () => {
 
   // WebSocket интеграция для real-time сообщений
   useEffect(() => {
-    if (!selectedChat) return;
+    console.log('🔌 WebSocket useEffect triggered:', {
+      selectedChat,
+      isClubChat,
+      clubInfo: clubInfo?.id,
+      eventInfo: eventInfo?.id,
+      currentUser: currentUser?.login
+    });
+    
+    if (!selectedChat) {
+      console.log('❌ No selectedChat, skipping WebSocket setup');
+      return;
+    }
 
     // Подключаемся к WebSocket комнате для текущего чата
     if (isClubChat && clubInfo?.id && eventInfo?.id) {
@@ -1191,6 +1202,8 @@ const Chat = () => {
       // Обычный чат между пользователями
       console.log('👥 Joining user chat room:', { fromUser: currentUser.login, toUser: selectedChat });
       websocketService.joinUserChat(currentUser.login, selectedChat);
+    } else {
+      console.log('❌ WebSocket setup skipped - conditions not met');
     }
 
     // Обработчик для получения сообщений через WebSocket
