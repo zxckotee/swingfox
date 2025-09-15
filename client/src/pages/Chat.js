@@ -845,14 +845,13 @@ const Chat = () => {
     }
   }, [chatId]);
 
-  // Получение списка чатов
+  // Получение списка чатов (только при загрузке, без polling)
   const { data: chats = [], error: chatsError, isLoading: chatsLoading } = useQuery(
     'conversations',
     () => chatAPI.getConversations(50, 0), // Увеличим лимит для лучшего UX
     {
-      refetchInterval: 5000, // Обновляем каждые 5 секунд
       refetchOnWindowFocus: false, // Не обновляем при фокусе окна
-      staleTime: 3000, // Данные считаются свежими 3 секунды
+      staleTime: 5 * 60 * 1000, // Данные считаются свежими 5 минут (обновляются только через WebSocket)
       onError: (error) => {
         console.error('Ошибка при получении списка чатов:', error);
         toast.error('Не удалось загрузить список чатов');
@@ -900,22 +899,16 @@ const Chat = () => {
     ? [(virtualChat || forceVirtualChat), ...(chats?.conversations || [])]
     : (chats?.conversations || []);
 
-  // Отладочная информация (только при изменениях)
+  // Отладочная информация (только при критических изменениях)
   useEffect(() => {
-    console.log('Chat Debug:', {
-      chatId,
-      chats: chats?.conversations,
-      existingChat,
-      virtualChat,
-      forceVirtualChat,
-      allChats,
-      selectedChat,
-      lastSelectedChatRef: lastSelectedChatRef.current,
-      chatsLoading,
-      userInfo,
-      timestamp: new Date().toISOString()
-    });
-  }, [chatId, chats?.conversations, selectedChat, chatsLoading, userInfo]);
+    if (selectedChat && !chatsLoading) {
+      console.log('Chat state updated:', {
+        selectedChat,
+        chatsCount: chats?.conversations?.length || 0,
+        hasMessages: messages.length > 0
+      });
+    }
+  }, [selectedChat, chats?.conversations?.length, messages.length, chatsLoading]);
 
   // Загружаем информацию о клубах для клубных чатов
   useEffect(() => {
@@ -950,7 +943,7 @@ const Chat = () => {
     loadClubsData();
   }, [chats?.conversations]);
 
-  // Получение сообщений текущего чата
+  // Получение сообщений текущего чата (только при загрузке, без polling)
   const { data: messagesData, error: messagesError, isLoading: messagesLoading } = useQuery(
     ['messages', selectedChat, isClubChat, clubInfo?.id, eventInfo?.id],
     () => {
@@ -959,9 +952,8 @@ const Chat = () => {
     },
     {
       enabled: !!selectedChat && !chatsLoading,
-      refetchInterval: 2000, // Обновляем каждые 2 секунды
       refetchOnWindowFocus: false, // Не обновляем при фокусе окна
-      staleTime: 1000, // Данные считаются свежими 1 секунду
+      staleTime: 5 * 60 * 1000, // Данные считаются свежими 5 минут (обновляются только через WebSocket)
       onError: (error) => {
         console.error('Ошибка при получении сообщений:', error);
         toast.error('Не удалось загрузить сообщения');
@@ -977,16 +969,16 @@ const Chat = () => {
 
   const messages = isClubChat ? (messagesData?.messages || []) : (messagesData?.messages || []);
   
-  // Логирование для отладки
-  console.log('Chat messages data:', {
-    isClubChat,
-    clubInfo,
-    eventInfo,
-    messagesData,
-    messages: messages.length,
-    selectedChat,
-    messagesArray: messages
-  });
+  // Логирование для отладки (только при изменениях)
+  useEffect(() => {
+    if (selectedChat && messagesData) {
+      console.log('Chat loaded:', {
+        chat: selectedChat,
+        messagesCount: messages.length,
+        isClubChat
+      });
+    }
+  }, [selectedChat, messages.length, isClubChat]);
 
   // Получение статуса мэтча для текущего чата (только для обычных чатов, не клубных)
   const { data: matchData } = useQuery(
