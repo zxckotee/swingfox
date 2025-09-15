@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import toast from 'react-hot-toast';
 import { chatAPI, clubsAPI, apiUtils } from '../services/api';
+import websocketService from '../services/websocket';
 import {
   PageContainer,
   Avatar,
@@ -1068,6 +1069,23 @@ const Chat = () => {
         queryClient.invalidateQueries(['messages', selectedChat]);
         queryClient.invalidateQueries('conversations');
         
+        // Отправляем сообщение через WebSocket для real-time обновления
+        if (isClubChat && clubInfo?.id && eventInfo?.id) {
+          websocketService.sendClubChatMessage({
+            club_id: clubInfo.id,
+            event_id: eventInfo.id,
+            user_id: currentUser.login,
+            message: messageText.trim(),
+            to_user: selectedChat
+          });
+        } else if (!isClubChat) {
+          websocketService.sendUserChatMessage({
+            from_user: currentUser.login,
+            to_user: selectedChat,
+            message: messageText.trim()
+          });
+        }
+        
         // Показываем предупреждение если есть
         if (data?.match_warning) {
           toast.warning(data.match_warning);
@@ -1090,9 +1108,27 @@ const Chat = () => {
   );
 
   const sendFileMutation = useMutation(chatAPI.sendMessage, {
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries(['messages', selectedChat]);
       queryClient.invalidateQueries('conversations');
+      
+      // Отправляем уведомление о файле через WebSocket для real-time обновления
+      if (isClubChat && clubInfo?.id && eventInfo?.id) {
+        websocketService.sendClubChatMessage({
+          club_id: clubInfo.id,
+          event_id: eventInfo.id,
+          user_id: currentUser.login,
+          message: '[Файл отправлен]',
+          to_user: selectedChat
+        });
+      } else if (!isClubChat) {
+        websocketService.sendUserChatMessage({
+          from_user: currentUser.login,
+          to_user: selectedChat,
+          message: '[Файл отправлен]'
+        });
+      }
+      
       toast.success('Файл успешно отправлен');
     },
     onError: (error) => {
@@ -1145,6 +1181,54 @@ const Chat = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // WebSocket интеграция для real-time сообщений
+  useEffect(() => {
+    if (!selectedChat) return;
+
+    // Подключаемся к WebSocket комнате для текущего чата
+    if (isClubChat && clubInfo?.id && eventInfo?.id) {
+      // Клубный чат
+      websocketService.joinClubChat(clubInfo.id, eventInfo.id, currentUser.login);
+    } else if (!isClubChat) {
+      // Обычный чат между пользователями
+      websocketService.joinUserChat(currentUser.login, selectedChat);
+    }
+
+    // Обработчик для получения сообщений через WebSocket
+    const handleWebSocketMessage = (messageData) => {
+      console.log('WebSocket message received:', messageData);
+      
+      // Обновляем кэш сообщений
+      queryClient.setQueryData(['messages', selectedChat, isClubChat, clubInfo?.id, eventInfo?.id], (oldData) => {
+        if (!oldData) return oldData;
+        
+        return {
+          ...oldData,
+          messages: [...oldData.messages, messageData]
+        };
+      });
+      
+      // Обновляем список чатов
+      queryClient.invalidateQueries('conversations');
+    };
+
+    // Подписываемся на сообщения
+    if (isClubChat) {
+      websocketService.onClubChatMessage(handleWebSocketMessage);
+    } else {
+      websocketService.onUserChatMessage(handleWebSocketMessage);
+    }
+
+    // Очистка при смене чата или размонтировании
+    return () => {
+      if (isClubChat) {
+        websocketService.offClubChatMessage(handleWebSocketMessage);
+      } else {
+        websocketService.offUserChatMessage(handleWebSocketMessage);
+      }
+    };
+  }, [selectedChat, isClubChat, clubInfo?.id, eventInfo?.id, currentUser.login, queryClient]);
 
   // Очистка при размонтировании
   useEffect(() => {
@@ -1208,7 +1292,9 @@ const Chat = () => {
   const handleSendMessage = () => {
     if (messageText.trim() && selectedChat) {
       // Проверяем статус мэтча перед отправкой только для обычных чатов (не клубных и не по объявлениям)
-      if (!isAdConversation && !isClubChat && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown') {
+      // Но если диалог уже существует (есть сообщения), то не блокируем отправку
+      const hasExistingMessages = messages && messages.length > 0;
+      if (!isAdConversation && !isClubChat && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown' && !hasExistingMessages) {
         toast.error(`${matchStatus.message} ${matchStatus.icon}`);
         return;
       }
@@ -1248,7 +1334,9 @@ const Chat = () => {
     const file = event.target.files[0];
     if (file && selectedChat) {
       // Проверяем статус мэтча перед отправкой файла только если это не общение по объявлению и не клубный чат
-      if (!isAdConversation && !isClubChat && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown') {
+      // Но если диалог уже существует (есть сообщения), то не блокируем отправку
+      const hasExistingMessages = messages && messages.length > 0;
+      if (!isAdConversation && !isClubChat && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown' && !hasExistingMessages) {
         toast.error(`${matchStatus.message} ${matchStatus.icon}`);
         return;
       }
@@ -1644,7 +1732,7 @@ const Chat = () => {
               <div ref={messagesEndRef} />
             </MessagesContainer>
 
-            <MessageInputWrapper $disabled={(!isAdConversation && !isClubChat && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown') || (isClubChat && eventParticipationStatus && !eventParticipationStatus.canChat && eventParticipationStatus.status !== 'unknown')}>
+            <MessageInputWrapper $disabled={(!isAdConversation && !isClubChat && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown' && !(messages && messages.length > 0)) || (isClubChat && eventParticipationStatus && !eventParticipationStatus.canChat && eventParticipationStatus.status !== 'unknown')}>
               <MessageInput>
               <InputContainer>
                 <TextInput
@@ -1668,7 +1756,7 @@ const Chat = () => {
                 disabled={
                   !messageText.trim() ||
                   sendMessageMutation.isLoading ||
-                  (!isAdConversation && !isClubChat && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown') ||
+                  (!isAdConversation && !isClubChat && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown' && !(messages && messages.length > 0)) ||
                   (isClubChat && eventParticipationStatus && !eventParticipationStatus.canChat && eventParticipationStatus.status !== 'unknown')
                 }
               >

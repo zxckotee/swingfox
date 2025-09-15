@@ -625,6 +625,39 @@ router.post('/send', authenticateToken, upload.array('images', 5), async (req, r
       console.error('Error creating message notification:', notifError);
     }
 
+    // Отправляем сообщение через WebSocket
+    const io = req.app.get('io');
+    if (io) {
+      if (isClubChat) {
+        // Для клубного чата
+        const clubId = to_user.replace('club_', '');
+        const roomName = `club-chat-${clubId}-${eventId}-${fromUser}`;
+        io.to(roomName).emit('club-chat-message', {
+          id: messageId,
+          message: message || '[Изображение]',
+          by_user: fromUser,
+          to_user: to_user,
+          created_at: chatMessage.created_at,
+          senderType: 'user',
+          clubId: clubId,
+          eventId: eventId,
+          userId: fromUser,
+          images: imagesList
+        });
+      } else {
+        // Для обычного чата между пользователями
+        const roomName = `user-chat-${fromUser}-${to_user}`;
+        io.to(roomName).emit('user-chat-message', {
+          id: messageId,
+          message: message || '[Изображение]',
+          by_user: fromUser,
+          to_user: to_user,
+          created_at: chatMessage.created_at,
+          images: imagesList
+        });
+      }
+    }
+
     // Форматируем ответ
     const responseMessage = {
       id: chatMessage.id,

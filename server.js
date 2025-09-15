@@ -123,6 +123,14 @@ io.on('connection', (socket) => {
     console.log(`Client ${socket.id} joined room: ${roomName}`);
   });
 
+  // Присоединение к комнате обычного чата между пользователями
+  socket.on('join-user-chat', (data) => {
+    const { fromUser, toUser } = data;
+    const roomName = `user-chat-${fromUser}-${toUser}`;
+    socket.join(roomName);
+    console.log(`Client ${socket.id} joined user chat room: ${roomName}`);
+  });
+
   // Отправка сообщения в клубном чате
   socket.on('club-chat-message', (data) => {
     const { clubId, eventId, userId, message, senderType } = data;
@@ -135,6 +143,20 @@ io.on('connection', (socket) => {
     });
     
     console.log(`Message sent to room ${roomName}:`, message);
+  });
+
+  // Отправка сообщения в обычном чате между пользователями
+  socket.on('user-chat-message', (data) => {
+    const { fromUser, toUser, message, messageId } = data;
+    const roomName = `user-chat-${fromUser}-${toUser}`;
+    
+    // Отправляем сообщение всем участникам комнаты
+    io.to(roomName).emit('user-chat-message', {
+      ...data,
+      timestamp: new Date().toISOString()
+    });
+    
+    console.log(`User message sent to room ${roomName}:`, message);
   });
 
   // Отключение
@@ -243,6 +265,13 @@ const startServer = async () => {
               console.log(`Client ${socket.id} joined room: ${roomName}`);
             });
 
+            socket.on('join-user-chat', (data) => {
+              const { fromUser, toUser } = data;
+              const roomName = `user-chat-${fromUser}-${toUser}`;
+              socket.join(roomName);
+              console.log(`Client ${socket.id} joined user chat room: ${roomName}`);
+            });
+
             socket.on('club-chat-message', (data) => {
               const { clubId, eventId, userId, message, senderType } = data;
               const roomName = `club-chat-${clubId}-${eventId}-${userId}`;
@@ -253,6 +282,18 @@ const startServer = async () => {
               });
               
               console.log(`Message sent to room ${roomName}:`, message);
+            });
+
+            socket.on('user-chat-message', (data) => {
+              const { fromUser, toUser, message, messageId } = data;
+              const roomName = `user-chat-${fromUser}-${toUser}`;
+              
+              httpsIO.to(roomName).emit('user-chat-message', {
+                ...data,
+                timestamp: new Date().toISOString()
+              });
+              
+              console.log(`User message sent to room ${roomName}:`, message);
             });
 
             socket.on('disconnect', () => {

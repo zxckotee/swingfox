@@ -75,6 +75,18 @@ class WebSocketService {
     });
   }
 
+  // Присоединиться к комнате обычного чата между пользователями
+  joinUserChat(fromUser, toUser) {
+    if (!this.socket || !this.isConnected) {
+      this.connect();
+    }
+    
+    this.socket.emit('join-user-chat', {
+      fromUser,
+      toUser
+    });
+  }
+
   // Отправить сообщение в клубном чате
   sendClubChatMessage(data) {
     if (!this.socket || !this.isConnected) {
@@ -83,6 +95,16 @@ class WebSocketService {
     }
     
     this.socket.emit('club-chat-message', data);
+  }
+
+  // Отправить сообщение в обычном чате между пользователями
+  sendUserChatMessage(data) {
+    if (!this.socket || !this.isConnected) {
+      console.error('WebSocket not connected');
+      return;
+    }
+    
+    this.socket.emit('user-chat-message', data);
   }
 
   // Подписаться на сообщения клубного чата
@@ -94,10 +116,26 @@ class WebSocketService {
     this.socket.on('club-chat-message', callback);
   }
 
+  // Подписаться на сообщения обычного чата между пользователями
+  onUserChatMessage(callback) {
+    if (!this.socket) {
+      this.connect();
+    }
+    
+    this.socket.on('user-chat-message', callback);
+  }
+
   // Отписаться от сообщений клубного чата
   offClubChatMessage(callback) {
     if (this.socket) {
       this.socket.off('club-chat-message', callback);
+    }
+  }
+
+  // Отписаться от сообщений обычного чата между пользователями
+  offUserChatMessage(callback) {
+    if (this.socket) {
+      this.socket.off('user-chat-message', callback);
     }
   }
 
