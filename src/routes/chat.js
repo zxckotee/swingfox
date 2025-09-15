@@ -283,40 +283,38 @@ router.get('/:username', authenticateToken, async (req, res) => {
     
     let messages;
     if (isClubChat) {
-      // Для чата с клубом получаем ВСЕ сообщения, связанные с этим клубом и пользователем
+      // Для чата с клубом получаем сообщения между пользователем и клубом
       const clubId = username.replace('club_', '');
       console.log('Getting club chat messages for:', { currentUser, clubId, username });
       
-      // Сначала получим все сообщения с этим club_id
-      const allClubMessages = await Chat.findAll({
+      // Ищем сообщения между пользователем и клубом
+      // Используем тот же подход, что и в клубном API
+      messages = await Chat.findAll({
         where: {
           club_id: clubId,
-          is_club_chat: true
+          chat_type: 'event',
+          [Op.or]: [
+            // Основные комбинации: пользователь <-> клуб
+            { by_user: currentUser, to_user: username },
+            { by_user: username, to_user: currentUser },
+            // Дополнительные комбинации для совместимости
+            { by_user: currentUser, to_user: clubId },
+            { by_user: clubId, to_user: currentUser },
+            // Сообщения от бота
+            { by_user: 'bot', to_user: currentUser }
+          ]
         },
         order: [['date', 'DESC']],
         limit: 100
       });
       
-      console.log('All club messages found:', allClubMessages.length);
-      console.log('Sample messages:', allClubMessages.slice(0, 5).map(m => ({
+      console.log('Club chat messages found:', messages.length);
+      console.log('Sample messages:', messages.slice(0, 5).map(m => ({
         id: m.id,
         by_user: m.by_user,
         to_user: m.to_user,
         message: m.message?.substring(0, 30)
       })));
-      
-      // Фильтруем сообщения, где участвует текущий пользователь
-      messages = allClubMessages.filter(msg => 
-        msg.by_user === currentUser || 
-        msg.to_user === currentUser ||
-        msg.by_user === username ||
-        msg.to_user === username ||
-        msg.by_user === clubId ||
-        msg.to_user === clubId ||
-        msg.by_user === 'bot'
-      );
-      
-      console.log('Filtered messages for user:', messages.length);
     } else {
       // Для обычного чата между пользователями
       messages = await Chat.findAll({
@@ -340,6 +338,8 @@ router.get('/:username', authenticateToken, async (req, res) => {
         { is_read: true },
         {
           where: {
+            club_id: clubId,
+            chat_type: 'event',
             [Op.or]: [
               { by_user: username, to_user: currentUser, is_read: false },
               { by_user: clubId, to_user: currentUser, is_read: false },
