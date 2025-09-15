@@ -1293,7 +1293,7 @@ const Chat = () => {
     if (messageText.trim() && selectedChat) {
       // Проверяем статус мэтча перед отправкой только для обычных чатов (не клубных и не по объявлениям)
       // Но если диалог уже существует (есть сообщения), то не блокируем отправку
-      const hasExistingMessages = messagesData?.messages && messagesData.messages.length > 0;
+      const hasExistingMessages = messages && messages.length > 0;
       if (!isAdConversation && !isClubChat && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown' && !hasExistingMessages) {
         toast.error(`${matchStatus.message} ${matchStatus.icon}`);
         return;
@@ -1335,7 +1335,7 @@ const Chat = () => {
     if (file && selectedChat) {
       // Проверяем статус мэтча перед отправкой файла только если это не общение по объявлению и не клубный чат
       // Но если диалог уже существует (есть сообщения), то не блокируем отправку
-      const hasExistingMessages = messagesData?.messages && messagesData.messages.length > 0;
+      const hasExistingMessages = messages && messages.length > 0;
       if (!isAdConversation && !isClubChat && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown' && !hasExistingMessages) {
         toast.error(`${matchStatus.message} ${matchStatus.icon}`);
         return;
@@ -1486,7 +1486,9 @@ const Chat = () => {
                       {chat.last_message ? (
                         chat.last_message
                       ) : (
-                        <span className="new-match-indicator">💕 Новый мэтч - начните общение</span>
+                        <span className="new-match-indicator">
+                          {isAdConversation ? '📢 Общение по объявлению' : '💕 Новый мэтч - начните общение'}
+                        </span>
                       )}
                     </div>
                     <div className="time">
@@ -1566,7 +1568,7 @@ const Chat = () => {
             </ChatWindowHeader>
 
             {/* Баннер статуса мэтча (только для обычных чатов, не клубных и не по объявлениям) */}
-            {!isClubChat && !isAdConversation && matchStatus && matchStatus.status !== 'unknown' && (
+            {!isClubChat && !isAdConversation && matchStatus && matchStatus.status !== 'unknown' && messages.length === 0 && (
               <MatchStatusBanner $status={matchStatus.status}>
                 <span className="icon">{matchStatus.icon}</span>
                 <span className="message">{matchStatus.message}</span>
@@ -1732,7 +1734,7 @@ const Chat = () => {
               <div ref={messagesEndRef} />
             </MessagesContainer>
 
-            <MessageInputWrapper $disabled={(!isAdConversation && !isClubChat && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown' && !(messagesData?.messages && messagesData.messages.length > 0)) || (isClubChat && eventParticipationStatus && !eventParticipationStatus.canChat && eventParticipationStatus.status !== 'unknown')}>
+            <MessageInputWrapper $disabled={(!isAdConversation && !isClubChat && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown' && !(messages && messages.length > 0)) || (isClubChat && eventParticipationStatus && !eventParticipationStatus.canChat && eventParticipationStatus.status !== 'unknown')}>
               <MessageInput>
               <InputContainer>
                 <TextInput
@@ -1756,7 +1758,7 @@ const Chat = () => {
                 disabled={
                   !messageText.trim() ||
                   sendMessageMutation.isLoading ||
-                  (!isAdConversation && !isClubChat && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown' && !(messagesData?.messages && messagesData.messages.length > 0)) ||
+                  (!isAdConversation && !isClubChat && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown' && !(messages && messages.length > 0)) ||
                   (isClubChat && eventParticipationStatus && !eventParticipationStatus.canChat && eventParticipationStatus.status !== 'unknown')
                 }
               >

@@ -256,27 +256,6 @@ router.get('/:username', authenticateToken, async (req, res) => {
 
     // Проверяем разрешение на просмотр чата (с fallback'ом)
     let matchStatus = null;
-    if (ENABLE_MATCH_CHECKING) {
-      try {
-        const viewPermission = await MatchChecker.canViewChat(currentUser, username);
-        matchStatus = await MatchChecker.getMatchStatus(currentUser, username);
-        
-        console.log('Chat view permission checked:', {
-          currentUser,
-          chatPartner: username,
-          allowed: viewPermission.allowed,
-          hasMatch: viewPermission.hasMatch,
-          canReply: viewPermission.canReply
-        });
-      } catch (error) {
-        console.error('Match checking failed in chat view:', {
-          currentUser,
-          chatPartner: username,
-          error: error.message
-        });
-        // Продолжаем без проверки мэтча
-      }
-    }
 
     // Проверяем, является ли это чатом с клубом
     const isClubChat = username.startsWith('club_');
@@ -377,6 +356,29 @@ router.get('/:username', authenticateToken, async (req, res) => {
       is_from_club: msg.by_user.startsWith('club_'),
       is_from_user: !msg.by_user.startsWith('club_') && msg.by_user !== 'bot'
     }));
+
+    // Проверяем матч только если нет существующих сообщений и это не клубный чат
+    if (ENABLE_MATCH_CHECKING && !isClubChat && formattedMessages.length === 0) {
+      try {
+        const viewPermission = await MatchChecker.canViewChat(currentUser, username);
+        matchStatus = await MatchChecker.getMatchStatus(currentUser, username);
+        
+        console.log('Chat view permission checked:', {
+          currentUser,
+          chatPartner: username,
+          allowed: viewPermission.allowed,
+          hasMatch: viewPermission.hasMatch,
+          canReply: viewPermission.canReply
+        });
+      } catch (error) {
+        console.error('Match checking failed in chat view:', {
+          currentUser,
+          chatPartner: username,
+          error: error.message
+        });
+        // Продолжаем без проверки мэтча
+      }
+    }
 
     // Получаем информацию о собеседнике с правильным онлайн статусом
     const { Status } = require('../models');
