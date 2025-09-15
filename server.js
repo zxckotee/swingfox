@@ -295,7 +295,7 @@ const startServer = async () => {
               const roomName = `user-chat-${fromUser}-${toUser}`;
               socket.join(roomName);
               console.log(`✅ Client ${socket.id} joined user chat room (HTTPS): ${roomName}`);
-              console.log('👥 Total clients in room now (HTTPS):', httpsIo.sockets.adapter.rooms.get(roomName)?.size || 0);
+              console.log('👥 Total clients in room now (HTTPS):', io.sockets.adapter.rooms.get(roomName)?.size || 0);
             });
 
             socket.on('club-chat-message', (data) => {
@@ -316,7 +316,7 @@ const startServer = async () => {
               const roomName = `user-chat-${fromUser}-${toUser}`;
               
               console.log('🏠 Room name (HTTPS):', roomName);
-              console.log('👥 Clients in room (HTTPS):', httpsIo.sockets.adapter.rooms.get(roomName)?.size || 0);
+              console.log('👥 Clients in room (HTTPS):', io.sockets.adapter.rooms.get(roomName)?.size || 0);
               
               httpsIO.to(roomName).emit('user-chat-message', {
                 ...data,
@@ -417,7 +417,7 @@ const startServer = async () => {
               const roomName = `user-chat-${fromUser}-${toUser}`;
               socket.join(roomName);
               console.log(`✅ Client ${socket.id} joined user chat room (HTTPS): ${roomName}`);
-              console.log('👥 Total clients in room now (HTTPS):', httpsIo.sockets.adapter.rooms.get(roomName)?.size || 0);
+              console.log('👥 Total clients in room now (HTTPS):', io.sockets.adapter.rooms.get(roomName)?.size || 0);
             });
 
             // Отправка сообщения в клубном чате
@@ -441,10 +441,10 @@ const startServer = async () => {
               const roomName = `user-chat-${fromUser}-${toUser}`;
               
               console.log('🏠 Room name (HTTP):', roomName);
-              console.log('👥 Clients in room (HTTP):', httpsIo.sockets.adapter.rooms.get(roomName)?.size || 0);
+              console.log('👥 Clients in room (HTTP):', io.sockets.adapter.rooms.get(roomName)?.size || 0);
               
               // Отправляем сообщение всем участникам комнаты
-              httpsIo.to(roomName).emit('user-chat-message', {
+              io.to(roomName).emit('user-chat-message', {
                 ...data,
                 timestamp: new Date().toISOString()
               });
