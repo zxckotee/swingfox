@@ -16,8 +16,12 @@ class WebSocketService {
 
     // Определяем URL для WebSocket
     const isProduction = process.env.NODE_ENV === 'production';
-    const wsUrl = process.env.REACT_APP_WS_URL || 
-      (isProduction ? 'https://88.218.121.216:3001' : 'http://localhost:3001');
+    let wsUrl = process.env.REACT_APP_WS_URL;
+    
+    // Fallback для неправильных URL
+    if (!wsUrl || wsUrl.includes('/ws') || wsUrl.includes('/socket.io')) {
+      wsUrl = isProduction ? 'https://88.218.121.216:3001' : 'http://localhost:3001';
+    }
     
     console.log('Connecting to WebSocket:', wsUrl);
     
