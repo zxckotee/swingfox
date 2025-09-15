@@ -20,9 +20,10 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
     origin: process.env.NODE_ENV === 'production' 
-      ? ['https://swingfox.ru', 'https://www.swingfox.ru']
+      ? ['https://swingfox.ru', 'https://www.swingfox.ru', 'https://88.218.121.216', 'http://88.218.121.216']
       : true,
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST']
   }
 });
 
@@ -30,7 +31,7 @@ const io = new Server(httpServer, {
 app.use(helmet());
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://swingfox.ru', 'https://www.swingfox.ru']
+    ? ['https://swingfox.ru', 'https://www.swingfox.ru', 'https://88.218.121.216', 'http://88.218.121.216']
     : true,
   credentials: true
 }));
@@ -117,7 +118,15 @@ app.use('/api/club/chats', updateUserActivity, clubChatsRoutes);
 
 // WebSocket обработчики
 io.on('connection', (socket) => {
-  console.log('WebSocket client connected:', socket.id);
+  console.log('✅ WebSocket client connected:', socket.id);
+  console.log('Client details:', {
+    id: socket.id,
+    handshake: {
+      address: socket.handshake.address,
+      headers: socket.handshake.headers,
+      origin: socket.handshake.headers.origin
+    }
+  });
 
   // Присоединение к комнате клубного чата
   socket.on('join-club-chat', (data) => {
@@ -164,8 +173,13 @@ io.on('connection', (socket) => {
   });
 
   // Отключение
-  socket.on('disconnect', () => {
-    console.log('WebSocket client disconnected:', socket.id);
+  socket.on('disconnect', (reason) => {
+    console.log('❌ WebSocket client disconnected:', socket.id, 'Reason:', reason);
+  });
+
+  // Обработка ошибок
+  socket.on('error', (error) => {
+    console.error('❌ WebSocket error for client', socket.id, ':', error);
   });
 });
 
