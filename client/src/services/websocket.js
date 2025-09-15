@@ -192,8 +192,16 @@ class WebSocketService {
       return;
     }
     
-    console.log('📤 Sending user chat message via WebSocket:', data);
-    this.socket.emit('user-chat-message', data);
+    // Преобразуем данные в правильный формат для сервера
+    const messageData = {
+      fromUser: data.from_user,
+      toUser: data.to_user,
+      message: data.message,
+      messageId: data.messageId || Date.now().toString()
+    };
+    
+    console.log('📤 Sending user chat message via WebSocket:', messageData);
+    this.socket.emit('user-chat-message', messageData);
   }
 
   // Подписаться на сообщения клубного чата
