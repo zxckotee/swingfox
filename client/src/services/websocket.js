@@ -18,9 +18,20 @@ class WebSocketService {
     const isProduction = process.env.NODE_ENV === 'production';
     let wsUrl = process.env.REACT_APP_WS_URL;
     
-    // Fallback для неправильных URL
-    if (!wsUrl || wsUrl.includes('/ws') || wsUrl.includes('/socket.io')) {
-      wsUrl = isProduction ? 'https://88.218.121.216:3001' : 'http://localhost:3001';
+    console.log('Environment check:', {
+      NODE_ENV: process.env.NODE_ENV,
+      REACT_APP_WS_URL: process.env.REACT_APP_WS_URL,
+      isProduction
+    });
+    
+    // Fallback для неправильных URL или если переменная не загружена
+    if (!wsUrl || wsUrl.includes('/ws') || wsUrl.includes('/socket.io') || wsUrl.includes('localhost')) {
+      wsUrl = isProduction ? 'http://88.218.121.216:3001' : 'http://localhost:3001';
+    }
+    
+    // Принудительно используем правильный URL для production
+    if (window.location.hostname === '88.218.121.216' || window.location.hostname.includes('88.218.121.216')) {
+      wsUrl = 'http://88.218.121.216:3001';
     }
     
     console.log('Connecting to WebSocket:', wsUrl);

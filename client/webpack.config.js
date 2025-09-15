@@ -6,6 +6,9 @@ const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const webpack = require('webpack');
 
+// Загружаем переменные окружения
+require('dotenv').config({ path: './production.env' });
+
 const isDevelopment = process.env.NODE_ENV === 'development';
 
 module.exports = {
@@ -45,7 +48,7 @@ module.exports = {
     compress: true,
     allowedHosts: 'all',
     client: {
-      webSocketURL: process.env.REACT_APP_WS_URL || 'wss://88.218.121.216/ws',
+      webSocketURL: process.env.REACT_APP_WS_URL || 'ws://88.218.121.216:3001',
     },
     proxy: {
       '/api': {
