@@ -155,16 +155,16 @@ const ClubChat = () => {
         <div className="chat-user-info">
           <div className="user-avatar">
             <img
-              src={chatInfo?.user?.ava ? `/uploads/${chatInfo.user.ava}` : '/uploads/no_photo.jpg'}
-              alt={chatInfo?.user?.login}
+              src={chatData?.user?.ava ? `/uploads/${chatData.user.ava}` : '/uploads/no_photo.jpg'}
+              alt={chatData?.user?.login}
               onError={(e) => {
                 e.target.src = '/uploads/no_photo.jpg';
               }}
             />
           </div>
           <div className="user-details">
-            <h3>@{chatInfo?.user?.login || 'Пользователь'}</h3>
-            <p>{chatInfo?.event_title || 'Мероприятие'}</p>
+            <h3>@{chatData?.user?.login || 'Пользователь'}</h3>
+            <p>{chatData?.event_title || 'Мероприятие'}</p>
           </div>
         </div>
 
@@ -187,7 +187,7 @@ const ClubChat = () => {
                     <UserIcon />
                   ) : (
                     <img
-                      src={chatInfo?.user?.ava ? `/uploads/${chatInfo.user.ava}` : '/uploads/no_photo.jpg'}
+                      src={chatData?.user?.ava ? `/uploads/${chatData.user.ava}` : '/uploads/no_photo.jpg'}
                       alt="User"
                       onError={(e) => {
                         e.target.src = '/uploads/no_photo.jpg';
