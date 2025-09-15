@@ -1071,6 +1071,11 @@ const Chat = () => {
             to_user: selectedChat
           });
         } else if (!isClubChat) {
+          console.log('📤 Sending message via WebSocket:', {
+            from_user: currentUser.login,
+            to_user: selectedChat,
+            message: messageText.trim()
+          });
           websocketService.sendUserChatMessage({
             from_user: currentUser.login,
             to_user: selectedChat,
@@ -1181,19 +1186,35 @@ const Chat = () => {
     // Подключаемся к WebSocket комнате для текущего чата
     if (isClubChat && clubInfo?.id && eventInfo?.id) {
       // Клубный чат
+      console.log('🏛️ Joining club chat room:', { clubId: clubInfo.id, eventId: eventInfo.id, user: currentUser.login });
       websocketService.joinClubChat(clubInfo.id, eventInfo.id, currentUser.login);
     } else if (!isClubChat) {
       // Обычный чат между пользователями
+      console.log('👥 Joining user chat room:', { fromUser: currentUser.login, toUser: selectedChat });
       websocketService.joinUserChat(currentUser.login, selectedChat);
     }
 
     // Обработчик для получения сообщений через WebSocket
     const handleWebSocketMessage = (messageData) => {
-      console.log('WebSocket message received:', messageData);
+      console.log('🔔 WebSocket message received:', messageData);
+      console.log('📊 Current chat context:', {
+        selectedChat,
+        isClubChat,
+        clubInfo: clubInfo?.id,
+        eventInfo: eventInfo?.id
+      });
       
       // Обновляем кэш сообщений
       queryClient.setQueryData(['messages', selectedChat, isClubChat, clubInfo?.id, eventInfo?.id], (oldData) => {
-        if (!oldData) return oldData;
+        if (!oldData) {
+          console.log('⚠️ No old data found for query key:', ['messages', selectedChat, isClubChat, clubInfo?.id, eventInfo?.id]);
+          return oldData;
+        }
+        
+        console.log('📝 Updating messages cache:', {
+          oldMessagesCount: oldData.messages?.length || 0,
+          newMessage: messageData
+        });
         
         return {
           ...oldData,
@@ -1207,16 +1228,20 @@ const Chat = () => {
 
     // Подписываемся на сообщения
     if (isClubChat) {
+      console.log('🏛️ Subscribing to club chat messages');
       websocketService.onClubChatMessage(handleWebSocketMessage);
     } else {
+      console.log('👥 Subscribing to user chat messages');
       websocketService.onUserChatMessage(handleWebSocketMessage);
     }
 
     // Очистка при смене чата или размонтировании
     return () => {
       if (isClubChat) {
+        console.log('🏛️ Unsubscribing from club chat messages');
         websocketService.offClubChatMessage(handleWebSocketMessage);
       } else {
+        console.log('👥 Unsubscribing from user chat messages');
         websocketService.offUserChatMessage(handleWebSocketMessage);
       }
     };

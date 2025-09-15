@@ -188,10 +188,11 @@ class WebSocketService {
   // Отправить сообщение в обычном чате между пользователями
   sendUserChatMessage(data) {
     if (!this.socket || !this.isConnected) {
-      console.error('WebSocket not connected');
+      console.error('❌ WebSocket not connected, cannot send message');
       return;
     }
     
+    console.log('📤 Sending user chat message via WebSocket:', data);
     this.socket.emit('user-chat-message', data);
   }
 
@@ -210,7 +211,11 @@ class WebSocketService {
       this.connect();
     }
     
-    this.socket.on('user-chat-message', callback);
+    console.log('🔔 Subscribing to user-chat-message events');
+    this.socket.on('user-chat-message', (data) => {
+      console.log('📨 Received user-chat-message event:', data);
+      callback(data);
+    });
   }
 
   // Отписаться от сообщений клубного чата
@@ -223,6 +228,7 @@ class WebSocketService {
   // Отписаться от сообщений обычного чата между пользователями
   offUserChatMessage(callback) {
     if (this.socket) {
+      console.log('🔕 Unsubscribing from user-chat-message events');
       this.socket.off('user-chat-message', callback);
     }
   }
