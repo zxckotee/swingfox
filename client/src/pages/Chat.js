@@ -905,10 +905,10 @@ const Chat = () => {
       console.log('Chat state updated:', {
         selectedChat,
         chatsCount: chats?.conversations?.length || 0,
-        hasMessages: messages.length > 0
+        hasMessages: (messages?.length || 0) > 0
       });
     }
-  }, [selectedChat, chats?.conversations?.length, messages.length, chatsLoading]);
+  }, [selectedChat, chats?.conversations?.length, messages?.length, chatsLoading]);
 
   // Загружаем информацию о клубах для клубных чатов
   useEffect(() => {
@@ -974,11 +974,11 @@ const Chat = () => {
     if (selectedChat && messagesData) {
       console.log('Chat loaded:', {
         chat: selectedChat,
-        messagesCount: messages.length,
+        messagesCount: messages?.length || 0,
         isClubChat
       });
     }
-  }, [selectedChat, messages.length, isClubChat]);
+  }, [selectedChat, messages?.length, isClubChat]);
 
   // Получение статуса мэтча для текущего чата (только для обычных чатов, не клубных)
   const { data: matchData } = useQuery(
@@ -1583,7 +1583,7 @@ const Chat = () => {
                 <EmptyState>
                   <p>Загрузка сообщений...</p>
                 </EmptyState>
-              ) : messages.length > 0 ? (
+              ) : (messages?.length || 0) > 0 ? (
                 messages.map((message, index) => {
                   const isOwn = message.by_user === currentUser.login;
                   const prevMessage = messages[index - 1];
