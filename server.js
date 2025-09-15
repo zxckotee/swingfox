@@ -170,12 +170,22 @@ io.on('connection', (socket) => {
     console.log('👥 Clients in room:', io.sockets.adapter.rooms.get(roomName)?.size || 0);
     
     // Отправляем сообщение всем участникам комнаты
+    console.log(`📤 Broadcasting to room ${roomName}:`, {
+      event: 'user-chat-message',
+      data: {
+        ...data,
+        timestamp: new Date().toISOString()
+      },
+      roomClients: io.sockets.adapter.rooms.get(roomName)?.size || 0
+    });
+    
     io.to(roomName).emit('user-chat-message', {
       ...data,
       timestamp: new Date().toISOString()
     });
     
     console.log(`✅ User message sent to room ${roomName}:`, message);
+    console.log(`📊 Room ${roomName} has ${io.sockets.adapter.rooms.get(roomName)?.size || 0} clients`);
   });
 
   // Отключение
@@ -318,12 +328,22 @@ const startServer = async () => {
               console.log('🏠 Room name (HTTPS):', roomName);
               console.log('👥 Clients in room (HTTPS):', io.sockets.adapter.rooms.get(roomName)?.size || 0);
               
+              console.log(`📤 Broadcasting to room ${roomName} (HTTPS):`, {
+                event: 'user-chat-message',
+                data: {
+                  ...data,
+                  timestamp: new Date().toISOString()
+                },
+                roomClients: httpsIO.sockets.adapter.rooms.get(roomName)?.size || 0
+              });
+              
               httpsIO.to(roomName).emit('user-chat-message', {
                 ...data,
                 timestamp: new Date().toISOString()
               });
               
               console.log(`✅ User message sent to room ${roomName} (HTTPS):`, message);
+              console.log(`📊 Room ${roomName} (HTTPS) has ${httpsIO.sockets.adapter.rooms.get(roomName)?.size || 0} clients`);
             });
 
             socket.on('disconnect', () => {
@@ -444,12 +464,22 @@ const startServer = async () => {
               console.log('👥 Clients in room (HTTP):', io.sockets.adapter.rooms.get(roomName)?.size || 0);
               
               // Отправляем сообщение всем участникам комнаты
+              console.log(`📤 Broadcasting to room ${roomName} (HTTP):`, {
+                event: 'user-chat-message',
+                data: {
+                  ...data,
+                  timestamp: new Date().toISOString()
+                },
+                roomClients: io.sockets.adapter.rooms.get(roomName)?.size || 0
+              });
+              
               io.to(roomName).emit('user-chat-message', {
                 ...data,
                 timestamp: new Date().toISOString()
               });
               
               console.log(`✅ User message sent to room ${roomName} (HTTP):`, message);
+              console.log(`📊 Room ${roomName} (HTTP) has ${io.sockets.adapter.rooms.get(roomName)?.size || 0} clients`);
             });
 
             // Отключение
