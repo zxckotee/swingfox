@@ -538,43 +538,65 @@ router.post('/send', authenticateToken, upload.array('images', 5), async (req, r
     // Для общения по объявлениям и клубных чатов не проверяем матч
     if (ENABLE_MATCH_CHECKING && source !== 'ad' && !isClubChat) {
       try {
-        const permission = await MatchChecker.canSendMessage(fromUser, to_user);
-        
-        if (!permission.allowed) {
-          // Удаляем загруженные файлы
-          if (req.files) {
-            for (const file of req.files) {
-              try {
-                await fs.unlink(file.path);
-              } catch (err) {
-                console.error('Error deleting file:', err);
-              }
-            }
-          }
-          
-          console.warn('Message sending blocked due to no match:', {
-            fromUser,
-            toUser: to_user,
-            reason: permission.reason
-          });
-          
-          return res.status(403).json({
-            error: permission.reason,
-            message: permission.message,
-            match_data: permission.matchData
-          });
-        }
-        
-        // Записываем в лог успешную проверку
-        console.log('Message sending allowed:', {
-          fromUser,
-          toUser: to_user,
-          reason: permission.reason,
-          hasMatch: permission.matchData?.hasMatch
+        // Сначала проверяем, существует ли уже диалог между пользователями
+        const existingChat = await Chat.findOne({
+          where: {
+            [Op.or]: [
+              { by_user: fromUser, to_user: to_user },
+              { by_user: to_user, to_user: fromUser }
+            ]
+          },
+          order: [['date', 'DESC']]
         });
         
-        if (permission.reason === 'fallback_allow') {
-          matchWarning = 'Отправлено без проверки мэтча (технические неполадки)';
+        // Если диалог уже существует, разрешаем отправку без проверки мэтча
+        if (existingChat) {
+          console.log('Message sending allowed - existing conversation:', {
+            fromUser,
+            toUser: to_user,
+            reason: 'existing_conversation',
+            lastMessageDate: existingChat.date
+          });
+        } else {
+          // Если диалога нет, проверяем мэтч
+          const permission = await MatchChecker.canSendMessage(fromUser, to_user);
+          
+          if (!permission.allowed) {
+            // Удаляем загруженные файлы
+            if (req.files) {
+              for (const file of req.files) {
+                try {
+                  await fs.unlink(file.path);
+                } catch (err) {
+                  console.error('Error deleting file:', err);
+                }
+              }
+            }
+            
+            console.warn('Message sending blocked due to no match:', {
+              fromUser,
+              toUser: to_user,
+              reason: permission.reason
+            });
+            
+            return res.status(403).json({
+              error: permission.reason,
+              message: permission.message,
+              match_data: permission.matchData
+            });
+          }
+          
+          // Записываем в лог успешную проверку
+          console.log('Message sending allowed:', {
+            fromUser,
+            toUser: to_user,
+            reason: permission.reason,
+            hasMatch: permission.matchData?.hasMatch
+          });
+          
+          if (permission.reason === 'fallback_allow') {
+            matchWarning = 'Отправлено без проверки мэтча (технические неполадки)';
+          }
         }
         
       } catch (error) {
