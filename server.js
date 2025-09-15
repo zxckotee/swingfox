@@ -82,34 +82,38 @@ const clubChatsRoutes = require('./src/routes/clubChats');
 const SubscriptionCron = require('./src/cron/subscriptionCron');
 // Импорт cron-задач для клубов
 const ClubCron = require('./src/cron/clubCron');
+// Импорт middleware для обновления активности
+const updateUserActivity = require('./src/middleware/updateActivity');
 
 // Подключение роутов
 app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/swipe', swipeRoutes);
-app.use('/api/catalog', catalogRoutes);
-app.use('/api/chat', chatRoutes);
-app.use('/api/ads', adsRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/geo', geoRoutes);
-app.use('/api/uploads', uploadsRoutes);
-app.use('/api/notifications', notificationsRoutes);
-app.use('/api/gifts', giftsRoutes);
-app.use('/api/clubs', clubsRoutes);
-app.use('/api/subscriptions', subscriptionsRoutes);
-app.use('/api/subscription-plans', subscriptionPlansRoutes);
-app.use('/api/rating', ratingRoutes);
-app.use('/api/profiles', profilesRoutes);
-app.use('/api/photo-comments', photoCommentsRoutes);
-app.use('/api/profile-comments', profileCommentsRoutes);
-app.use('/api/reactions', reactionsRoutes);
+
+// Middleware для обновления активности пользователя (только для аутентифицированных роутов)
+app.use('/api/users', updateUserActivity, userRoutes);
+app.use('/api/swipe', updateUserActivity, swipeRoutes);
+app.use('/api/catalog', updateUserActivity, catalogRoutes);
+app.use('/api/chat', updateUserActivity, chatRoutes);
+app.use('/api/ads', updateUserActivity, adsRoutes);
+app.use('/api/admin', updateUserActivity, adminRoutes);
+app.use('/api/geo', updateUserActivity, geoRoutes);
+app.use('/api/uploads', updateUserActivity, uploadsRoutes);
+app.use('/api/notifications', updateUserActivity, notificationsRoutes);
+app.use('/api/gifts', updateUserActivity, giftsRoutes);
+app.use('/api/clubs', updateUserActivity, clubsRoutes);
+app.use('/api/subscriptions', updateUserActivity, subscriptionsRoutes);
+app.use('/api/subscription-plans', updateUserActivity, subscriptionPlansRoutes);
+app.use('/api/rating', updateUserActivity, ratingRoutes);
+app.use('/api/profiles', updateUserActivity, profilesRoutes);
+app.use('/api/photo-comments', updateUserActivity, photoCommentsRoutes);
+app.use('/api/profile-comments', updateUserActivity, profileCommentsRoutes);
+app.use('/api/reactions', updateUserActivity, reactionsRoutes);
 
 // Подключение роутов клубной системы
 app.use('/api/club/auth', clubAuthRoutes);
-app.use('/api/club/events', clubEventsRoutes);
-app.use('/api/club/analytics', clubAnalyticsRoutes);
-app.use('/api/club/user-events', clubUserEventsRoutes);
-app.use('/api/club/chats', clubChatsRoutes);
+app.use('/api/club/events', updateUserActivity, clubEventsRoutes);
+app.use('/api/club/analytics', updateUserActivity, clubAnalyticsRoutes);
+app.use('/api/club/user-events', updateUserActivity, clubUserEventsRoutes);
+app.use('/api/club/chats', updateUserActivity, clubChatsRoutes);
 
 // WebSocket обработчики
 io.on('connection', (socket) => {

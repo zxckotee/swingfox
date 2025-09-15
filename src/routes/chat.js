@@ -173,49 +173,15 @@ router.get('/status/:username', authenticateToken, async (req, res) => {
     const { username } = req.params;
     const currentUser = req.user.login;
 
-    // Обновляем свой статус как "онлайн"
-    userStatuses.set(currentUser, {
-      status: 'online',
-      timestamp: Date.now()
-    });
-
-    // Получаем статус собеседника
-    const companionStatus = userStatuses.get(username);
-    const now = Date.now();
-
-    let status = 'offline';
-    
-    if (companionStatus) {
-      const timeDiff = now - companionStatus.timestamp;
-      
-      if (timeDiff <= 2000) { // 2 секунды
-        if (companionStatus.status === 'typing') {
-          status = 'печатает...';
-        } else {
-          status = 'онлайн';
-        }
-      } else if (timeDiff <= 300000) { // 5 минут
-        status = 'онлайн';
-      } else {
-        // Получаем последнее время активности из базы
-        const user = await User.findOne({ where: { login: username } });
-        if (user && user.online) {
-          const lastOnline = new Date(user.online);
-          status = `был ${lastOnline.toLocaleString('ru-RU', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-          })}`;
-        }
-      }
-    }
+    // Получаем статус собеседника через модель Status
+    const { Status } = require('../models');
+    const companionStatus = await Status.getUserStatus(username, 300); // 5 минут
 
     res.json({
       username,
-      status,
-      timestamp: now
+      status: companionStatus.message,
+      last_seen: companionStatus.last_seen,
+      timestamp: Date.now()
     });
 
   } catch (error) {
@@ -223,6 +189,35 @@ router.get('/status/:username', authenticateToken, async (req, res) => {
     res.status(500).json({ 
       error: 'server_error',
       message: 'Ошибка при получении статуса' 
+    });
+  }
+});
+
+// GET /api/chat/debug/online-status - Отладочный endpoint для проверки онлайн статуса
+router.get('/debug/online-status', authenticateToken, async (req, res) => {
+  try {
+    const currentUser = req.user.login;
+    const { Status } = require('../models');
+    
+    // Получаем свой статус
+    const myStatus = await Status.getUserStatus(currentUser, 300);
+    
+    // Получаем список онлайн пользователей
+    const onlineUsers = await Status.getOnlineUsers(300);
+    
+    res.json({
+      current_user: currentUser,
+      my_status: myStatus,
+      online_users: onlineUsers,
+      total_online: onlineUsers.length,
+      timestamp: Date.now()
+    });
+
+  } catch (error) {
+    console.error('Debug online status error:', error);
+    res.status(500).json({ 
+      error: 'server_error',
+      message: 'Ошибка при получении отладочной информации' 
     });
   }
 });
@@ -383,12 +378,15 @@ router.get('/:username', authenticateToken, async (req, res) => {
       is_from_user: !msg.by_user.startsWith('club_') && msg.by_user !== 'bot'
     }));
 
-    // Получаем информацию о собеседнике
+    // Получаем информацию о собеседнике с правильным онлайн статусом
+    const { Status } = require('../models');
+    const userStatus = await Status.getUserStatus(targetUser.login, 300); // 5 минут
+    
     const companionInfo = {
       login: targetUser.login,
       ava: targetUser.ava,
       status: targetUser.status,
-      online: targetUser.online,
+      online: userStatus.status === 'online' ? userStatus.last_seen : null,
       viptype: targetUser.viptype
     };
 
