@@ -36,7 +36,7 @@ services:
         condition: service_started
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "sh", "-c", "curl -f -k https://localhost:3001/api/status || curl -f http://localhost:3001/api/status || exit 1"]
+      test: ["CMD", "sh", "-c", "curl -f -k https://88.218.121.216:3001/api/status || curl -f http://88.218.121.216:3001/api/status || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -55,12 +55,14 @@ services:
       - ./docker/ssl:/app/ssl:ro  # SSL сертификаты
     environment:
       - NODE_ENV=development
-      - REACT_APP_API_URL=https://localhost:3001/api
+      - REACT_APP_API_URL=https://88.218.121.216/api
+      - REACT_APP_UPLOADS_URL=https://88.218.121.216/uploads
+      - REACT_APP_WS_URL=wss://88.218.121.216/ws
     depends_on:
       - backend
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "sh", "-c", "curl -f -k https://localhost:443 || curl -f http://localhost:443 || exit 1"]
+      test: ["CMD", "sh", "-c", "curl -f -k https://88.218.121.216:443 || curl -f http://88.218.121.216:443 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
