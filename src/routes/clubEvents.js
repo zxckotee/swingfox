@@ -105,6 +105,15 @@ router.post('/events', authenticateClub, async (req, res) => {
 
   } catch (error) {
     console.error('Create event error:', error);
+    
+    // Обработка ошибки уникального ограничения
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(409).json({ 
+        error: 'duplicate_id',
+        message: 'Ошибка генерации уникального ID. Попробуйте еще раз.' 
+      });
+    }
+    
     res.status(500).json({ error: 'Ошибка при создании мероприятия' });
   }
 });

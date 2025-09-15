@@ -137,6 +137,14 @@ INSERT INTO club_events (id, club_id, title, description, date, time, location, 
 UPDATE users SET online = NOW() WHERE id IN (1, 2, 4, 5);
 UPDATE users SET online = NOW() - INTERVAL '1 hour' WHERE id = 3;
 
+-- Сбрасываем последовательности (sequences) для автоинкрементных полей
+-- Это необходимо после ручной вставки записей с конкретными ID
+SELECT setval('users_id_seq', (SELECT MAX(id) FROM users));
+SELECT setval('events_id_seq', (SELECT MAX(id) FROM events));
+SELECT setval('ads_id_seq', (SELECT MAX(id) FROM ads));
+SELECT setval('profile_comments_id_seq', (SELECT MAX(id) FROM profile_comments));
+SELECT setval('club_events_id_seq', (SELECT MAX(id) FROM club_events));
+
 -- Выводим статистику
 SELECT 'Заполнение базы данных завершено!' as status;
 SELECT 'Пользователи: ' || COUNT(*) as users_count FROM users;
