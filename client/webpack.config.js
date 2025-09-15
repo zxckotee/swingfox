@@ -45,16 +45,16 @@ module.exports = {
     compress: true,
     allowedHosts: 'all',
     client: {
-      webSocketURL: 'wss://localhost:443/ws',
+      webSocketURL: isDevelopment ? 'wss://localhost:443/ws' : process.env.REACT_APP_WS_URL || 'wss://88.218.121.216/ws',
     },
     proxy: {
       '/api': {
-        target: 'https://backend:3001',
+        target: isDevelopment ? 'https://88.218.121.216:3001' : (process.env.REACT_APP_API_URL || 'https://88.218.121.216/api'),
         changeOrigin: true,
         secure: false // Разрешаем самоподписанные сертификаты
       },
       '/uploads': {
-        target: 'https://backend:3001',
+        target: isDevelopment ? 'https://88.218.121.216:3001' : (process.env.REACT_APP_UPLOADS_URL || 'https://88.218.121.216/uploads'),
         changeOrigin: true,
         secure: false // Разрешаем самоподписанные сертификаты
       }

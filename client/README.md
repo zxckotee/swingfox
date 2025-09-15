@@ -20,7 +20,7 @@ React-приложение для социальной платформы SwingF
 # Установка зависимостей
 npm install
 
-# Запуск dev-сервера (http://localhost:443)
+# Запуск dev-сервера (https://88.218.121.216:443)
 npm start
 
 # Запуск dev-сервера с автооткрытием браузера
@@ -59,8 +59,8 @@ client/
 
 ```env
 # API Configuration
-REACT_APP_API_URL=http://localhost:3001/api
-REACT_APP_UPLOADS_URL=http://localhost:3001/uploads
+REACT_APP_API_URL=https://88.218.121.216/api
+REACT_APP_UPLOADS_URL=https://88.218.121.216/uploads
 
 # Environment
 NODE_ENV=development
@@ -97,7 +97,7 @@ import { theme } from '@styles/theme';
 
 ## Проксирование API
 
-В development режиме все запросы к `/api` и `/uploads` проксируются на бэкенд сервер (localhost:3001).
+В development режиме все запросы к `/api` и `/uploads` проксируются на бэкенд сервер (88.218.121.216:3001).
 
 ## Совместимость с браузерами
 

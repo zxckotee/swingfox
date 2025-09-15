@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 
 // Базовая конфигурация API
 const apiClient = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || '/api',
+  baseURL: process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? 'https://88.218.121.216/api' : '/api'),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -11,7 +11,7 @@ const apiClient = axios.create({
 });
 
 // URL для загрузок
-const UPLOADS_URL = process.env.REACT_APP_UPLOADS_URL || '/uploads';
+const UPLOADS_URL = process.env.REACT_APP_UPLOADS_URL || (process.env.NODE_ENV === 'production' ? 'https://88.218.121.216/uploads' : '/uploads');
 
 // Ключи для localStorage
 const TOKEN_KEY = 'swingfox_token';
