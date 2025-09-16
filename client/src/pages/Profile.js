@@ -1041,7 +1041,10 @@ const Profile = () => {
       queryClient.invalidateQueries(['currentUser']);
     },
     onError: (error) => {
-      toast.error(apiUtils.handleError(error));
+      toast.error('Ошибка при сохранении настроек: ' + apiUtils.handleError(error));
+      
+      // Восстанавливаем предыдущие настройки в случае ошибки
+      queryClient.invalidateQueries(['privacySettings']);
     }
   });
 
@@ -1181,6 +1184,26 @@ const Profile = () => {
     } catch (error) {
       console.error('Ошибка при сохранении настроек:', error);
     }
+  };
+
+  // Функция для обновления настроек с автоматическим сохранением
+  const updatePrivacySetting = (category, setting, value) => {
+    const newSettings = {
+      ...privacySettings,
+      [category]: {
+        ...privacySettings?.[category],
+        [setting]: value
+      }
+    };
+    
+    // Обновляем локальное состояние
+    queryClient.setQueryData(['privacySettings'], newSettings);
+    
+    // Автоматически сохраняем настройки
+    privacyMutation.mutate({
+      privacy: newSettings.privacy,
+      notifications: newSettings.notifications
+    });
   };
 
   const handleGoToChat = () => {
@@ -1900,114 +1923,50 @@ const Profile = () => {
               <InfoSection>
                 <h3>Настройки профиля</h3>
                 
-                <Form onSubmit={handlePrivacySubmit}>
+                <Form>
                   <FormGroup>
                     <Label>Приватность</Label>
                     
                     <Checkbox
                       label="Анонимные посещения профилей"
                       checked={privacySettings?.privacy?.anonymous_visits || false}
-                      onChange={(e) => {
-                        const newSettings = {
-                          ...privacySettings,
-                          privacy: {
-                            ...privacySettings?.privacy,
-                            anonymous_visits: e.target.checked
-                          }
-                        };
-                        // Обновляем локальное состояние
-                        queryClient.setQueryData(['privacySettings'], newSettings);
-                      }}
+                      onChange={(e) => updatePrivacySetting('privacy', 'anonymous_visits', e.target.checked)}
                     />
                     
                     <Checkbox
                       label="Показывать статус онлайн"
                       checked={privacySettings?.privacy?.show_online_status !== false}
-                      onChange={(e) => {
-                        const newSettings = {
-                          ...privacySettings,
-                          privacy: {
-                            ...privacySettings?.privacy,
-                            show_online_status: e.target.checked
-                          }
-                        };
-                        queryClient.setQueryData(['privacySettings'], newSettings);
-                      }}
+                      onChange={(e) => updatePrivacySetting('privacy', 'show_online_status', e.target.checked)}
                     />
                     
                     <Checkbox
                       label="Показывать время последнего посещения"
                       checked={privacySettings?.privacy?.show_last_seen !== false}
-                      onChange={(e) => {
-                        const newSettings = {
-                          ...privacySettings,
-                          privacy: {
-                            ...privacySettings?.privacy,
-                            show_last_seen: e.target.checked
-                          }
-                        };
-                        queryClient.setQueryData(['privacySettings'], newSettings);
-                      }}
+                      onChange={(e) => updatePrivacySetting('privacy', 'show_last_seen', e.target.checked)}
                     />
                     
                     <Checkbox
                       label="Разрешить сообщения от всех"
                       checked={privacySettings?.privacy?.allow_messages !== false}
-                      onChange={(e) => {
-                        const newSettings = {
-                          ...privacySettings,
-                          privacy: {
-                            ...privacySettings?.privacy,
-                            allow_messages: e.target.checked
-                          }
-                        };
-                        queryClient.setQueryData(['privacySettings'], newSettings);
-                      }}
+                      onChange={(e) => updatePrivacySetting('privacy', 'allow_messages', e.target.checked)}
                     />
                     
                     <Checkbox
                       label="Разрешить подарки от всех"
                       checked={privacySettings?.privacy?.allow_gifts !== false}
-                      onChange={(e) => {
-                        const newSettings = {
-                          ...privacySettings,
-                          privacy: {
-                            ...privacySettings?.privacy,
-                            allow_gifts: e.target.checked
-                          }
-                        };
-                        queryClient.setQueryData(['privacySettings'], newSettings);
-                      }}
+                      onChange={(e) => updatePrivacySetting('privacy', 'allow_gifts', e.target.checked)}
                     />
                     
                     <Checkbox
                       label="Разрешить оценки профиля"
                       checked={privacySettings?.privacy?.allow_ratings !== false}
-                      onChange={(e) => {
-                        const newSettings = {
-                          ...privacySettings,
-                          privacy: {
-                            ...privacySettings?.privacy,
-                            allow_ratings: e.target.checked
-                          }
-                        };
-                        queryClient.setQueryData(['privacySettings'], newSettings);
-                      }}
+                      onChange={(e) => updatePrivacySetting('privacy', 'allow_ratings', e.target.checked)}
                     />
                     
                     <Checkbox
                       label="Разрешить комментарии"
                       checked={privacySettings?.privacy?.allow_comments !== false}
-                      onChange={(e) => {
-                        const newSettings = {
-                          ...privacySettings,
-                          privacy: {
-                            ...privacySettings?.privacy,
-                            allow_comments: e.target.checked
-                          }
-                        };
-                        queryClient.setQueryData(['privacySettings'], newSettings);
-                      }}
+                      onChange={(e) => updatePrivacySetting('privacy', 'allow_comments', e.target.checked)}
                     />
                   </FormGroup>
                   
@@ -2017,82 +1976,43 @@ const Profile = () => {
                     <Checkbox
                       label="Новые мэтчи"
                       checked={privacySettings?.notifications?.new_matches !== false}
-                      onChange={(e) => {
-                        const newSettings = {
-                          ...privacySettings,
-                          notifications: {
-                            ...privacySettings?.notifications,
-                            new_matches: e.target.checked
-                          }
-                        };
-                        queryClient.setQueryData(['privacySettings'], newSettings);
-                      }}
+                      onChange={(e) => updatePrivacySetting('notifications', 'new_matches', e.target.checked)}
                     />
                     
                     <Checkbox
                       label="Сообщения"
                       checked={privacySettings?.notifications?.messages !== false}
-                      onChange={(e) => {
-                        const newSettings = {
-                          ...privacySettings,
-                          notifications: {
-                            ...privacySettings?.notifications,
-                            messages: e.target.checked
-                          }
-                        };
-                        queryClient.setQueryData(['privacySettings'], newSettings);
-                      }}
+                      onChange={(e) => updatePrivacySetting('notifications', 'messages', e.target.checked)}
                     />
                     
                     <Checkbox
                       label="Лайки"
                       checked={privacySettings?.notifications?.likes !== false}
-                      onChange={(e) => {
-                        const newSettings = {
-                          ...privacySettings,
-                          notifications: {
-                            ...privacySettings?.notifications,
-                            likes: e.target.checked
-                          }
-                        };
-                        queryClient.setQueryData(['privacySettings'], newSettings);
-                      }}
+                      onChange={(e) => updatePrivacySetting('notifications', 'likes', e.target.checked)}
                     />
                     
                     <Checkbox
                       label="Подарки"
                       checked={privacySettings?.notifications?.gifts !== false}
-                      onChange={(e) => {
-                        const newSettings = {
-                          ...privacySettings,
-                          notifications: {
-                            ...privacySettings?.notifications,
-                            gifts: e.target.checked
-                          }
-                        };
-                        queryClient.setQueryData(['privacySettings'], newSettings);
-                      }}
+                      onChange={(e) => updatePrivacySetting('notifications', 'gifts', e.target.checked)}
                     />
                     
                     <Checkbox
                       label="Посещения профиля"
                       checked={privacySettings?.notifications?.profile_visits !== false}
-                      onChange={(e) => {
-                        const newSettings = {
-                          ...privacySettings,
-                          notifications: {
-                            ...privacySettings?.notifications,
-                            profile_visits: e.target.checked
-                          }
-                        };
-                        queryClient.setQueryData(['privacySettings'], newSettings);
-                      }}
+                      onChange={(e) => updatePrivacySetting('notifications', 'profile_visits', e.target.checked)}
                     />
                   </FormGroup>
                   
-                  <Button type="submit" disabled={privacyMutation.isLoading}>
-                    {privacyMutation.isLoading ? 'Сохранение...' : 'Сохранить настройки'}
-                  </Button>
+                  <div style={{ 
+                    textAlign: 'center', 
+                    padding: '20px 0', 
+                    color: '#4a5568',
+                    fontSize: '14px',
+                    fontStyle: 'italic'
+                  }}>
+                    Настройки сохраняются автоматически при изменении
+                  </div>
                 </Form>
               </InfoSection>
             </div>
