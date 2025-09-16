@@ -153,12 +153,21 @@ const ClubChat = () => {
 
 
   const formatMessageTime = (timestamp) => {
-    return new Date(timestamp).toLocaleString('ru-RU', {
-      hour: '2-digit',
-      minute: '2-digit',
-      day: 'numeric',
-      month: 'short'
-    });
+    try {
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) {
+        return 'Неизвестно';
+      }
+      return date.toLocaleString('ru-RU', {
+        hour: '2-digit',
+        minute: '2-digit',
+        day: 'numeric',
+        month: 'short'
+      });
+    } catch (error) {
+      console.error('Error formatting time:', error, timestamp);
+      return 'Неизвестно';
+    }
   };
 
   const getMessageClass = (message) => {
@@ -242,21 +251,39 @@ const ClubChat = () => {
                   <div className="message-text">
                     {message.message}
                   </div>
-                  {message.file && (
+                  {(message.file || (message.images && message.images.length > 0)) && (
                     <div className="message-file">
-                      <img
-                        src={`/uploads/${message.file}`}
-                        alt="Прикрепленное изображение"
-                        style={{
-                          maxWidth: '200px',
-                          maxHeight: '200px',
-                          borderRadius: '8px',
-                          marginTop: '8px'
-                        }}
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
+                      {message.file ? (
+                        <img
+                          src={`/uploads/${message.file}`}
+                          alt="Прикрепленное изображение"
+                          style={{
+                            maxWidth: '200px',
+                            maxHeight: '200px',
+                            borderRadius: '8px',
+                            marginTop: '8px'
+                          }}
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        message.images.map((image, idx) => (
+                          <img
+                            key={`${message.id}-image-${idx}`}
+                            src={`/uploads/${image}`}
+                            alt="Вложение"
+                            style={{
+                              margin: '2px',
+                              maxWidth: '250px',
+                              borderRadius: '8px'
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        ))
+                      )}
                     </div>
                   )}
                 </div>
