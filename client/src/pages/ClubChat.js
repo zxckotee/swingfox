@@ -257,12 +257,6 @@ const ClubChat = () => {
                         <img
                           src={`/uploads/${message.file}`}
                           alt="Прикрепленное изображение"
-                          style={{
-                            maxWidth: '200px',
-                            maxHeight: '200px',
-                            borderRadius: '8px',
-                            marginTop: '8px'
-                          }}
                           onError={(e) => {
                             e.target.style.display = 'none';
                           }}
@@ -273,11 +267,6 @@ const ClubChat = () => {
                             key={`${message.id}-image-${idx}`}
                             src={`/uploads/${image}`}
                             alt="Вложение"
-                            style={{
-                              margin: '2px',
-                              maxWidth: '250px',
-                              borderRadius: '8px'
-                            }}
                             onError={(e) => {
                               e.target.style.display = 'none';
                             }}

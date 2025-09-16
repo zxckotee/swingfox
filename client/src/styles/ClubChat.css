@@ -299,6 +299,31 @@
   max-width: 70%;
 }
 
+/* Message File Styles */
+.message-file {
+  margin-top: 8px;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.message-file img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: block;
+}
+
+/* Ограничиваем размер изображений в сообщениях */
+.message-club .message-file {
+  max-width: 70%;
+  margin-left: auto;
+}
+
+.message-user .message-file {
+  max-width: 70%;
+}
+
 /* Message Input */
 .message-input {
   padding: 20px;
@@ -468,6 +493,18 @@
   .message-text {
     font-size: 13px;
     padding: 10px 14px;
+  }
+  
+  .message-file {
+    max-width: 85%;
+  }
+  
+  .message-club .message-file {
+    max-width: 85%;
+  }
+  
+  .message-user .message-file {
+    max-width: 85%;
   }
 }
 
