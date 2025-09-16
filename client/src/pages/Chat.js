@@ -444,6 +444,82 @@ const InputContainer = styled.div`
   flex: 1;
 `;
 
+const AttachedFilesContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 8px;
+  background: #f7fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+`;
+
+const AttachedFileItem = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  max-width: 200px;
+  
+  .file-preview {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    object-fit: cover;
+    background: #f7fafc;
+  }
+  
+  .file-info {
+    flex: 1;
+    min-width: 0;
+    
+    .file-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: #2d3748;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .file-size {
+      font-size: 10px;
+      color: #718096;
+    }
+  }
+  
+  .remove-btn {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #e53e3e;
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+    
+    &:hover {
+      background: #c53030;
+      transform: scale(1.1);
+    }
+  }
+`;
+
 const TextInput = styled.textarea`
   width: 100%;
   min-height: 20px;
@@ -818,6 +894,7 @@ const Chat = () => {
   const [clubInfo, setClubInfo] = useState(null);
   const [eventInfo, setEventInfo] = useState(null);
   const [clubsData, setClubsData] = useState({}); // Кэш для хранения информации о клубах
+  const [attachedFiles, setAttachedFiles] = useState([]); // Прикрепленные файлы
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const queryClient = useQueryClient();
@@ -1283,6 +1360,12 @@ const Chat = () => {
     lastSelectedChatRef.current = chatUser;
     setSelectedChat(chatUser);
     
+    // Очищаем прикрепленные файлы при смене чата
+    attachedFiles.forEach(fileObj => {
+      URL.revokeObjectURL(fileObj.preview);
+    });
+    setAttachedFiles([]);
+    
     // Обновляем информацию о клубе и мероприятии для клубных чатов
     if (chatUser && chatUser.startsWith('club_')) {
       setIsClubChat(true);
@@ -1321,7 +1404,7 @@ const Chat = () => {
   };
 
   const handleSendMessage = () => {
-    if (messageText.trim() && selectedChat) {
+    if ((messageText.trim() || attachedFiles.length > 0) && selectedChat) {
       // Проверяем статус мэтча перед отправкой только для обычных чатов (не клубных и не по объявлениям)
       // Но если диалог уже существует (есть сообщения), то не блокируем отправку
       const hasExistingMessages = messages && messages.length > 0;
@@ -1339,7 +1422,12 @@ const Chat = () => {
       // Используем FormData для всех типов чатов
       const formData = new FormData();
       formData.append('to_user', selectedChat);
-      formData.append('message', messageText.trim());
+      formData.append('message', messageText.trim() || '');
+      
+      // Добавляем прикрепленные файлы
+      attachedFiles.forEach(fileObj => {
+        formData.append('images', fileObj.file);
+      });
       
       if (isAdConversation) {
         formData.append('source', 'ad');
@@ -1351,6 +1439,12 @@ const Chat = () => {
       }
       
       sendMessageMutation.mutate(formData);
+      
+      // Очищаем прикрепленные файлы после отправки
+      attachedFiles.forEach(fileObj => {
+        URL.revokeObjectURL(fileObj.preview);
+      });
+      setAttachedFiles([]);
     }
   };
 
@@ -1362,31 +1456,49 @@ const Chat = () => {
   };
 
   const handleFileUpload = (event) => {
-    const file = event.target.files[0];
-    if (file && selectedChat) {
-      // Проверяем статус мэтча перед отправкой файла только если это не общение по объявлению и не клубный чат
-      // Но если диалог уже существует (есть сообщения), то не блокируем отправку
+    const files = Array.from(event.target.files);
+    if (files.length > 0 && selectedChat) {
+      // Проверяем статус мэтча перед прикреплением файлов только если это не общение по объявлению и не клубный чат
+      // Но если диалог уже существует (есть сообщения), то не блокируем прикрепление
       const hasExistingMessages = messages && messages.length > 0;
       if (!isAdConversation && !isClubChat && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown' && !hasExistingMessages) {
         toast.error(`${matchStatus.message} ${matchStatus.icon}`);
         return;
       }
 
-      const formData = new FormData();
-      formData.append('images', file);
-      formData.append('to_user', selectedChat);
+      // Добавляем файлы к прикрепленным
+      const newFiles = files.map(file => ({
+        id: Date.now() + Math.random(), // Простой ID для React key
+        file: file,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        preview: URL.createObjectURL(file) // Для предварительного просмотра
+      }));
       
-      if (isAdConversation) {
-        formData.append('source', 'ad');
-      }
+      setAttachedFiles(prev => [...prev, ...newFiles]);
       
-      // Для клубных чатов добавляем event_id
-      if (isClubChat && clubInfo?.id && eventInfo?.id) {
-        formData.append('event_id', eventInfo.id);
-      }
-      
-      sendFileMutation.mutate(formData);
+      // Очищаем input чтобы можно было выбрать те же файлы снова
+      event.target.value = '';
     }
+  };
+
+  const removeAttachedFile = (fileId) => {
+    setAttachedFiles(prev => {
+      const fileToRemove = prev.find(f => f.id === fileId);
+      if (fileToRemove) {
+        URL.revokeObjectURL(fileToRemove.preview); // Освобождаем память
+      }
+      return prev.filter(f => f.id !== fileId);
+    });
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   // Мемоизированная функция для получения отображаемого имени чата
@@ -1777,6 +1889,30 @@ const Chat = () => {
             </MessagesContainer>
 
             <MessageInputWrapper $disabled={(!isAdConversation && !isClubChat && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown' && !(messages && messages.length > 0)) || (isClubChat && eventParticipationStatus && !eventParticipationStatus.canChat && eventParticipationStatus.status !== 'unknown')}>
+              {attachedFiles.length > 0 && (
+                <AttachedFilesContainer>
+                  {attachedFiles.map((fileObj) => (
+                    <AttachedFileItem key={fileObj.id}>
+                      <img 
+                        src={fileObj.preview} 
+                        alt={fileObj.name}
+                        className="file-preview"
+                      />
+                      <div className="file-info">
+                        <div className="file-name">{fileObj.name}</div>
+                        <div className="file-size">{formatFileSize(fileObj.size)}</div>
+                      </div>
+                      <button 
+                        className="remove-btn"
+                        onClick={() => removeAttachedFile(fileObj.id)}
+                        title="Удалить файл"
+                      >
+                        ×
+                      </button>
+                    </AttachedFileItem>
+                  ))}
+                </AttachedFilesContainer>
+              )}
               <MessageInput>
               <InputContainer>
                 <TextInput
@@ -1798,7 +1934,7 @@ const Chat = () => {
               <ActionButton
                 onClick={handleSendMessage}
                 disabled={
-                  !messageText.trim() ||
+                  (!messageText.trim() && attachedFiles.length === 0) ||
                   sendMessageMutation.isLoading ||
                   (!isAdConversation && !isClubChat && matchStatus && !matchStatus.canChat && matchStatus.status !== 'unknown' && !(messages && messages.length > 0)) ||
                   (isClubChat && eventParticipationStatus && !eventParticipationStatus.canChat && eventParticipationStatus.status !== 'unknown')
@@ -1810,6 +1946,8 @@ const Chat = () => {
               <HiddenInput
                 ref={fileInputRef}
                 type="file"
+                multiple
+                accept="image/*"
                 onChange={handleFileUpload}
               />
             </MessageInput>
