@@ -436,13 +436,17 @@ router.post('/send', authenticateToken, upload.array('images', 5), async (req, r
     
     if (isClubChat) {
       // Для чата с клубом проверяем, есть ли уже существующий чат
+      const clubId = (to_user.startsWith('club_') ? to_user : fromUser).replace('club_', '');
       const existingChat = await Chat.findOne({
         where: {
           [Op.or]: [
             { by_user: fromUser, to_user: to_user },
             { by_user: to_user, to_user: fromUser }
           ],
-          is_club_chat: true
+          [Op.or]: [
+            { is_club_chat: true },
+            { club_id: clubId, chat_type: 'event' }
+          ]
         },
         order: [['date', 'DESC']]
       });
@@ -634,7 +638,7 @@ router.post('/send', authenticateToken, upload.array('images', 5), async (req, r
       is_read: false,
       ...(isClubChat && {
         is_club_chat: true,
-        club_id: to_user.replace('club_', ''),
+        club_id: (to_user.startsWith('club_') ? to_user : fromUser).replace('club_', ''),
         chat_type: 'event',
         event_id: eventId
       })
