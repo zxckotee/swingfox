@@ -487,6 +487,27 @@ export const clubApi = {
   },
 
   sendChatMessage: async (messageData) => {
+    // Если это FormData (с файлами), отправляем как multipart/form-data
+    if (messageData instanceof FormData) {
+      const token = localStorage.getItem('clubToken');
+      
+      const response = await fetch(`${API_BASE_URL}/chats/messages`, {
+        method: 'POST',
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: messageData
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Send Message Error');
+      }
+      
+      return await response.json();
+    }
+    
+    // Если это обычные данные, отправляем как JSON
     return apiCall(`/chats/messages`, {
       method: 'POST',
       body: JSON.stringify(messageData)

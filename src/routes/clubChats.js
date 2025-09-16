@@ -1,9 +1,42 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs').promises;
 const { authenticateClub } = require('../middleware/clubAuth');
 const { APILogger } = require('../utils/logger');
 const { sequelize } = require('../models');
 const { Op } = require('sequelize');
+const { generateId } = require('../utils/helpers');
+
+// Настройка multer для загрузки изображений в клубный чат
+const storage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const uploadPath = path.join(__dirname, '../../public/uploads');
+    try {
+      await fs.mkdir(uploadPath, { recursive: true });
+      cb(null, uploadPath);
+    } catch (error) {
+      cb(error);
+    }
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `chat_${generateId()}.${file.mimetype.split('/')[1]}`;
+    cb(null, uniqueName);
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Можно загружать только изображения'));
+    }
+  }
+});
 
 // GET /api/club/chats - Получение чатов клуба с участниками мероприятий
 router.get('/', authenticateClub, async (req, res) => {
@@ -185,6 +218,7 @@ router.get('/messages', authenticateClub, async (req, res) => {
         messages: messages.map(msg => ({
           id: msg.id,
           message: msg.message,
+          file: msg.file,
           by_user: msg.by_user,
           to_user: msg.to_user,
           created_at: msg.created_at,
@@ -210,7 +244,7 @@ router.get('/messages', authenticateClub, async (req, res) => {
 });
 
 // POST /api/club/chats/messages - Отправка сообщения от клуба пользователю
-router.post('/messages', authenticateClub, async (req, res) => {
+router.post('/messages', authenticateClub, upload.single('images'), async (req, res) => {
   const logger = new APILogger('CLUB_CHAT_SEND');
   
   try {
@@ -219,10 +253,11 @@ router.post('/messages', authenticateClub, async (req, res) => {
     const { Chat } = require('../models');
     const { message, to_user, event_id } = req.body;
     
-    if (!message || message.trim() === '') {
+    // Проверяем, что есть либо сообщение, либо файл
+    if ((!message || message.trim() === '') && !req.file) {
       return res.status(400).json({
         success: false,
-        message: 'Сообщение не может быть пустым'
+        message: 'Сообщение или файл обязательны'
       });
     }
 
@@ -247,7 +282,8 @@ router.post('/messages', authenticateClub, async (req, res) => {
     const newMessage = await Chat.create({
       by_user: `club_${req.club.id}`,
       to_user: user.login, // Используем логин вместо ID
-      message: message.trim(),
+      message: message ? message.trim() : '',
+      file: req.file ? req.file.filename : null,
       date: new Date(),
       club_id: req.club.id,
       chat_type: 'event',

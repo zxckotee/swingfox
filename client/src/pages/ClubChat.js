@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { useQuery, useQueryClient } from 'react-query';
+import { useQuery, useQueryClient, useMutation } from 'react-query';
 import { clubApi } from '../services/clubApi';
 import toast from 'react-hot-toast';
 import '../styles/ClubChat.css';
@@ -15,6 +15,12 @@ const ArrowLeftIcon = () => (
 const SendIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+  </svg>
+);
+
+const AttachIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.64 16.2a2 2 0 0 1-2.83-2.83l8.49-8.49"/>
   </svg>
 );
 
@@ -35,6 +41,7 @@ const ClubChat = () => {
   
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Получаем данные чата из location state
   const chatData = location.state?.chatData;
@@ -60,6 +67,21 @@ const ClubChat = () => {
 
   // Извлекаем сообщения из ответа API
   const messages = Array.isArray(messagesData?.data?.messages) ? messagesData.data.messages : [];
+
+  // Мутация для отправки файлов
+  const sendFileMutation = useMutation(
+    (formData) => clubApi.sendChatMessage(formData),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['club-chat-messages', chatData?.event_id, chatData?.user_id]);
+        toast.success('Файл отправлен');
+      },
+      onError: (error) => {
+        console.error('Ошибка отправки файла:', error);
+        toast.error('Ошибка при отправке файла');
+      }
+    }
+  );
 
   useEffect(() => {
     console.log('ClubChat mounted with chatId:', chatId, 'chatData:', chatData);
@@ -114,6 +136,18 @@ const ClubChat = () => {
       toast.error('Ошибка при отправке сообщения');
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file && chatData) {
+      const formData = new FormData();
+      formData.append('images', file);
+      formData.append('to_user', chatData.user_id);
+      formData.append('event_id', chatData.event_id);
+      
+      sendFileMutation.mutate(formData);
     }
   };
 
@@ -208,6 +242,23 @@ const ClubChat = () => {
                   <div className="message-text">
                     {message.message}
                   </div>
+                  {message.file && (
+                    <div className="message-file">
+                      <img
+                        src={`/uploads/${message.file}`}
+                        alt="Прикрепленное изображение"
+                        style={{
+                          maxWidth: '200px',
+                          maxHeight: '200px',
+                          borderRadius: '8px',
+                          marginTop: '8px'
+                        }}
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -228,6 +279,15 @@ const ClubChat = () => {
             className="message-field"
           />
           <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={sending || sendFileMutation.isLoading}
+            className="attach-button"
+            title="Прикрепить изображение"
+          >
+            <AttachIcon />
+          </button>
+          <button
             type="submit"
             disabled={!newMessage.trim() || sending}
             className="send-button"
@@ -235,6 +295,13 @@ const ClubChat = () => {
             <SendIcon />
           </button>
         </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileUpload}
+          style={{ display: 'none' }}
+        />
       </form>
     </div>
   );

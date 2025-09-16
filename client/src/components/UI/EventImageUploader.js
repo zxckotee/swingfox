@@ -246,17 +246,27 @@ const EventImageUploader = ({
         <div>
           <h4>Загруженные изображения ({existingImages.length}):</h4>
           <PreviewContainer>
-            {existingImages.map((image, index) => (
-              <PreviewItem key={index}>
-                <PreviewImage 
-                  src={`/uploads/${image}`} 
-                  alt={`Event image ${index + 1}`}
-                />
-                <RemoveButton onClick={() => handleRemoveExisting(image)}>
-                  ×
-                </RemoveButton>
-              </PreviewItem>
-            ))}
+            {existingImages.map((image, index) => {
+              // Определяем, является ли изображение объектом с preview или строкой с именем файла
+              const imageSrc = typeof image === 'object' && image.preview 
+                ? image.preview 
+                : `/uploads/${image}`;
+              const imageKey = typeof image === 'object' && image.id 
+                ? image.id 
+                : image;
+              
+              return (
+                <PreviewItem key={imageKey}>
+                  <PreviewImage 
+                    src={imageSrc} 
+                    alt={`Event image ${index + 1}`}
+                  />
+                  <RemoveButton onClick={() => handleRemoveExisting(imageKey)}>
+                    ×
+                  </RemoveButton>
+                </PreviewItem>
+              );
+            })}
           </PreviewContainer>
         </div>
       )}

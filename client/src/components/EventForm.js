@@ -112,9 +112,19 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
   };
 
   const handleAvatarCrop = async (cropData) => {
-    if (!event?.id) return;
-    
     try {
+      // Если это создание нового мероприятия, сохраняем файл для последующей загрузки
+      if (!event?.id) {
+        setFormData(prev => ({
+          ...prev,
+          avatarFile: cropData.file,
+          avatar: URL.createObjectURL(cropData.file), // Для предварительного просмотра
+          avatarCropParams: cropData.cropParams // Сохраняем параметры обрезки
+        }));
+        return;
+      }
+      
+      // Если это редактирование существующего мероприятия
       const formData = new FormData();
       formData.append('avatar', cropData.file);
       
@@ -147,6 +157,26 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
 
   const handleImageUpload = async (eventId, formData) => {
     try {
+      // Если это создание нового мероприятия, сохраняем файлы для последующей загрузки
+      if (!event?.id) {
+        const files = Array.from(formData.getAll('images'));
+        setFormData(prev => ({
+          ...prev,
+          imageFiles: [...(prev.imageFiles || []), ...files]
+        }));
+        
+        // Добавляем в локальный массив для предварительного просмотра
+        const newImages = files.map(file => ({
+          file,
+          preview: URL.createObjectURL(file),
+          id: Date.now() + Math.random()
+        }));
+        setEventImages(prev => [...prev, ...newImages]);
+        
+        return { success: true, files: newImages };
+      }
+      
+      // Если это редактирование существующего мероприятия
       const response = await clubApi.uploadEventImages(eventId, formData);
       
       if (response.success) {
@@ -165,6 +195,24 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
 
   const handleImageRemove = async (eventId, filename) => {
     try {
+      // Если это создание нового мероприятия, удаляем из локального массива
+      if (!event?.id) {
+        setEventImages(prev => prev.filter(img => {
+          if (typeof img === 'string') {
+            return img !== filename;
+          }
+          return img.id !== filename;
+        }));
+        
+        // Также удаляем из formData
+        setFormData(prev => ({
+          ...prev,
+          imageFiles: (prev.imageFiles || []).filter(file => file.name !== filename)
+        }));
+        return;
+      }
+      
+      // Если это редактирование существующего мероприятия
       await clubApi.deleteEventImage(eventId, filename);
       setEventImages(prev => prev.filter(img => img !== filename));
     } catch (error) {
@@ -193,12 +241,54 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
         images: event ? eventImages : undefined
       };
 
+      let createdEvent;
       if (event) {
         // Редактирование существующего события
         await clubApi.updateEvent(event.id, eventData);
       } else {
         // Создание нового события
-        await clubApi.createEvent(eventData);
+        createdEvent = await clubApi.createEvent(eventData);
+        
+        // Если есть загруженные файлы, загружаем их после создания мероприятия
+        if (formData.avatarFile || (formData.imageFiles && formData.imageFiles.length > 0)) {
+          const eventId = createdEvent.event?.id || createdEvent.id;
+          
+          // Загружаем аватарку
+          if (formData.avatarFile) {
+            try {
+              const avatarFormData = new FormData();
+              avatarFormData.append('avatar', formData.avatarFile);
+              
+              // Если есть параметры обрезки, добавляем их
+              if (formData.avatarCropParams) {
+                avatarFormData.append('x', formData.avatarCropParams.x);
+                avatarFormData.append('y', formData.avatarCropParams.y);
+                avatarFormData.append('width', formData.avatarCropParams.width);
+                avatarFormData.append('height', formData.avatarCropParams.height);
+              }
+              
+              await clubApi.uploadEventAvatar(eventId, avatarFormData);
+            } catch (error) {
+              console.error('Ошибка загрузки аватарки:', error);
+              toast.error('Ошибка при загрузке аватарки мероприятия');
+            }
+          }
+          
+          // Загружаем изображения
+          if (formData.imageFiles && formData.imageFiles.length > 0) {
+            try {
+              const imagesFormData = new FormData();
+              formData.imageFiles.forEach(file => {
+                imagesFormData.append('images', file);
+              });
+              
+              await clubApi.uploadEventImages(eventId, imagesFormData);
+            } catch (error) {
+              console.error('Ошибка загрузки изображений:', error);
+              toast.error('Ошибка при загрузке изображений мероприятия');
+            }
+          }
+        }
       }
 
       onSave();
@@ -249,74 +339,72 @@ const EventForm = ({ event, onSave, onCancel, clubId }) => {
           )}
 
           {/* Аватар мероприятия */}
-          {event && (
-            <div className="form-section">
-              <h3>Аватар мероприятия</h3>
-              <div 
-                className="event-avatar-upload"
-                onClick={handleAvatarClick}
-                style={{
-                  width: '200px',
-                  height: '80px',
-                  border: '2px dashed #e2e8f0',
-                  borderRadius: '12px',
+          <div className="form-section">
+            <h3>Аватар мероприятия</h3>
+            <div 
+              className="event-avatar-upload"
+              onClick={handleAvatarClick}
+              style={{
+                width: '200px',
+                height: '80px',
+                border: '2px dashed #e2e8f0',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                backgroundColor: formData.avatar ? 'transparent' : '#f8fafc',
+                backgroundImage: formData.avatar ? 
+                  (formData.avatar.startsWith('blob:') ? `url(${formData.avatar})` : `url(/uploads/${formData.avatar})`) : 
+                  'none',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+                position: 'relative'
+              }}
+            >
+              {!formData.avatar && (
+                <div style={{ textAlign: 'center', color: '#718096' }}>
+                  <div style={{ fontSize: '1.5rem', marginBottom: '5px' }}>📷</div>
+                  <div style={{ fontSize: '12px' }}>Загрузить аватар</div>
+                </div>
+              )}
+              {formData.avatar && (
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: 'rgba(0,0,0,0.5)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'pointer',
-                  backgroundColor: formData.avatar ? 'transparent' : '#f8fafc',
-                  backgroundImage: formData.avatar ? `url(/uploads/${formData.avatar})` : 'none',
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  backgroundRepeat: 'no-repeat',
-                  position: 'relative'
+                  opacity: 0,
+                  transition: 'opacity 0.3s ease',
+                  color: 'white',
+                  fontSize: '12px'
                 }}
-              >
-                {!formData.avatar && (
-                  <div style={{ textAlign: 'center', color: '#718096' }}>
-                    <div style={{ fontSize: '1.5rem', marginBottom: '5px' }}>📷</div>
-                    <div style={{ fontSize: '12px' }}>Загрузить аватар</div>
-                  </div>
-                )}
-                {formData.avatar && (
-                  <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0,0,0,0.5)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    opacity: 0,
-                    transition: 'opacity 0.3s ease',
-                    color: 'white',
-                    fontSize: '12px'
-                  }}
-                  onMouseEnter={(e) => e.target.style.opacity = '1'}
-                  onMouseLeave={(e) => e.target.style.opacity = '0'}
-                  >
-                    Изменить
-                  </div>
-                )}
-              </div>
+                onMouseEnter={(e) => e.target.style.opacity = '1'}
+                onMouseLeave={(e) => e.target.style.opacity = '0'}
+                >
+                  Изменить
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Галерея изображений */}
-          {event && (
-            <div className="form-section">
-              <h3>Галерея изображений</h3>
-              <EventImageUploader
-                eventId={event.id}
-                onUpload={handleImageUpload}
-                onRemove={handleImageRemove}
-                existingImages={eventImages}
-                maxFiles={10}
-              />
-            </div>
-          )}
+          <div className="form-section">
+            <h3>Галерея изображений</h3>
+            <EventImageUploader
+              eventId={event?.id || 'new'}
+              onUpload={handleImageUpload}
+              onRemove={handleImageRemove}
+              existingImages={eventImages}
+              maxFiles={10}
+            />
+          </div>
 
           <div className="form-row">
             <div className="form-group">
