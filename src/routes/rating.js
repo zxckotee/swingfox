@@ -171,24 +171,25 @@ router.get('/leaderboard', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/rating/top/users - Топ пользователей по рейтингу
+// GET /api/rating/top/users - Топ пользователей по разным категориям
 router.get('/top/users', authenticateToken, async (req, res) => {
   const logger = new APILogger('RATING');
   
   try {
     logger.logRequest(req, 'GET /rating/top/users');
     
-    const { limit = 20, period = 'all' } = req.query;
+    const { limit = 5, period = 'all' } = req.query;
     const currentUser = req.user.login;
 
-    logger.logBusinessLogic(1, 'Получение топа пользователей по рейтингу', {
+    logger.logBusinessLogic(1, 'Получение топа пользователей по категориям', {
       current_user: currentUser,
       limit: parseInt(limit),
       period
     }, req);
 
     // Формируем условие для периода
-    let whereClause = {};
+    let dateCondition = '';
+    let replacements = { limit: parseInt(limit) };
     
     if (period !== 'all') {
       const now = new Date();
@@ -206,39 +207,71 @@ router.get('/top/users', authenticateToken, async (req, res) => {
           break;
       }
       
-      whereClause.created_at = {
-        [Rating.sequelize.Sequelize.Op.gte]: startDate
-      };
+      dateCondition = 'AND created_at >= :startDate';
+      replacements.startDate = startDate;
     }
 
-    // Получаем топ пользователей - используем подзапрос для избежания проблем с GROUP BY
-    const topUsersQuery = `
+    // 1. Самые активные пользователи (по количеству лайков)
+    const mostActiveQuery = `
       SELECT 
-        r.to_user,
-        SUM(r.value) as total_rating,
-        COUNT(r.value) as total_votes,
-        SUM(CASE WHEN r.value = 1 THEN 1 ELSE 0 END) as positive_votes
-      FROM rating r
-      WHERE r.created_at >= :startDate
-      GROUP BY r.to_user
-      HAVING COUNT(r.value) >= 3
-      ORDER BY SUM(r.value) DESC, COUNT(r.value) DESC
+        like_to as user_login,
+        COUNT(*) as score
+      FROM likes 
+      WHERE 1=1 ${dateCondition}
+      GROUP BY like_to
+      ORDER BY COUNT(*) DESC
       LIMIT :limit
     `;
 
-    const topUsers = await Rating.sequelize.query(topUsersQuery, {
-      replacements: {
-        startDate: whereClause.created_at ? whereClause.created_at[Rating.sequelize.Sequelize.Op.gte] : new Date(0),
-        limit: parseInt(limit)
-      },
+    const mostActive = await Rating.sequelize.query(mostActiveQuery, {
+      replacements,
       type: Rating.sequelize.QueryTypes.SELECT
     });
 
-    // Получаем информацию о пользователях для топа
-    const userIds = topUsers.map(item => item.to_user);
+    // 2. Самые популярные пользователи (по количеству полученных лайков)
+    const mostPopularQuery = `
+      SELECT 
+        like_to as user_login,
+        COUNT(*) as score
+      FROM likes 
+      WHERE 1=1 ${dateCondition}
+      GROUP BY like_to
+      ORDER BY COUNT(*) DESC
+      LIMIT :limit
+    `;
+
+    const mostPopular = await Rating.sequelize.query(mostPopularQuery, {
+      replacements,
+      type: Rating.sequelize.QueryTypes.SELECT
+    });
+
+    // 3. Больше всего подарков (по количеству полученных подарков)
+    const mostGiftsQuery = `
+      SELECT 
+        owner as user_login,
+        COUNT(*) as score
+      FROM gifts 
+      WHERE is_valid = true ${dateCondition}
+      GROUP BY owner
+      ORDER BY COUNT(*) DESC
+      LIMIT :limit
+    `;
+
+    const mostGifts = await Rating.sequelize.query(mostGiftsQuery, {
+      replacements,
+      type: Rating.sequelize.QueryTypes.SELECT
+    });
+
+    // Получаем информацию о всех пользователях
+    const allUserLogins = [
+      ...mostActive.map(item => item.user_login),
+      ...mostPopular.map(item => item.user_login),
+      ...mostGifts.map(item => item.user_login)
+    ];
+
     const userData = await User.findAll({
       where: {
-        login: { [Rating.sequelize.Sequelize.Op.in]: userIds },
+        login: { [Rating.sequelize.Sequelize.Op.in]: allUserLogins },
         status: { [Rating.sequelize.Sequelize.Op.ne]: 'BANNED' }
       },
       attributes: ['login', 'ava', 'city', 'viptype', 'status']
@@ -250,42 +283,32 @@ router.get('/top/users', authenticateToken, async (req, res) => {
       userMap[user.login] = user;
     });
 
-    // Форматируем результат
-    const formattedTop = topUsers.map((rating, index) => {
-      const totalRating = parseInt(rating.total_rating) || 0;
-      const totalVotes = parseInt(rating.total_votes) || 0;
-      const positiveVotes = parseInt(rating.positive_votes) || 0;
-      const user = userMap[rating.to_user];
-      
-      return {
-        position: index + 1,
-        user: {
-          login: rating.to_user,
-          name: rating.to_user, // Using login instead of name since User model doesn't have name
+    // Форматируем данные для каждой категории
+    const formatUserData = (users, category) => {
+      return users.map((item, index) => {
+        const user = userMap[item.user_login];
+        return {
+          id: item.user_login,
+          name: user ? user.login : item.user_login,
           avatar: user ? user.ava : null,
           city: user ? user.city : null,
-          vip_type: user ? user.viptype : null
-        },
-        rating: {
-          total_rating: totalRating,
-          total_votes: totalVotes,
-          positive_votes: positiveVotes,
-          negative_votes: totalVotes - positiveVotes,
-          average_rating: totalVotes > 0 ? (totalRating / totalVotes).toFixed(1) : 0,
-          percentage_positive: totalVotes > 0 ? Math.round((positiveVotes / totalVotes) * 100) : 0
-        }
-      };
-    });
+          vip_level: user ? user.viptype : null,
+          score: parseInt(item.score) || 0
+        };
+      });
+    };
 
     const responseData = {
-      period,
-      top_users: formattedTop,
-      total_found: formattedTop.length
+      most_active: formatUserData(mostActive, 'most_active'),
+      most_popular: formatUserData(mostPopular, 'most_popular'),
+      most_gifts: formatUserData(mostGifts, 'most_gifts')
     };
 
     logger.logSuccess(req, 200, {
       period,
-      users_count: formattedTop.length
+      most_active_count: responseData.most_active.length,
+      most_popular_count: responseData.most_popular.length,
+      most_gifts_count: responseData.most_gifts.length
     });
     
     res.json(responseData);

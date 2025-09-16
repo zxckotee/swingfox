@@ -425,7 +425,7 @@ const Ratings = () => {
             Система рейтинга
           </SectionTitle>
         </FlexContainer>
-        <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.9)', marginBottom: '30px' }}>
+        <p style={{ textAlign: 'center', color: 'black', marginBottom: '30px' }}>
           Следите за рейтингом пользователей и своими достижениями
         </p>
 
