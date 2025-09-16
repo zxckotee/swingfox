@@ -239,60 +239,246 @@ const FilterActions = styled.div`
 
 const ProfilesGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
-  max-width: 1200px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 0 20px;
+  
+  @media (max-width: 1200px) {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    max-width: 1200px;
+  }
+  
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    padding: 0 16px;
+  }
+  
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 0 12px;
+  }
 `;
 
 const ProfileCard = styled(Card)`
-  padding: 20px;
+  padding: 0;
   text-align: center;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 20px;
+  overflow: hidden;
+  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #dc3522 0%, #ff6b58 50%, #667eea 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
   
   &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 
+      0 20px 40px rgba(0, 0, 0, 0.1),
+      0 8px 16px rgba(0, 0, 0, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    
+    &::before {
+      opacity: 1;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    border-radius: 16px;
+    
+    &:hover {
+      transform: translateY(-4px) scale(1.01);
+    }
   }
 `;
 
 const ProfileAvatar = styled(Avatar)`
-  margin: 0 auto 15px auto;
+  margin: 24px auto 20px auto;
+  border: 4px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.12),
+    0 4px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  
+  ${ProfileCard}:hover & {
+    transform: scale(1.05);
+    box-shadow: 
+      0 12px 32px rgba(0, 0, 0, 0.16),
+      0 6px 12px rgba(0, 0, 0, 0.12);
+  }
 `;
 
 const ProfileInfo = styled.div`
+  padding: 0 24px 24px 24px;
+  
   .status {
     background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
     color: white;
-    padding: 6px 12px;
-    border-radius: 12px;
+    padding: 8px 16px;
+    border-radius: 20px;
     font-size: 12px;
-    font-weight: 600;
-    margin-bottom: 10px;
+    font-weight: 700;
+    margin-bottom: 12px;
     display: inline-block;
+    box-shadow: 0 4px 12px rgba(220, 53, 34, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+    
+    ${ProfileCard}:hover & {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(220, 53, 34, 0.4);
+    }
   }
   
   .age {
-    color: #718096;
+    color: #64748b;
     font-size: 14px;
     margin-bottom: 8px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    
+    &::before {
+      content: '🎂';
+      font-size: 12px;
+    }
   }
   
   .location {
-    color: #4a5568;
+    color: #475569;
     font-size: 14px;
-    margin-bottom: 15px;
+    margin-bottom: 16px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    
+    &::before {
+      content: '📍';
+      font-size: 12px;
+    }
   }
   
   .username {
-    font-weight: 600;
-    color: #dc3522;
+    font-weight: 700;
+    color: #1e293b;
     text-decoration: none;
-    font-size: 16px;
+    font-size: 18px;
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    transition: all 0.3s ease;
     
     &:hover {
-      text-decoration: underline;
+      background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(220, 53, 34, 0.3);
+      text-decoration: none;
+    }
+  }
+  
+  .compatibility {
+    margin: 12px 0;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, 
+        rgba(255, 255, 255, 0.2) 0%, 
+        rgba(255, 255, 255, 0.1) 50%, 
+        rgba(255, 255, 255, 0.2) 100%
+      );
+      animation: shimmer 2s infinite;
+    }
+    
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+  }
+  
+  .additional-info {
+    margin: 12px 0;
+    padding: 8px 12px;
+    background: rgba(241, 245, 249, 0.6);
+    border-radius: 10px;
+    border: 1px solid rgba(226, 232, 240, 0.5);
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.4;
+    
+    span {
+      display: inline-block;
+      margin: 2px 4px;
+      padding: 2px 6px;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 6px;
+      font-weight: 500;
+    }
+  }
+  
+  .partner-data {
+    margin: 12px 0;
+    padding: 12px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(129, 140, 248, 0.08) 100%);
+    border-radius: 12px;
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    font-size: 11px;
+    color: #4c51bf;
+    line-height: 1.4;
+    
+    div {
+      margin: 2px 0;
+      font-weight: 500;
+    }
+  }
+  
+  .search-info {
+    margin: 12px 0;
+    padding: 10px 12px;
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%);
+    border-radius: 12px;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+    font-size: 11px;
+    color: #166534;
+    line-height: 1.4;
+    
+    div {
+      margin: 2px 0;
+      font-weight: 500;
     }
   }
 `;
@@ -594,8 +780,8 @@ const Catalog = () => {
                   <ProfileCard key={user.login}>
                     <ProfileAvatar
                       $src={user.ava ? `/uploads/${user.ava}` : ''}
-                      $size="80px"
-                      $fontSize="32px"
+                      $size="100px"
+                      $fontSize="40px"
                     >
                       {!user.ava && user.login?.charAt(0).toUpperCase()}
                     </ProfileAvatar>
@@ -629,13 +815,7 @@ const Catalog = () => {
                       {user.compatibility && (
                         <div className="compatibility" style={{ 
                           background: `linear-gradient(90deg, #4CAF50 ${user.compatibility.percentage}%, #e0e0e0 ${user.compatibility.percentage}%)`,
-                          color: 'white',
-                          padding: '4px 8px',
-                          borderRadius: '12px',
-                          fontSize: '12px',
-                          fontWeight: 'bold',
-                          textAlign: 'center',
-                          marginTop: '5px'
+                          color: 'white'
                         }}>
                           Совместимость: {user.compatibility.percentage}%
                         </div>
@@ -647,25 +827,17 @@ const Catalog = () => {
                       
                       {/* Дополнительная информация - убираем поля роста, веса, курения и алкоголя для пар */}
                       {user.isCouple ? null : (user.height || user.weight || user.smoking || user.alko) && (
-                        <div className="additional-info" style={{ fontSize: '11px', marginTop: '5px', color: '#666' }}>
-                          {user.height && <span>📏 {user.height}см </span>}
-                          {user.weight && <span>⚖️ {user.weight}кг </span>}
-                          {user.smoking && <span>🚬 {user.smoking.length > 20 ? user.smoking.substring(0, 20) + '...' : user.smoking} </span>}
-                          {user.alko && <span>🍷 {user.alko.length > 20 ? user.alko.substring(0, 20) + '...' : user.alko} </span>}
+                        <div className="additional-info">
+                          {user.height && <span>📏 {user.height}см</span>}
+                          {user.weight && <span>⚖️ {user.weight}кг</span>}
+                          {user.smoking && <span>🚬 {user.smoking.length > 20 ? user.smoking.substring(0, 20) + '...' : user.smoking}</span>}
+                          {user.alko && <span>🍷 {user.alko.length > 20 ? user.alko.substring(0, 20) + '...' : user.alko}</span>}
                         </div>
                       )}
                       
                       {/* Данные пары */}
                       {user.isCouple && user.partnerData && (
-                        <div className="partner-data" style={{ 
-                          fontSize: '11px', 
-                          marginTop: '5px', 
-                          padding: '8px', 
-                          background: 'rgba(102, 126, 234, 0.1)', 
-                          borderRadius: '8px',
-                          border: '1px solid rgba(102, 126, 234, 0.2)',
-                          color: '#4c51bf'
-                        }}>
+                        <div className="partner-data">
                           <div style={{ fontWeight: 'bold', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             👫 Данные пары
                           </div>
@@ -691,15 +863,7 @@ const Catalog = () => {
                       
                       {/* Показываем кого ищет пользователь */}
                       {user.searchStatus && (
-                        <div className="search-info" style={{ 
-                          fontSize: '11px', 
-                          marginTop: '5px', 
-                          padding: '5px', 
-                          background: 'rgba(34, 197, 94, 0.1)', 
-                          borderRadius: '5px',
-                          border: '1px solid rgba(34, 197, 94, 0.2)',
-                          color: '#166534'
-                        }}>
+                        <div className="search-info">
                           <div style={{ fontWeight: 'bold', marginBottom: '3px' }}>🔍 Кого ищет</div>
                           <div>
                             {user.searchStatus.split('&&').map((status, index) => (
