@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
@@ -917,7 +917,7 @@ const Chat = () => {
       userInfo,
       timestamp: new Date().toISOString()
     });
-  }, [chatId, chats?.conversations, selectedChat, chatsLoading, userInfo]);
+  }, [chatId, selectedChat, chatsLoading]); // Убираем проблемные зависимости
 
   // Загружаем информацию о клубах для клубных чатов
   useEffect(() => {
@@ -1065,16 +1065,22 @@ const Chat = () => {
       if (virtualChat.companion_info?.login !== userInfo.login ||
           virtualChat.companion_info?.ava !== userInfo.ava ||
           virtualChat.companion_info?.status !== userInfo.status) {
-        virtualChat.companion_info = {
-          login: userInfo.login,
-          ava: userInfo.ava || 'no_photo.jpg',
-          status: userInfo.status || 'Новый мэтч',
-          online: userInfo.online,
-          viptype: userInfo.viptype || 'FREE'
+        // Создаем новый объект вместо мутации существующего
+        const updatedVirtualChat = {
+          ...virtualChat,
+          companion_info: {
+            login: userInfo.login,
+            ava: userInfo.ava || 'no_photo.jpg',
+            status: userInfo.status || 'Новый мэтч',
+            online: userInfo.online,
+            viptype: userInfo.viptype || 'FREE'
+          }
         };
+        // Обновляем состояние через setState, а не мутируем объект
+        setSelectedChat(updatedVirtualChat.companion);
       }
     }
-  }, [virtualChat, userInfo, chatsLoading]);
+  }, [userInfo, chatsLoading]); // Убираем virtualChat из зависимостей
 
   // Мутации
   const sendMessageMutation = useMutation(
@@ -1186,7 +1192,7 @@ const Chat = () => {
       setClubInfo(null);
       setEventInfo(null);
     }
-  }, [selectedChat, allChats]);
+  }, [selectedChat]); // Убираем allChats из зависимостей
 
   // Автоматически выбираем виртуальный чат, если перешли через уведомления
   useEffect(() => {
@@ -1194,7 +1200,7 @@ const Chat = () => {
       lastSelectedChatRef.current = chatId;
       setSelectedChat(chatId);
     }
-  }, [virtualChat, forceVirtualChat, chatId, chatsLoading]); // Добавляем chatsLoading в зависимости
+  }, [chatId, chatsLoading]); // Убираем virtualChat и forceVirtualChat из зависимостей
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -1246,7 +1252,7 @@ const Chat = () => {
         websocketService.offUserChatMessage(handleWebSocketMessage);
       }
     };
-  }, [selectedChat, isClubChat, clubInfo?.id, eventInfo?.id, currentUser.login, queryClient]);
+  }, [selectedChat, isClubChat, clubInfo?.id, eventInfo?.id]); // Убираем currentUser.login и queryClient из зависимостей
 
   // Очистка при размонтировании
   useEffect(() => {
@@ -1377,15 +1383,13 @@ const Chat = () => {
   };
 
   // Мемоизированная функция для получения отображаемого имени чата
-  const getChatDisplayName = useMemo(() => {
-    return (companion) => {
-      if (companion.startsWith('club_')) {
-        const clubId = companion.replace('club_', '');
-        const clubData = clubsData[clubId];
-        return clubData?.club?.name || `Клуб ${clubId}`;
-      }
-      return `@${companion}`;
-    };
+  const getChatDisplayName = useCallback((companion) => {
+    if (companion.startsWith('club_')) {
+      const clubId = companion.replace('club_', '');
+      const clubData = clubsData[clubId];
+      return clubData?.club?.name || `Клуб ${clubId}`;
+    }
+    return `@${companion}`;
   }, [clubsData]);
 
   const formatTime = (timestamp) => {
