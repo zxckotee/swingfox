@@ -897,12 +897,13 @@ const ImageModal = styled.div`
 
 const ImageModalContent = styled.div`
   position: relative;
-  max-width: 90vw;
-  max-height: 90vh;
+  max-width: calc(100vw - 60px);
+  max-height: calc(100vh - 60px);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: default;
+  padding: 30px;
   
   img {
     max-width: 100%;
@@ -911,12 +912,18 @@ const ImageModalContent = styled.div`
     border-radius: 8px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   }
+  
+  @media (max-width: 768px) {
+    max-width: calc(100vw - 40px);
+    max-height: calc(100vh - 40px);
+    padding: 20px;
+  }
 `;
 
 const CloseButton = styled.button`
   position: absolute;
-  top: -40px;
-  right: -40px;
+  top: 10px;
+  right: 10px;
   background: rgba(255, 255, 255, 0.2);
   border: none;
   border-radius: 50%;
@@ -928,6 +935,7 @@ const CloseButton = styled.button`
   cursor: pointer;
   color: white;
   transition: background 0.2s ease;
+  z-index: 1001;
   
   &:hover {
     background: rgba(255, 255, 255, 0.3);
@@ -936,6 +944,18 @@ const CloseButton = styled.button`
   svg {
     width: 20px;
     height: 20px;
+  }
+  
+  @media (max-width: 768px) {
+    width: 36px;
+    height: 36px;
+    top: 5px;
+    right: 5px;
+    
+    svg {
+      width: 18px;
+      height: 18px;
+    }
   }
 `;
 
