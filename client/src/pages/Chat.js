@@ -1446,10 +1446,7 @@ const Chat = () => {
                     $fontSize="20px"
                     $online={forceVirtualChat.companion_info?.online}
                   >
-                    {forceVirtualChat.companion.startsWith('club_') 
-                      ? (clubsData[forceVirtualChat.companion.replace('club_', '')]?.club?.name ? clubsData[forceVirtualChat.companion.replace('club_', '')].club.name.charAt(0).toUpperCase() : 'К')
-                      : (!forceVirtualChat.companion_info?.ava && forceVirtualChat.companion.charAt(0).toUpperCase())
-                    }
+                    {!forceVirtualChat.companion.startsWith('club_') && !forceVirtualChat.companion_info?.ava && forceVirtualChat.companion.charAt(0).toUpperCase()}
                   </Avatar>
                   
                   <div className="chat-info">
@@ -1487,10 +1484,7 @@ const Chat = () => {
                     $fontSize="20px"
                     $online={chat.companion_info?.online}
                   >
-                    {chat.companion.startsWith('club_') 
-                      ? (clubsData[chat.companion.replace('club_', '')]?.club?.name ? clubsData[chat.companion.replace('club_', '')].club.name.charAt(0).toUpperCase() : 'К')
-                      : (!chat.companion_info?.ava && chat.companion.charAt(0).toUpperCase())
-                    }
+                    {!chat.companion.startsWith('club_') && !chat.companion_info?.ava && chat.companion.charAt(0).toUpperCase()}
                   </Avatar>
                   
                   <div className="chat-info">
