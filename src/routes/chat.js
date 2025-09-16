@@ -1327,7 +1327,19 @@ router.get('/match-status/:username', authenticateToken, async (req, res) => {
     });
 
     const hasMatch = myLike && theirLike;
-    const canChat = hasMatch;
+    
+    // Проверяем наличие сообщений между пользователями
+    const hasMessages = await Chat.findOne({
+      where: {
+        [Op.or]: [
+          { from_user: currentUser, to_user: username },
+          { from_user: username, to_user: currentUser }
+        ]
+      }
+    });
+
+    // Можно писать в чат если есть мэтч ИЛИ есть сообщения
+    const canChat = hasMatch || hasMessages;
 
     let status = 'no_match';
     let message = 'Нет взаимной симпатии';
@@ -1337,6 +1349,10 @@ router.get('/match-status/:username', authenticateToken, async (req, res) => {
       status = 'match';
       message = 'Взаимная симпатия! Можно общаться';
       icon = '💕';
+    } else if (hasMessages) {
+      status = 'has_messages';
+      message = 'Есть история сообщений, можно общаться';
+      icon = '💬';
     } else if (myLike && !theirLike) {
       status = 'liked';
       message = 'Вы поставили лайк, ждем ответа';
@@ -1353,9 +1369,11 @@ router.get('/match-status/:username', authenticateToken, async (req, res) => {
       message,
       icon,
       hasMatch: !!hasMatch,
-      canChat: !!hasMatch,
+      hasMessages: !!hasMessages,
+      canChat: !!canChat,
       matchData: {
         hasMatch: !!hasMatch,
+        hasMessages: !!hasMessages,
         myLike: !!myLike,
         theirLike: !!theirLike
       }

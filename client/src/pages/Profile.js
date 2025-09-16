@@ -1021,9 +1021,10 @@ const Profile = () => {
       setSelectedGift(null);
       setGiftMessage('');
       
-      // Обновляем данные профиля
+      // Обновляем данные профиля и подарков
       if (targetLogin) {
         queryClient.invalidateQueries(['profile', targetLogin]);
+        queryClient.invalidateQueries(['gifts', targetLogin]);
       }
     },
     onError: (error) => {
@@ -1215,8 +1216,10 @@ const Profile = () => {
     );
   }
 
-  // Проверяем наличие взаимного мэтча
+  // Проверяем наличие взаимного мэтча и сообщений
   const hasMatch = matchStatus?.hasMatch || false;
+  const hasMessages = matchStatus?.hasMessages || false;
+  const canChat = matchStatus?.canChat || false;
   const hasUserLiked = matchStatus?.userHasLiked || false;
 
   return (
@@ -1280,13 +1283,13 @@ const Profile = () => {
               Подарок
             </ActionButton>
             
-            {hasMatch ? (
+            {canChat ? (
               <ActionButton
                 className="chat"
                 onClick={handleGoToChat}
               >
                 <MessageIcon />
-                Написать
+                {hasMatch ? 'Написать' : 'Продолжить общение'}
               </ActionButton>
             ) : !hasUserLiked ? (
               <>
