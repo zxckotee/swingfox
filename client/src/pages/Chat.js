@@ -1512,8 +1512,8 @@ const Chat = () => {
                       {getChatDisplayName(chat.companion)}
                     </div>
                     <div className="last-message">
-                      {chat.last_message ? (
-                        chat.last_message
+                      {(chat.last_message && chat.last_message.trim()) || chat.has_images ? (
+                        chat.last_message || '[Изображение]'
                       ) : (
                         <span className="new-match-indicator">
                           {chat.companion.startsWith('club_') ? '🏛️ Чат с клубом - начните общение' : 
@@ -1528,7 +1528,7 @@ const Chat = () => {
                   
                   {chat.unread_count > 0 ? (
                     <div className="unread-badge">{chat.unread_count}</div>
-                  ) : !chat.last_message && (
+                  ) : !((chat.last_message && chat.last_message.trim()) || chat.has_images) && (
                     <div className="new-match-badge">{chat.companion.startsWith('club_') ? '🏛️' : '💕'}</div>
                   )}
                 </ChatItem>
