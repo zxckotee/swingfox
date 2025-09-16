@@ -207,7 +207,7 @@ router.post('/create', authenticateToken, upload.single('image'), async (req, re
     const imageFile = req.file;
 
     console.log('User login:', userLogin);
-    console.log('Data:', { title, type, description, country, city, price, contact_info });
+    console.log('Data:', { title, type, description, country, city, contact_info });
 
     if (!title || !type || !description || !country || !city) {
       console.log('Ошибка валидации: недостающие поля');
