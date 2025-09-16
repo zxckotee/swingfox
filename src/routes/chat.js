@@ -431,7 +431,7 @@ router.post('/send', authenticateToken, upload.array('images', 5), async (req, r
     }
 
     // Проверяем, является ли это чатом с клубом
-    const isClubChat = to_user.startsWith('club_');
+    const isClubChat = to_user.startsWith('club_') || fromUser.startsWith('club_');
     let eventId = null;
     
     if (isClubChat) {
@@ -456,7 +456,7 @@ router.post('/send', authenticateToken, upload.array('images', 5), async (req, r
         if (!event_id) {
           return res.status(400).json({
             error: 'missing_event_id',
-            message: 'Для первого сообщения клубу необходимо указать event_id'
+            message: 'Для первого сообщения в клубном чате необходимо указать event_id'
           });
         }
         eventId = event_id;
@@ -469,7 +469,7 @@ router.post('/send', authenticateToken, upload.array('images', 5), async (req, r
     if (isClubChat) {
       // Для клубных чатов проверяем существование клуба
       const { Clubs } = require('../models');
-      const clubId = to_user.replace('club_', '');
+      const clubId = (to_user.startsWith('club_') ? to_user : fromUser).replace('club_', '');
       const club = await Clubs.findByPk(clubId);
       if (!club) {
         // Удаляем загруженные файлы
@@ -489,7 +489,7 @@ router.post('/send', authenticateToken, upload.array('images', 5), async (req, r
         });
       }
       // Создаем фиктивный объект получателя для клуба
-      recipient = { login: to_user, privacy_settings: { privacy: { allow_messages: true } } };
+      recipient = { login: to_user.startsWith('club_') ? to_user : fromUser, privacy_settings: { privacy: { allow_messages: true } } };
     } else {
       // Для обычных пользователей ищем в таблице User
       recipient = await User.findOne({ where: { login: to_user } });
