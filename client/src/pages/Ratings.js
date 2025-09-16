@@ -420,7 +420,7 @@ const Ratings = () => {
     <RatingsContainer>
       <ContentCard $maxWidth="1200px">
         <FlexContainer $justify="center" $align="center" $wrap>
-          <SectionTitle style={{ color: 'white', textAlign: 'center', marginBottom: '10px' }}>
+          <SectionTitle style={{ color: 'black', textAlign: 'center', marginBottom: '10px' }}>
             <TrophyIcon />
             Система рейтинга
           </SectionTitle>
