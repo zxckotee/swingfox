@@ -831,7 +831,14 @@ const Chat = () => {
     const source = urlParams.get('source');
     const eventId = urlParams.get('event');
     
-    setIsAdConversation(source === 'ad');
+    // Устанавливаем isAdConversation только если это новый чат (нет сообщений)
+    // или если явно указан source=ad в URL
+    const isAdFromUrl = source === 'ad';
+    const hasExistingMessages = messages && messages.length > 0;
+    
+    // Если есть сообщения, то не считаем это новым мэтчем
+    // Если нет сообщений и source=ad, то это общение по объявлению
+    setIsAdConversation(isAdFromUrl && !hasExistingMessages);
     
     // Проверяем, является ли это клубным чатом
     if (chatId && chatId.startsWith('club_')) {
@@ -843,7 +850,7 @@ const Chat = () => {
         setEventInfo({ id: eventId });
       }
     }
-  }, [chatId]);
+  }, [chatId, messages]);
 
   // Получение списка чатов
   const { data: chats = [], error: chatsError, isLoading: chatsLoading } = useQuery(
@@ -1461,14 +1468,20 @@ const Chat = () => {
                       {getChatDisplayName(forceVirtualChat.companion)}
                     </div>
                     <div className="last-message">
-                      <span className="new-match-indicator">
-                        {isAdConversation ? '📢 Общение по объявлению' : '💕 Новый мэтч - начните общение'}
-                      </span>
+                      {messages && messages.length > 0 ? (
+                        messages[messages.length - 1]?.message || '[Изображение]'
+                      ) : (
+                        <span className="new-match-indicator">
+                          {isAdConversation ? '📢 Общение по объявлению' : '💕 Новый мэтч - начните общение'}
+                        </span>
+                      )}
                     </div>
                     <div className="time">Сейчас</div>
                   </div>
                   
-                  <div className="new-match-badge">{isAdConversation ? '📢' : '💕'}</div>
+                  {!(messages && messages.length > 0) && (
+                    <div className="new-match-badge">{isAdConversation ? '📢' : '💕'}</div>
+                  )}
                 </ChatItem>
               )}
               
@@ -1503,8 +1516,8 @@ const Chat = () => {
                         chat.last_message
                       ) : (
                         <span className="new-match-indicator">
-                          {isAdConversation ? '📢 Общение по объявлению' : 
-                           isClubChat ? '🏛️ Чат с клубом - начните общение' : '💕 Новый мэтч - начните общение'}
+                          {chat.companion.startsWith('club_') ? '🏛️ Чат с клубом - начните общение' : 
+                           '💕 Новый мэтч - начните общение'}
                         </span>
                       )}
                     </div>
@@ -1516,7 +1529,7 @@ const Chat = () => {
                   {chat.unread_count > 0 ? (
                     <div className="unread-badge">{chat.unread_count}</div>
                   ) : !chat.last_message && (
-                    <div className="new-match-badge">{isAdConversation ? '📢' : isClubChat ? '🏛️' : '💕'}</div>
+                    <div className="new-match-badge">{chat.companion.startsWith('club_') ? '🏛️' : '💕'}</div>
                   )}
                 </ChatItem>
               ))}
