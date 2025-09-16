@@ -657,39 +657,6 @@ const ProfileDetails = styled.div`
       }
     }
     
-    /* Специальные стили для блока места встречи */
-    &.location-info {
-      background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
-      box-shadow: 0 4px 12px rgba(56, 161, 105, 0.3);
-      
-      .title {
-        color: #f7fafc;
-      }
-      
-      .details {
-        div {
-          strong {
-            color: #e2e8f0;
-          }
-          
-          /* Стили для списка мест встречи */
-          div {
-            margin-top: 4px;
-            margin-left: 8px;
-            
-            div {
-              margin-bottom: 2px;
-              font-size: 10px;
-              color: #e2e8f0;
-              
-              &:last-child {
-                margin-bottom: 0;
-              }
-            }
-          }
-        }
-      }
-    }
   }
   
   .additional-info {
@@ -781,16 +748,6 @@ const ProfileDetails = styled.div`
       }
     }
     
-    .partner-info.location-info {
-      .details div {
-        font-size: 9px;
-        
-        /* Стили для списка мест встречи */
-        div div {
-          font-size: 8px;
-        }
-      }
-    }
     
     .additional-info {
       gap: 4px;
@@ -888,16 +845,6 @@ const ProfileDetails = styled.div`
         }
       }
       
-      &.location-info {
-        .details div {
-          font-size: 12px;
-          
-          /* Стили для списка мест встречи */
-          div div {
-            font-size: 11px;
-          }
-        }
-      }
     }
     
     .additional-info {
@@ -2094,21 +2041,6 @@ const Home = () => {
                     </div>
                   )}
                   
-                  {/* Предпочитаемое место встречи */}
-                  {currentProfile.location && (
-                    <div className="partner-info location-info">
-                      <div className="title">📍 Где предпочитает знакомиться</div>
-                      <div className="details">
-                        <div style={{ marginTop: '4px', marginLeft: '8px' }}>
-                          {currentProfile.location.split('&&').map((place, index) => (
-                            <div key={index} style={{ marginBottom: '2px' }}>
-                              • {place.trim()}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
                   
                   
                   {/* Дополнительная информация - убрана для упрощения интерфейса */}
