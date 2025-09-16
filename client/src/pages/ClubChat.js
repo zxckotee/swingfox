@@ -41,6 +41,7 @@ const ClubChat = () => {
   
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState([]); // Прикрепленные файлы
   const fileInputRef = useRef(null);
 
   // Получаем данные чата из location state
@@ -112,21 +113,32 @@ const ClubChat = () => {
   const handleSendMessage = async (e) => {
     e.preventDefault();
     
-    if (!newMessage.trim() || sending) return;
+    if ((!newMessage.trim() && attachedFiles.length === 0) || sending) return;
 
     try {
       setSending(true);
       
-      const messageData = {
-        message: newMessage.trim(),
-        to_user: chatData.user_id,
-        event_id: chatData.event_id
-      };
+      // Используем FormData для отправки файлов
+      const formData = new FormData();
+      formData.append('message', newMessage.trim() || '');
+      formData.append('to_user', chatData.user_id);
+      formData.append('event_id', chatData.event_id);
+      
+      // Добавляем прикрепленные файлы
+      attachedFiles.forEach(fileObj => {
+        formData.append('images', fileObj.file);
+      });
 
-      const response = await clubApi.sendChatMessage(messageData);
+      const response = await clubApi.sendChatMessage(formData);
       
       if (response.success) {
         setNewMessage('');
+        
+        // Очищаем прикрепленные файлы после отправки
+        attachedFiles.forEach(fileObj => {
+          URL.revokeObjectURL(fileObj.preview);
+        });
+        setAttachedFiles([]);
         
         // Обновляем кэш запроса, чтобы сообщения автоматически обновились
         queryClient.invalidateQueries(['club-chat-messages', chatData?.event_id, chatData?.user_id]);
@@ -140,15 +152,41 @@ const ClubChat = () => {
   };
 
   const handleFileUpload = (event) => {
-    const file = event.target.files[0];
-    if (file && chatData) {
-      const formData = new FormData();
-      formData.append('images', file);
-      formData.append('to_user', chatData.user_id);
-      formData.append('event_id', chatData.event_id);
+    const files = Array.from(event.target.files);
+    if (files.length > 0 && chatData) {
+      // Добавляем файлы к прикрепленным
+      const newFiles = files.map(file => ({
+        id: Date.now() + Math.random(), // Простой ID для React key
+        file: file,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        preview: URL.createObjectURL(file) // Для предварительного просмотра
+      }));
       
-      sendFileMutation.mutate(formData);
+      setAttachedFiles(prev => [...prev, ...newFiles]);
+      
+      // Очищаем input чтобы можно было выбрать те же файлы снова
+      event.target.value = '';
     }
+  };
+
+  const removeAttachedFile = (fileId) => {
+    setAttachedFiles(prev => {
+      const fileToRemove = prev.find(f => f.id === fileId);
+      if (fileToRemove) {
+        URL.revokeObjectURL(fileToRemove.preview); // Освобождаем память
+      }
+      return prev.filter(f => f.id !== fileId);
+    });
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
 
@@ -285,6 +323,30 @@ const ClubChat = () => {
 
       {/* Message Input */}
       <form className="message-input" onSubmit={handleSendMessage}>
+        {attachedFiles.length > 0 && (
+          <div className="attached-files-container">
+            {attachedFiles.map((fileObj) => (
+              <div key={fileObj.id} className="attached-file-item">
+                <img 
+                  src={fileObj.preview} 
+                  alt={fileObj.name}
+                  className="file-preview"
+                />
+                <div className="file-info">
+                  <div className="file-name">{fileObj.name}</div>
+                  <div className="file-size">{formatFileSize(fileObj.size)}</div>
+                </div>
+                <button 
+                  className="remove-file-btn"
+                  onClick={() => removeAttachedFile(fileObj.id)}
+                  title="Удалить файл"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="input-container">
           <input
             type="text"
@@ -305,7 +367,7 @@ const ClubChat = () => {
           </button>
           <button
             type="submit"
-            disabled={!newMessage.trim() || sending}
+            disabled={(!newMessage.trim() && attachedFiles.length === 0) || sending}
             className="send-button"
           >
             <SendIcon />
@@ -314,6 +376,7 @@ const ClubChat = () => {
         <input
           ref={fileInputRef}
           type="file"
+          multiple
           accept="image/*"
           onChange={handleFileUpload}
           style={{ display: 'none' }}
