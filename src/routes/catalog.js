@@ -29,7 +29,7 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 
     // Строим базовые условия фильтрации для SQL запроса
-    let whereClause = 'u.login != :userId AND u.status != \'BANNED\' AND u.viptype IN (\'VIP\', \'PREMIUM\')';
+    let whereClause = 'u.login != :userId AND u.status != \'BANNED\'';
     let replacements = { userId };
 
     // Фильтр по семейному статусу (только те, кого я ищу)
@@ -311,7 +311,8 @@ router.get('/', authenticateToken, async (req, res) => {
           CASE 
             WHEN u.viptype = 'PREMIUM' THEN 3
             WHEN u.viptype = 'VIP' THEN 2
-            ELSE 1
+            WHEN u.viptype = 'FREE' THEN 1
+            ELSE 0
           END AS vip_priority
           
         FROM users u
@@ -868,7 +869,8 @@ router.get('/recommendations', authenticateToken, async (req, res) => {
           CASE 
             WHEN u.viptype = 'PREMIUM' THEN 3
             WHEN u.viptype = 'VIP' THEN 2
-            ELSE 1
+            WHEN u.viptype = 'FREE' THEN 1
+            ELSE 0
           END AS vip_priority
           
         FROM users u
