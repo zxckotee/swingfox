@@ -250,31 +250,31 @@ const ClubChat = () => {
                   </div>
                   <div className="message-text">
                     {message.message}
-                  </div>
-                  {(message.file || (message.images && message.images.length > 0)) && (
-                    <div className="message-file">
-                      {message.file ? (
-                        <img
-                          src={`/uploads/${message.file}`}
-                          alt="Прикрепленное изображение"
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        message.images.map((image, idx) => (
+                    {(message.file || (message.images && message.images.length > 0)) && (
+                      <div className="message-file">
+                        {message.file ? (
                           <img
-                            key={`${message.id}-image-${idx}`}
-                            src={`/uploads/${image}`}
-                            alt="Вложение"
+                            src={`/uploads/${message.file}`}
+                            alt="Прикрепленное изображение"
                             onError={(e) => {
                               e.target.style.display = 'none';
                             }}
                           />
-                        ))
-                      )}
-                    </div>
-                  )}
+                        ) : (
+                          message.images.map((image, idx) => (
+                            <img
+                              key={`${message.id}-image-${idx}`}
+                              src={`/uploads/${image}`}
+                              alt="Вложение"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

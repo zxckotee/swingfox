@@ -314,14 +314,15 @@
   display: block;
 }
 
-/* Ограничиваем размер изображений в сообщениях */
-.message-club .message-file {
-  max-width: 70%;
-  margin-left: auto;
+/* Изображения внутри сообщений должны адаптироваться к размеру блока */
+.message-text .message-file {
+  max-width: 100%;
+  margin-top: 8px;
 }
 
-.message-user .message-file {
-  max-width: 70%;
+.message-text .message-file img {
+  max-width: 100%;
+  height: auto;
 }
 
 /* Message Input */
@@ -495,16 +496,8 @@
     padding: 10px 14px;
   }
   
-  .message-file {
-    max-width: 85%;
-  }
-  
-  .message-club .message-file {
-    max-width: 85%;
-  }
-  
-  .message-user .message-file {
-    max-width: 85%;
+  .message-text .message-file {
+    max-width: 100%;
   }
 }
 
