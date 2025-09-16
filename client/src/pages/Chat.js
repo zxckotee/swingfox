@@ -895,6 +895,7 @@ const Chat = () => {
   const [eventInfo, setEventInfo] = useState(null);
   const [clubsData, setClubsData] = useState({}); // Кэш для хранения информации о клубах
   const [attachedFiles, setAttachedFiles] = useState([]); // Прикрепленные файлы
+  const [selectedImage, setSelectedImage] = useState(null); // Выбранное изображение для модального окна
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const queryClient = useQueryClient();
@@ -1526,6 +1527,14 @@ const Chat = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const handleImageClick = (imageSrc) => {
+    setSelectedImage(imageSrc);
+  };
+
+  const closeImageModal = () => {
+    setSelectedImage(null);
+  };
+
   // Мемоизированная функция для получения отображаемого имени чата
   const getChatDisplayName = useCallback((companion) => {
     if (companion.startsWith('club_')) {
@@ -1781,7 +1790,8 @@ const Chat = () => {
                                 key={`${message.id}-image-${idx}`}
                                 src={`/uploads/${image}`}
                                 alt="Вложение"
-                                style={{ margin: '2px', maxWidth: '250px' }}
+                                style={{ margin: '2px', maxWidth: '250px', cursor: 'pointer' }}
+                                onClick={() => handleImageClick(`/uploads/${image}`)}
                               />
                             ))}
                           </div>
@@ -1988,6 +1998,21 @@ const Chat = () => {
           </EmptyState>
         )}
       </ChatWindow>
+      
+      {/* Модальное окно для просмотра изображений */}
+      {selectedImage && (
+        <ImageModal onClick={closeImageModal}>
+          <ImageModalContent onClick={(e) => e.stopPropagation()}>
+            <CloseButton onClick={closeImageModal}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </CloseButton>
+            <img src={selectedImage} alt="Увеличенное изображение" />
+          </ImageModalContent>
+        </ImageModal>
+      )}
     </ChatContainer>
   );
 };
