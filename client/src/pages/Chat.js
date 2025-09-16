@@ -872,7 +872,8 @@ const Chat = () => {
     companion_info: {
       login: chatId,
       ava: 'no_photo.jpg',
-      status: isAdConversation ? 'Общение по объявлению' : 'Новый мэтч',
+      status: isAdConversation ? 'Общение по объявлению' : 
+               isClubChat ? 'Чат с клубом' : 'Новый мэтч',
       online: null,
       viptype: 'FREE'
     }
@@ -889,7 +890,8 @@ const Chat = () => {
     companion_info: {
       login: chatId,
       ava: 'no_photo.jpg',
-      status: isAdConversation ? 'Общение по объявлению' : 'Новый мэтч',
+      status: isAdConversation ? 'Общение по объявлению' : 
+               isClubChat ? 'Чат с клубом' : 'Новый мэтч',
       online: null,
       viptype: 'FREE'
     }
@@ -950,6 +952,22 @@ const Chat = () => {
     loadClubsData();
   }, [chats?.conversations]);
 
+  // Загружаем информацию о клубе для виртуального клубного чата
+  useEffect(() => {
+    const loadVirtualClubData = async () => {
+      if (!isClubChat || !clubInfo?.id || clubsData[clubInfo.id]) return;
+      
+      try {
+        const clubData = await clubsAPI.getClub(clubInfo.id);
+        setClubsData(prev => ({ ...prev, [clubInfo.id]: clubData }));
+      } catch (error) {
+        console.error('Error loading virtual club data:', error);
+      }
+    };
+    
+    loadVirtualClubData();
+  }, [isClubChat, clubInfo?.id, clubsData]);
+
   // Получение сообщений текущего чата
   const { data: messagesData, error: messagesError, isLoading: messagesLoading } = useQuery(
     ['messages', selectedChat, isClubChat, clubInfo?.id, eventInfo?.id],
@@ -977,7 +995,7 @@ const Chat = () => {
 
   const messages = isClubChat ? (messagesData?.messages || []) : (messagesData?.messages || []);
   
-  // Логирование для отладки
+ /* // Логирование для отладки
   console.log('Chat messages data:', {
     isClubChat,
     clubInfo,
@@ -986,7 +1004,7 @@ const Chat = () => {
     messages: messages.length,
     selectedChat,
     messagesArray: messages
-  });
+  });*/
 
   // Получение статуса мэтча для текущего чата (только для обычных чатов, не клубных)
   const { data: matchData } = useQuery(
@@ -1487,7 +1505,8 @@ const Chat = () => {
                         chat.last_message
                       ) : (
                         <span className="new-match-indicator">
-                          {isAdConversation ? '📢 Общение по объявлению' : '💕 Новый мэтч - начните общение'}
+                          {isAdConversation ? '📢 Общение по объявлению' : 
+                           isClubChat ? '🏛️ Чат с клубом - начните общение' : '💕 Новый мэтч - начните общение'}
                         </span>
                       )}
                     </div>
@@ -1499,7 +1518,7 @@ const Chat = () => {
                   {chat.unread_count > 0 ? (
                     <div className="unread-badge">{chat.unread_count}</div>
                   ) : !chat.last_message && (
-                    <div className="new-match-badge">💕</div>
+                    <div className="new-match-badge">{isAdConversation ? '📢' : isClubChat ? '🏛️' : '💕'}</div>
                   )}
                 </ChatItem>
               ))}
