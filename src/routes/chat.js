@@ -1332,8 +1332,8 @@ router.get('/match-status/:username', authenticateToken, async (req, res) => {
     const hasMessages = await Chat.findOne({
       where: {
         [Op.or]: [
-          { from_user: currentUser, to_user: username },
-          { from_user: username, to_user: currentUser }
+          { by_user: currentUser, to_user: username },
+          { by_user: username, to_user: currentUser }
         ]
       }
     });
