@@ -246,7 +246,7 @@ router.get('/messages', authenticateClub, async (req, res) => {
 });
 
 // POST /api/club/chats/messages - Отправка сообщения от клуба пользователю
-router.post('/messages', authenticateClub, upload.single('images'), async (req, res) => {
+router.post('/messages', authenticateClub, upload.array('images', 5), async (req, res) => {
   const logger = new APILogger('CLUB_CHAT_SEND');
   
   try {
@@ -255,8 +255,8 @@ router.post('/messages', authenticateClub, upload.single('images'), async (req, 
     const { Chat } = require('../models');
     const { message, to_user, event_id } = req.body;
     
-    // Проверяем, что есть либо сообщение, либо файл
-    if ((!message || message.trim() === '') && !req.file) {
+    // Проверяем, что есть либо сообщение, либо файлы
+    if ((!message || message.trim() === '') && (!req.files || req.files.length === 0)) {
       return res.status(400).json({
         success: false,
         message: 'Сообщение или файл обязательны'
@@ -282,8 +282,8 @@ router.post('/messages', authenticateClub, upload.single('images'), async (req, 
 
     // Обрабатываем загруженные изображения
     let imagesList = [];
-    if (req.file) {
-      imagesList = [req.file.filename];
+    if (req.files && req.files.length > 0) {
+      imagesList = req.files.map(file => file.filename);
     }
 
     // Создаем новое сообщение от клуба пользователю
@@ -291,7 +291,6 @@ router.post('/messages', authenticateClub, upload.single('images'), async (req, 
       by_user: `club_${req.club.id}`,
       to_user: user.login, // Используем логин вместо ID
       message: message ? message.trim() : '',
-      file: req.file ? req.file.filename : null, // Оставляем для обратной совместимости
       images: imagesList.length > 0 ? imagesList.join('&&') : null,
       date: new Date(),
       club_id: req.club.id,
