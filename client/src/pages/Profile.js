@@ -766,6 +766,16 @@ const Profile = () => {
     () => privacyAPI.getSettings(),
     {
       enabled: isOwnProfile,
+      onSuccess: (data) => {
+        console.log('Настройки приватности загружены:', data);
+        console.log('privacy_settings:', data.privacy_settings);
+        console.log('premium_features:', data.premium_features);
+        
+        // Преобразуем данные в удобный формат
+        if (data.privacy_settings) {
+          queryClient.setQueryData(['privacySettings'], data.privacy_settings);
+        }
+      },
       onError: (error) => {
         console.error('Ошибка при получении настроек приватности:', error);
       }
@@ -1035,12 +1045,17 @@ const Profile = () => {
   // Мутация для сохранения настроек приватности
   const privacyMutation = useMutation(privacyAPI.updateSettings, {
     onSuccess: (data) => {
+      console.log('Настройки успешно сохранены:', data);
       toast.success('Настройки приватности обновлены');
       
       // Обновляем данные пользователя
       queryClient.invalidateQueries(['currentUser']);
+      
+      // Перезагружаем настройки из базы данных
+      queryClient.invalidateQueries(['privacySettings']);
     },
     onError: (error) => {
+      console.error('Ошибка при сохранении настроек:', error);
       toast.error('Ошибка при сохранении настроек: ' + apiUtils.handleError(error));
       
       // Восстанавливаем предыдущие настройки в случае ошибки
@@ -1175,19 +1190,30 @@ const Profile = () => {
     
     try {
       const currentSettings = queryClient.getQueryData(['privacySettings']);
+      console.log('Сохранение настроек:', currentSettings);
+      
       if (currentSettings) {
-        await privacyMutation.mutateAsync({
+        const settingsToSave = {
           privacy: currentSettings.privacy,
           notifications: currentSettings.notifications
-        });
+        };
+        console.log('Отправляем на сервер:', settingsToSave);
+        
+        await privacyMutation.mutateAsync(settingsToSave);
+      } else {
+        console.error('Нет настроек для сохранения');
+        toast.error('Нет настроек для сохранения');
       }
     } catch (error) {
       console.error('Ошибка при сохранении настроек:', error);
     }
   };
 
-  // Функция для обновления настроек с автоматическим сохранением
+  // Функция для обновления настроек (только локально)
   const updatePrivacySetting = (category, setting, value) => {
+    console.log('Обновление настройки:', { category, setting, value });
+    console.log('Текущие настройки:', privacySettings);
+    
     const newSettings = {
       ...privacySettings,
       [category]: {
@@ -1196,14 +1222,10 @@ const Profile = () => {
       }
     };
     
-    // Обновляем локальное состояние
-    queryClient.setQueryData(['privacySettings'], newSettings);
+    console.log('Новые настройки:', newSettings);
     
-    // Автоматически сохраняем настройки
-    privacyMutation.mutate({
-      privacy: newSettings.privacy,
-      notifications: newSettings.notifications
-    });
+    // Обновляем только локальное состояние
+    queryClient.setQueryData(['privacySettings'], newSettings);
   };
 
   const handleGoToChat = () => {
@@ -1923,7 +1945,7 @@ const Profile = () => {
               <InfoSection>
                 <h3>Настройки профиля</h3>
                 
-                <Form>
+                <Form onSubmit={handlePrivacySubmit}>
                   <FormGroup>
                     <Label>Приватность</Label>
                     
@@ -2004,15 +2026,9 @@ const Profile = () => {
                     />
                   </FormGroup>
                   
-                  <div style={{ 
-                    textAlign: 'center', 
-                    padding: '20px 0', 
-                    color: '#4a5568',
-                    fontSize: '14px',
-                    fontStyle: 'italic'
-                  }}>
-                    Настройки сохраняются автоматически при изменении
-                  </div>
+                  <Button type="submit" disabled={privacyMutation.isLoading}>
+                    {privacyMutation.isLoading ? 'Сохранение...' : 'Сохранить настройки'}
+                  </Button>
                 </Form>
               </InfoSection>
             </div>

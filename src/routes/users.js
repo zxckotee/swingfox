@@ -796,8 +796,10 @@ router.put('/privacy-settings', authenticateToken, async (req, res) => {
     }
     
     // Обновляем настройки приватности
+    console.log('Сохранение настроек:', { privacy, notifications });
     user.privacy_settings = { privacy, notifications };
     await user.save();
+    console.log('Настройки сохранены в БД:', user.privacy_settings);
     
     logger.logSuccess(req, 200, {
       user_id: userId,
@@ -835,10 +837,22 @@ router.get('/privacy-settings', authenticateToken, async (req, res) => {
       });
     }
     
-    res.json({
+    console.log('Загрузка настроек для пользователя:', userId);
+    console.log('privacy_settings из БД:', user.privacy_settings);
+    console.log('premium_features из БД:', user.premium_features);
+    
+    const responseData = {
       privacy_settings: user.privacy_settings,
       premium_features: user.premium_features
+    };
+    
+    logger.logSuccess(req, 200, {
+      user_id: userId,
+      privacy_settings: responseData.privacy_settings,
+      premium_features: responseData.premium_features
     });
+    
+    res.json(responseData);
     
   } catch (error) {
     logger.logError(req, error);
