@@ -755,7 +755,7 @@ const Clubs = () => {
     }
   };
 
-  // Функция для создания чата с клубом по мероприятию
+  // Функция для перехода в чат с клубом по мероприятию
   const handleMessageClub = async (event) => {
     try {
       if (!event.club?.id) {
@@ -763,19 +763,13 @@ const Clubs = () => {
         return;
       }
 
-      // Создаем чат с клубом по мероприятию
-      const message = `Привет! У меня есть вопрос по поводу мероприятия "${event.title}"`;
-      
-      await chatAPI.createClubEventChat(event.club.id, event.id, message);
-      
-      toast.success('Сообщение отправлено клубу!');
-      
-      // Переходим в чат
+      // Просто переходим в чат без автоматической отправки сообщения
+      // Пользователь сможет выбрать шаблон сообщения в интерфейсе чата
       window.location.href = `/chat/club_${event.club.id}?event=${event.id}`;
       
     } catch (error) {
-      console.error('Error creating club chat:', error);
-      toast.error(error.response?.data?.message || 'Не удалось создать чат с клубом');
+      console.error('Error navigating to club chat:', error);
+      toast.error('Не удалось перейти в чат с клубом');
     }
   };
 
