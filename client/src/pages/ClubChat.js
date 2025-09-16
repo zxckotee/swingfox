@@ -154,6 +154,31 @@ const ClubChat = () => {
   const handleFileUpload = (event) => {
     const files = Array.from(event.target.files);
     if (files.length > 0 && chatData) {
+      // Проверяем общее количество файлов (включая уже прикрепленные)
+      const totalFiles = attachedFiles.length + files.length;
+      if (totalFiles > 5) {
+        toast.error('Можно прикрепить максимум 5 файлов за раз');
+        event.target.value = '';
+        return;
+      }
+
+      // Проверяем размер каждого файла
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      const oversizedFiles = files.filter(file => file.size > maxSize);
+      if (oversizedFiles.length > 0) {
+        toast.error('Размер файла не должен превышать 10MB');
+        event.target.value = '';
+        return;
+      }
+
+      // Проверяем тип файлов
+      const invalidFiles = files.filter(file => !file.type.startsWith('image/'));
+      if (invalidFiles.length > 0) {
+        toast.error('Можно загружать только изображения');
+        event.target.value = '';
+        return;
+      }
+
       // Добавляем файлы к прикрепленным
       const newFiles = files.map(file => ({
         id: Date.now() + Math.random(), // Простой ID для React key

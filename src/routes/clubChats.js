@@ -28,7 +28,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
@@ -332,6 +332,40 @@ router.post('/messages', authenticateClub, upload.array('images', 5), async (req
     });
   } catch (error) {
     logger.logError(req, error);
+    
+    // Удаляем загруженные файлы при ошибке
+    if (req.files) {
+      for (const file of req.files) {
+        try {
+          await fs.unlink(file.path);
+        } catch (unlinkError) {
+          console.error('Error deleting uploaded file:', unlinkError);
+        }
+      }
+    }
+
+    // Обрабатываем ошибки multer
+    if (error.code === 'LIMIT_FILE_COUNT') {
+      return res.status(400).json({
+        success: false,
+        message: 'Можно прикрепить максимум 5 файлов за раз'
+      });
+    }
+    
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        success: false,
+        message: 'Размер файла не должен превышать 10MB'
+      });
+    }
+    
+    if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+      return res.status(400).json({
+        success: false,
+        message: 'Недопустимый тип файла. Можно загружать только изображения'
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Ошибка при отправке сообщения',

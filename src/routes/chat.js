@@ -31,7 +31,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
@@ -711,6 +711,28 @@ router.post('/send', authenticateToken, upload.array('images', 5), async (req, r
           console.error('Error deleting uploaded file:', unlinkError);
         }
       }
+    }
+
+    // Обрабатываем ошибки multer
+    if (error.code === 'LIMIT_FILE_COUNT') {
+      return res.status(400).json({
+        error: 'too_many_files',
+        message: 'Можно прикрепить максимум 5 файлов за раз'
+      });
+    }
+    
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        error: 'file_too_large',
+        message: 'Размер файла не должен превышать 10MB'
+      });
+    }
+    
+    if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+      return res.status(400).json({
+        error: 'unexpected_file',
+        message: 'Недопустимый тип файла. Можно загружать только изображения'
+      });
     }
 
     res.status(500).json({ 
