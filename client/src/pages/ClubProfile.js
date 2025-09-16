@@ -843,10 +843,10 @@ const ClubProfile = () => {
     }
   );
 
-  // Получение мероприятий клуба
+  // Получение мероприятий клуба (используем user-events API с фильтром по clubId)
   const { data: eventsData, isLoading: isLoadingEvents } = useQuery(
-    ['club-events', clubId],
-    () => clubsAPI.getClubEvents(clubId),
+    ['events', { clubId }],
+    () => clubsAPI.getEvents({ clubId }),
     {
       enabled: !!clubId,
       onError: (error) => {
@@ -886,7 +886,7 @@ const ClubProfile = () => {
     {
       onSuccess: () => {
         toast.success('Вы успешно записались на мероприятие!');
-        queryClient.invalidateQueries(['club-events', clubId]);
+        queryClient.invalidateQueries(['events', { clubId }]);
         handleCloseEventModal();
       },
       onError: (error) => {

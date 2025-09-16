@@ -67,7 +67,7 @@ router.get('/public/events', async (req, res) => {
 // Получение мероприятий с информацией об участии пользователя (авторизованный)
 router.get('/events', authenticateToken, async (req, res) => {
   try {
-    const { limit = 20, offset = 0, type, city, search } = req.query;
+    const { limit = 20, offset = 0, type, city, search, clubId } = req.query;
     const userId = req.user.id;
     
     const whereClause = {
@@ -84,6 +84,10 @@ router.get('/events', authenticateToken, async (req, res) => {
       whereClause.title = {
         [sequelize.Sequelize.Op.iLike]: `%${search}%`
       };
+    }
+
+    if (clubId) {
+      whereClause.club_id = clubId;
     }
 
     const events = await ClubEvents.findAll({

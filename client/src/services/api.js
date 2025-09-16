@@ -990,6 +990,7 @@ export const clubsAPI = {
     if (filters.type) params.append('type', filters.type);
     if (filters.search) params.append('search', filters.search);
     if (filters.limit) params.append('limit', filters.limit);
+    if (filters.clubId) params.append('clubId', filters.clubId);
     
     const response = await apiClient.get(`/club/user-events/events?${params.toString()}`);
     return response.data;
