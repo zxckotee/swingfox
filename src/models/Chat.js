@@ -24,6 +24,10 @@ const Chat = sequelize.define('Chat', {
     type: DataTypes.TEXT,
     allowNull: true
   },
+  file: {
+    type: DataTypes.STRING(255),
+    allowNull: true
+  },
   date: {
     type: DataTypes.DATE,
     allowNull: false

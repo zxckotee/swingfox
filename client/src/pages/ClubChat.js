@@ -153,12 +153,21 @@ const ClubChat = () => {
 
 
   const formatMessageTime = (timestamp) => {
-    return new Date(timestamp).toLocaleString('ru-RU', {
-      hour: '2-digit',
-      minute: '2-digit',
-      day: 'numeric',
-      month: 'short'
-    });
+    try {
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) {
+        return 'Неверная дата';
+      }
+      return date.toLocaleString('ru-RU', {
+        hour: '2-digit',
+        minute: '2-digit',
+        day: 'numeric',
+        month: 'short'
+      });
+    } catch (error) {
+      console.error('Ошибка форматирования времени:', error, timestamp);
+      return 'Неверная дата';
+    }
   };
 
   const getMessageClass = (message) => {
@@ -239,24 +248,31 @@ const ClubChat = () => {
                       {formatMessageTime(message.created_at)}
                     </span>
                   </div>
-                  <div className="message-text">
-                    {message.message}
-                  </div>
-                  {message.file && (
+                  {message.message && (
+                    <div className="message-text">
+                      {message.message}
+                    </div>
+                  )}
+                  {message.images && message.images.length > 0 && (
                     <div className="message-file">
-                      <img
-                        src={`/uploads/${message.file}`}
-                        alt="Прикрепленное изображение"
-                        style={{
-                          maxWidth: '200px',
-                          maxHeight: '200px',
-                          borderRadius: '8px',
-                          marginTop: '8px'
-                        }}
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
+                      {message.images.map((image, index) => (
+                        <img
+                          key={index}
+                          src={`/uploads/${image}`}
+                          alt="Прикрепленное изображение"
+                          style={{
+                            maxWidth: '200px',
+                            maxHeight: '200px',
+                            borderRadius: '8px',
+                            marginTop: '8px',
+                            marginRight: '8px'
+                          }}
+                          onError={(e) => {
+                            console.error('Ошибка загрузки изображения:', e.target.src);
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      ))}
                     </div>
                   )}
                 </div>

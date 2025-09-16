@@ -218,7 +218,8 @@ router.get('/messages', authenticateClub, async (req, res) => {
         messages: messages.map(msg => ({
           id: msg.id,
           message: msg.message,
-          file: msg.file,
+          images: msg.images && msg.images !== '0' && msg.images !== 'null' ? 
+            msg.images.split('&&').filter(Boolean) : [],
           by_user: msg.by_user,
           to_user: msg.to_user,
           created_at: msg.created_at,
@@ -278,12 +279,18 @@ router.post('/messages', authenticateClub, upload.single('images'), async (req, 
       });
     }
 
+    // Обрабатываем загруженные изображения
+    let imagesList = [];
+    if (req.file) {
+      imagesList = [req.file.filename];
+    }
+
     // Создаем новое сообщение от клуба пользователю
     const newMessage = await Chat.create({
       by_user: `club_${req.club.id}`,
       to_user: user.login, // Используем логин вместо ID
       message: message ? message.trim() : '',
-      file: req.file ? req.file.filename : null,
+      images: imagesList.length > 0 ? imagesList.join('&&') : null,
       date: new Date(),
       club_id: req.club.id,
       chat_type: 'event',
