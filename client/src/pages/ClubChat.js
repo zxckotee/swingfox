@@ -42,6 +42,7 @@ const ClubChat = () => {
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState([]); // Прикрепленные файлы
+  const [selectedImage, setSelectedImage] = useState(null); // Выбранное изображение для модального окна
   const fileInputRef = useRef(null);
 
   // Получаем данные чата из location state
@@ -214,6 +215,14 @@ const ClubChat = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const handleImageClick = (imageSrc) => {
+    setSelectedImage(imageSrc);
+  };
+
+  const closeImageModal = () => {
+    setSelectedImage(null);
+  };
+
 
   const formatMessageTime = (timestamp) => {
     try {
@@ -319,6 +328,8 @@ const ClubChat = () => {
                           <img
                             src={`/uploads/${message.file}`}
                             alt="Прикрепленное изображение"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => handleImageClick(`/uploads/${message.file}`)}
                             onError={(e) => {
                               e.target.style.display = 'none';
                             }}
@@ -329,6 +340,8 @@ const ClubChat = () => {
                               key={`${message.id}-image-${idx}`}
                               src={`/uploads/${image}`}
                               alt="Вложение"
+                              style={{ cursor: 'pointer' }}
+                              onClick={() => handleImageClick(`/uploads/${image}`)}
                               onError={(e) => {
                                 e.target.style.display = 'none';
                               }}
@@ -407,6 +420,21 @@ const ClubChat = () => {
           style={{ display: 'none' }}
         />
       </form>
+      
+      {/* Модальное окно для просмотра изображений */}
+      {selectedImage && (
+        <div className="image-modal" onClick={closeImageModal}>
+          <div className="image-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="close-button" onClick={closeImageModal}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+            <img src={selectedImage} alt="Увеличенное изображение" />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
