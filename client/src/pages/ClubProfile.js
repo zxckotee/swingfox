@@ -495,6 +495,68 @@ const EventDescriptionText = styled.p`
 const EventActions = styled.div`
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 8px;
+  }
+`;
+
+// Стили для кнопок как в разделе "Клубы"
+const EventButton = styled(Button)`
+  min-width: 140px;
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(220, 53, 34, 0.3);
+  }
+  
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+  }
+  
+  @media (max-width: 768px) {
+    min-width: 120px;
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+`;
+
+const MessageButton = styled(Button)`
+  min-width: 120px;
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-size: 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+  transition: all 0.3s ease;
+  
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+  }
+  
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+  }
+  
+  @media (max-width: 768px) {
+    min-width: 100px;
+    padding: 10px 16px;
+    font-size: 13px;
+  }
 `;
 
 // Новые стили для улучшенных карточек мероприятий
@@ -765,6 +827,8 @@ const ClubProfile = () => {
   const queryClient = useQueryClient();
   const [showEventModal, setShowEventModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   // Получение информации о клубе
   const { data: clubData, isLoading: isLoadingClub, error: clubError } = useQuery(
@@ -788,6 +852,19 @@ const ClubProfile = () => {
       onError: (error) => {
         console.error('Ошибка при получении мероприятий клуба:', error);
         toast.error('Не удалось загрузить мероприятия клуба');
+      }
+    }
+  );
+
+  // Получение списка чатов для проверки существования чата с клубом
+  const { data: chatsData } = useQuery(
+    'conversations',
+    () => chatAPI.getConversations(50, 0),
+    {
+      refetchOnWindowFocus: false,
+      staleTime: 30000,
+      onError: (error) => {
+        console.error('Ошибка при получении списка чатов:', error);
       }
     }
   );
@@ -822,6 +899,38 @@ const ClubProfile = () => {
   const handleJoinEvent = (eventId) => {
     joinEventMutation.mutate(eventId);
   };
+
+  // Функция для перехода в чат с клубом по мероприятию
+  const handleMessageClub = async (event) => {
+    try {
+      if (!clubId) {
+        toast.error('Информация о клубе недоступна');
+        return;
+      }
+
+      // Просто переходим в чат без автоматической отправки сообщения
+      // Пользователь сможет выбрать шаблон сообщения в интерфейсе чата
+      window.location.href = `/chat/club_${clubId}?event=${event.id}`;
+      
+    } catch (error) {
+      console.error('Error navigating to club chat:', error);
+      toast.error('Не удалось перейти в чат с клубом');
+    }
+  };
+
+  // Функция для перехода в существующий чат с клубом
+  const handleGoToChat = () => {
+    if (!clubId) {
+      toast.error('Информация о клубе недоступна');
+      return;
+    }
+
+    window.location.href = `/chat/club_${clubId}`;
+  };
+
+  // Проверяем, есть ли уже чат с клубом
+  const existingChat = chatsData?.conversations?.find(chat => chat.companion === `club_${clubId}`);
+  const hasExistingChat = !!existingChat;
 
   if (isLoadingClub) {
     return (
@@ -905,6 +1014,29 @@ const ClubProfile = () => {
             <span>{club.city}, {club.country}</span>
           </InfoItem>
         </ClubInfo>
+        
+        {/* Кнопка "В чат" если есть существующий чат с клубом */}
+        {hasExistingChat && (
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            marginTop: '20px',
+            zIndex: 2,
+            position: 'relative'
+          }}>
+            <MessageButton
+              onClick={handleGoToChat}
+              style={{ 
+                minWidth: '160px',
+                padding: '15px 30px',
+                fontSize: '16px',
+                fontWeight: '600'
+              }}
+            >
+              💬 В чат
+            </MessageButton>
+          </div>
+        )}
         
       </ClubHeader>
 
@@ -1118,9 +1250,31 @@ const ClubProfile = () => {
                   <EventDescriptionText>{event.description}</EventDescriptionText>
                   
                   <EventActions>
-                    <Button $size="small" $variant="primary">
-                      Подробнее
-                    </Button>
+                    <EventButton 
+                      $size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (event.user_participation?.is_participating) {
+                          return;
+                        }
+                        handleEventClick(event);
+                      }}
+                      disabled={event.user_participation?.is_participating}
+                      $variant={event.user_participation?.is_participating ? 'secondary' : 'primary'}
+                    >
+                      {event.user_participation?.is_participating ? 'Вы участвуете' : 'Участвовать'}
+                    </EventButton>
+                    
+                    {event.user_participation?.is_participating && (
+                      <MessageButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMessageClub(event);
+                        }}
+                      >
+                        💬 Написать
+                      </MessageButton>
+                    )}
                   </EventActions>
                 </EventContent>
               </EventCard>
@@ -1239,14 +1393,35 @@ const ClubProfile = () => {
               </EventModalBody>
               
               <EventModalFooter>
-                <Button 
-                  $variant="primary" 
-                  onClick={() => handleJoinEvent(selectedEvent.id)}
-                  disabled={joinEventMutation.isLoading}
-                  $size="large"
-                >
-                  {joinEventMutation.isLoading ? 'Записываемся...' : 'Записаться на мероприятие'}
-                </Button>
+                {!selectedEvent.user_participation?.is_participating ? (
+                  <Button 
+                    $variant="primary" 
+                    onClick={() => handleJoinEvent(selectedEvent.id)}
+                    disabled={joinEventMutation.isLoading}
+                    $size="large"
+                  >
+                    {joinEventMutation.isLoading ? 'Записываемся...' : 'Записаться на мероприятие'}
+                  </Button>
+                ) : (
+                  <>
+                    <Button 
+                      $variant="secondary"
+                      disabled
+                      $size="large"
+                    >
+                      Вы уже участвуете
+                    </Button>
+                    <MessageButton
+                      onClick={() => {
+                        handleMessageClub(selectedEvent);
+                        handleCloseEventModal();
+                      }}
+                      $size="large"
+                    >
+                      💬 Написать клубу
+                    </MessageButton>
+                  </>
+                )}
                 <Button $variant="secondary" onClick={handleCloseEventModal}>
                   Закрыть
                 </Button>
