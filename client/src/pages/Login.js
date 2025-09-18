@@ -83,7 +83,9 @@ const Login = () => {
       
       <ContentCard $maxWidth="450px">
         <LogoSection>
-          <Logo>SF</Logo>
+          <Logo>
+            <img src="/logo.jpg" alt="SwingFox Logo" />
+          </Logo>
           <Title>SwingFox</Title>
           <Subtitle>Добро пожаловать! Войдите в свой аккаунт</Subtitle>
         </LogoSection>
