@@ -76,18 +76,22 @@ const Logo = styled.div`
   justify-content: center;
   width: 80px;
   height: 80px;
-  background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
+  background: white;
   border-radius: 20px;
-  color: white;
-  font-size: 32px;
-  font-weight: bold;
   margin-bottom: 15px;
-  box-shadow: 0 10px 30px rgba(220, 53, 34, 0.3);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 8px;
+  }
   
   @media (max-width: 768px) {
     width: 60px;
     height: 60px;
-    font-size: 24px;
   }
 `;
 
@@ -845,7 +849,9 @@ const Register = () => {
       
       <RegisterCard>
         <LogoSection>
-          <Logo>SF</Logo>
+          <Logo>
+            <img src="/logo.jpg" alt="SwingFox Logo" />
+          </Logo>
           <Title>Присоединиться к SwingFox</Title>
           <Subtitle>Создайте аккаунт и найдите единомышленников</Subtitle>
         </LogoSection>

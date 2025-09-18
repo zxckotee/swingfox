@@ -208,20 +208,25 @@ const LogoContainer = styled.div`
 `;
 
 const LogoIcon = styled.div`
-  background: linear-gradient(135deg, #dc3522 0%, #ff6b58 100%);
+  background: white;
   border-radius: 12px;
-  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
-  box-shadow: 0 4px 15px rgba(220, 53, 34, 0.3);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
+  overflow: hidden;
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 2px;
+  }
   
   /* Адаптивные размеры */
   width: ${HEADER_SIZES.logoIcon.tiny};
   height: ${HEADER_SIZES.logoIcon.tiny};
-  font-size: ${HEADER_SIZES.logoIconFont.tiny};
   
   ${MEDIA.mobile} {
     width: ${HEADER_SIZES.logoIcon.mobile};
@@ -963,7 +968,9 @@ const Navigation = () => {
       <NavContent>
         <LogoContainer>
           <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <LogoIcon>SF</LogoIcon>
+            <LogoIcon>
+              <img src="/logo.jpg" alt="SwingFox Logo" />
+            </LogoIcon>
             <LogoText>SwingFox</LogoText>
           </Link>
         </LogoContainer>

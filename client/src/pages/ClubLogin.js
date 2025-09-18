@@ -83,7 +83,9 @@ const ClubLogin = () => {
       
       <ContentCard $maxWidth="450px">
         <LogoSection>
-          <Logo>CF</Logo>
+          <Logo>
+            <img src="/logo.jpg" alt="SwingFox Club Logo" />
+          </Logo>
           <Title>SwingFox Club</Title>
           <Subtitle>Добро пожаловать! Войдите в аккаунт клуба</Subtitle>
         </LogoSection>

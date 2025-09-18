@@ -117,7 +117,9 @@ const ClubRegister = () => {
       
       <ContentCard $maxWidth="600px">
         <LogoSection>
-          <Logo>CF</Logo>
+          <Logo>
+            <img src="/logo.jpg" alt="SwingFox Club Logo" />
+          </Logo>
           <Title>Регистрация клуба</Title>
           <Subtitle>Создайте аккаунт клуба для управления мероприятиями</Subtitle>
         </LogoSection>
